@@ -1,0 +1,42 @@
+# 06 — Docs and bilingual sync
+
+## Which file is the truth for what
+
+| Topic | File |
+|---|---|
+| Scope, roles, MVP acceptance criteria, glossary | `docs/<lang>/PRD.md` |
+| BR-01..19, workflow steps, state machines, FR traceability, deviations log | `docs/<lang>/BUSINESS_RECONCILIATION.md` |
+| Schema, constraints, transactions, seed | `docs/<lang>/DATABASE_DESIGN.md` |
+| Setup, env vars, deploy, troubleshooting | `docs/<lang>/DEVELOPMENT_SETUP.md` |
+| Architecture decisions | `docs/adr/NNNN-title.md` |
+| Original business documents (Proposal V2.0, Appendix) | `docs/reference/` (read-only source) |
+
+Precedence when they disagree: `docs/reference` (business intent) → `BUSINESS_RECONCILIATION.md` (agreed interpretation) → `PRD.md` → code. A conflict is a question for the owner, then a row in `BUSINESS_RECONCILIATION.md` §7.
+
+## Bilingual rule
+
+- `docs/en` is canonical for agents; `docs/vi` mirrors it for the team and the lecturer.
+- Change both in the same PR. If you cannot translate now, put `<!-- sync: pending -->` as the first line of the stale file and say so in the PR.
+- Keep identifiers (BR-xx, FR-xx, step codes, table names, enum values) identical in both languages. Translate prose only; keep established technical terms in English (Gate, Snapshot, Workflow Instance, ...).
+- Same headings structure and numbering in both languages so that sections can be compared side by side.
+
+## When to update what
+
+| Change | Update |
+|---|---|
+| Implemented or changed a business rule | `BUSINESS_RECONCILIATION.md` §2 status + §7 log |
+| Schema change | Migration, `DATABASE_DESIGN.md`, seed if needed |
+| New env variable | `.env.example`, `DEVELOPMENT_SETUP.md` §4 |
+| Finished a task | Check boxes in the task file, `PROJECT_STATE.md` |
+| Architectural decision with trade-offs | New ADR |
+
+## ADR template (`docs/adr/NNNN-title.md`)
+
+```
+# NNNN — Title
+Status: proposed | accepted | superseded by NNNN
+Date: YYYY-MM-DD
+## Context
+## Decision
+## Consequences (pros / cons / trade-offs)
+```
