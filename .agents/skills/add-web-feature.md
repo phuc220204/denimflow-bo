@@ -17,7 +17,7 @@ Use when a task adds a screen or flow under `apps/web/src/features/`.
 5. Forms: React Hook Form + `zodResolver(sharedSchema)`. Show field-level and server (`BusinessRuleViolation`) errors, including the BR id in a developer-visible detail.
 6. Guard routes by role (`<RequireRole roles={[...]}>`). Hiding a button is UX only; the API enforces.
 7. Every list/table: loading, empty and error states. Mutations invalidate the right query keys.
-8. Strings through the i18n dictionary. Use shadcn/ui components.
+8. Strings through the Vietnamese i18n dictionary (terms from `docs/design/DESIGN.md`); colors only from design tokens. Use shadcn/ui components.
 9. Tests: Testing Library for the critical interaction (submit, validation error, role guard).
 10. Screenshots in the PR description.
 

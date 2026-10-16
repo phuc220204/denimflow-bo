@@ -116,7 +116,7 @@ Seed: Style `JN-SLIM-01`; fabric `DN-12-RIGID` (12 oz, rigid); colors Indigo and
 | Security | JWT on every request; RBAC; RLS deny-all; private file bucket with signed URLs; no secrets in the repo (public repo) |
 | Usability | Operator screens need few taps and work on a tablet-size screen; latest Chrome/Edge supported |
 | Maintainability | Modular Monolith; engine is pure and unit-tested; docs bilingual and kept in sync |
-| i18n | UI strings in a dictionary (English first, Vietnamese later) — open decision O3 |
+| i18n | The UI is in Vietnamese (decision D8); strings still live in a dictionary. Glossary: `docs/design/DESIGN.md` |
 | Backup | Free-tier backup guarantees are unclear: keep migrations and seed in git and provide an export script before the final demo |
 
 ## 8. Constraints and assumptions
@@ -140,7 +140,7 @@ Details: `.agents/tasks/`.
 
 ## 10. Open decisions
 
-Tracked in `PROJECT_STATE.md` (O1 deadline, O2 Cloudflare Pages vs Workers, O3 UI language, O4 parallel steps, O5 custom/Hold/Cancel, O6 evidence, O7 QC numbers).
+Tracked in `PROJECT_STATE.md` (O1 deadline, O2 Cloudflare Pages vs Workers, O4 parallel steps, O5 custom/Hold/Cancel, O6 evidence, O7 QC numbers).
 
 ## 11. Glossary
 

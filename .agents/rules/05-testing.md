@@ -28,7 +28,7 @@ Principle: business rules are the product. Test them first and name tests after 
 ## Before a PR
 
 ```
-pnpm lint && pnpm typecheck && pnpm test
+pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build
 ```
 
 If a test is flaky, fix or delete it in the same PR; do not retry-until-green.

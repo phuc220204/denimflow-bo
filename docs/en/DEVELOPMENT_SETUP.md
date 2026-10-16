@@ -50,7 +50,7 @@ Daily commands:
 | Command | Purpose |
 |---|---|
 | `pnpm dev` | Web + API in watch mode |
-| `pnpm lint` / `pnpm typecheck` / `pnpm test` / `pnpm build` | Quality gates (CI runs the same) |
+| `pnpm format:check` / `pnpm lint` / `pnpm typecheck` / `pnpm test` / `pnpm build` | Quality gates (CI runs the same); `pnpm format` auto-fixes formatting |
 | `pnpm --filter @denimflow/engine test` | Engine unit tests (fast, no DB) |
 | `pnpm --filter @denimflow/api db:migrate:dev --name <name>` | Create and apply a migration |
 | `pnpm --filter @denimflow/api db:studio` | Browse the dev database |
@@ -130,7 +130,7 @@ After the first deploy: add the web URL to Supabase Auth redirect URLs and to th
 
 | Workflow | Trigger | What it does |
 |---|---|---|
-| `ci.yml` | PR, push to `main` | install (cached), lint, typecheck, test (Postgres service container), build |
+| `ci.yml` | PR, push to `main` | install (cached), format check, lint, typecheck, test (Postgres service container), build |
 | `migrate.yml` | manual (`workflow_dispatch`) | `prisma migrate deploy` against production using the `DIRECT_URL` stored as an Actions secret; optionally gated by a protected environment |
 | `keep-alive.yml` | schedule (~10 min) | `curl` the API `/health` (URL in a repository variable) to reduce Render cold starts and Supabase pauses |
 

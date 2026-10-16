@@ -14,6 +14,7 @@ The repository is **public** and `main` is protected by a ruleset: pull request 
 ## Rules for agents
 
 - Never run `git push origin main`, never force-push, never rewrite pushed history.
+- Never bypass Git hooks (`--no-verify`). If the `pre-commit` hook fails, fix the cause.
 - Do not merge a PR unless the owner explicitly asks.
 - Open or update a PR only when the owner asks you to push; otherwise leave commits local and tell the owner.
 - Keep one task per branch and one concern per PR; aim for a diff under ~400 lines (excluding lockfile and generated migrations).

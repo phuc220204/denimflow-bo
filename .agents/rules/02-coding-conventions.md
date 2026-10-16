@@ -42,7 +42,7 @@ Names are English. Prefer full words (`quantityGood` is fine, `qG` is not).
 
 - Use shadcn/ui components and Tailwind utility classes. No custom CSS files unless unavoidable.
 - Every list/table has loading, empty and error states.
-- User-visible strings go through the dictionary in `apps/web/src/lib/i18n` (English now, Vietnamese later). Do not scatter literals.
+- User-visible strings go through the dictionary in `apps/web/src/lib/i18n` (the UI is Vietnamese, decision D8; single `vi` locale). Labels for enums and domain terms come from the glossary in `docs/design/DESIGN.md`. Code identifiers and enum values stay English. Do not scatter literals. Format numbers and dates with `vi-VN`.
 
 ## Formatting
 

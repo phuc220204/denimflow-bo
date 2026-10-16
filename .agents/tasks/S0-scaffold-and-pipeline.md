@@ -15,9 +15,12 @@ Acceptance:
 Branch: `chore/monorepo-root`
 Do:
 - `package.json` (private, `packageManager` pinned, `engines.node` = current LTS), `pnpm-workspace.yaml` (`apps/*`, `packages/*`), `tsconfig.base.json` (strict), ESLint + Prettier configs, `.editorconfig`, `.nvmrc`.
-- Root scripts: `dev`, `build`, `lint`, `typecheck`, `test` using `pnpm -r`.
+- Root scripts: `dev` (web + API), `dev:web`, `dev:api`, `build`, `lint`, `typecheck`, `test` using `pnpm -r`; plus `format` (`prettier --write .`), `format:check` (`prettier --check .`) and `clean` (remove build output and caches).
+- Git hooks: Husky (installed by the `prepare` script) with a `pre-commit` hook running `lint-staged` (`eslint --fix` on staged ts/tsx/js, `prettier --write` on staged ts/tsx/js/json/css/md/yaml). Add `.prettierrc` and `.prettierignore`. Why: catches style errors before CI; hooks are a convenience, CI stays the real gate.
+- Add `apps/*/.env.example` files (fake values only) matching `DEVELOPMENT_SETUP.md` §4.
 Acceptance:
-- [ ] `pnpm install` works from a clean clone; `pnpm lint` runs (even with no sources yet).
+- [ ] `pnpm install` works from a clean clone; `pnpm format:check` and `pnpm lint` run (even with no sources yet).
+- [ ] A deliberately mis-formatted staged file is fixed or rejected by the `pre-commit` hook.
 
 ### T0.3 packages/shared and packages/engine skeletons   [owner: agent]
 Branch: `feat/shared-engine-skeleton`
@@ -44,7 +47,7 @@ Acceptance:
 ### T0.5 apps/web skeleton   [owner: agent]
 Branch: `feat/web-skeleton`
 Do:
-- Vite + React + TS + Tailwind + shadcn/ui; React Router; TanStack Query; Supabase client for Auth only; i18n dictionary stub; MSW set up.
+- Vite + React + TS + Tailwind + shadcn/ui; React Router; TanStack Query; Supabase client for Auth only; i18n dictionary with a single Vietnamese (`vi`) locale (UI language is Vietnamese, D8); Inter font with the Vietnamese subset; theme tokens from `docs/design/DESIGN.md`; MSW set up.
 - Login page, protected layout, a Home page that shows `/me` and `/health`.
 - SPA fallback: all routes serve `index.html` (Cloudflare setting, see `DEVELOPMENT_SETUP.md` §7).
 - `apps/web/.env.example`.
@@ -54,7 +57,7 @@ Acceptance:
 ### T0.6 CI   [owner: agent]
 Branch: `ci/pipeline`
 Do:
-- `.github/workflows/ci.yml`: on PR and push to `main`: checkout, pnpm + Node setup with cache, `pnpm install --frozen-lockfile`, lint, typecheck, test, build. Use a Postgres **service container** for API tests.
+- `.github/workflows/ci.yml`: on PR and push to `main`: checkout, pnpm + Node setup with cache, `pnpm install --frozen-lockfile`, `pnpm format:check`, lint, typecheck, test, build. Use a Postgres **service container** for API tests.
 - `.github/workflows/keep-alive.yml`: scheduled (every ~10 min) `curl` to the API `/health` URL from a repository variable. Document that GitHub may delay or disable schedules on inactive repos.
 - Workflow permissions: `contents: read` only.
 Acceptance:

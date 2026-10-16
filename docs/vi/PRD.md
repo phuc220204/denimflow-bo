@@ -116,7 +116,7 @@ Seed: Style `JN-SLIM-01`; vải `DN-12-RIGID` (12 oz, rigid); màu Indigo và Bl
 | Bảo mật | JWT cho mọi request; RBAC; RLS deny-all; bucket file private với signed URL; không có secret trong repo (repo public) |
 | Khả dụng | Màn hình operator ít thao tác và chạy tốt trên màn hình cỡ tablet; hỗ trợ Chrome/Edge bản mới |
 | Bảo trì | Modular Monolith; engine thuần và có unit test; docs song ngữ và luôn đồng bộ |
-| i18n | Chuỗi UI nằm trong dictionary (tiếng Anh trước, tiếng Việt sau) — quyết định mở O3 |
+| i18n | Giao diện bằng tiếng Việt (quyết định D8); chuỗi vẫn nằm trong dictionary. Bảng thuật ngữ: `docs/design/DESIGN.md` |
 | Backup | Free tier không bảo đảm rõ về backup: giữ migration và seed trong git và có script export trước buổi demo cuối |
 
 ## 8. Ràng buộc và giả định
@@ -140,7 +140,7 @@ Chi tiết: `.agents/tasks/`.
 
 ## 10. Quyết định còn mở
 
-Theo dõi trong `PROJECT_STATE.md` (O1 deadline, O2 Cloudflare Pages hay Workers, O3 ngôn ngữ UI, O4 step song song, O5 custom/Hold/Cancel, O6 minh chứng, O7 số QC).
+Theo dõi trong `PROJECT_STATE.md` (O1 deadline, O2 Cloudflare Pages hay Workers, O4 step song song, O5 custom/Hold/Cancel, O6 minh chứng, O7 số QC).
 
 ## 11. Thuật ngữ
 

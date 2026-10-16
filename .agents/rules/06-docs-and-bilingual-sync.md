@@ -9,6 +9,8 @@
 | Schema, constraints, transactions, seed | `docs/<lang>/DATABASE_DESIGN.md` |
 | Setup, env vars, deploy, troubleshooting | `docs/<lang>/DEVELOPMENT_SETUP.md` |
 | Architecture decisions | `docs/adr/NNNN-title.md` |
+| Team workflow guide for humans (Vietnamese): env, branch/commit conventions, pre-push checklist | `Tutorial_denimflow-bo.md` (keep in sync with rule 03) |
+| UI design system, Vietnamese UI glossary, Stitch prompts (single language, Vietnamese UI text) | `docs/design/` |
 | Original business documents (Proposal V2.0, Appendix) | `docs/reference/` (read-only source) |
 
 Precedence when they disagree: `docs/reference` (business intent) → `BUSINESS_RECONCILIATION.md` (agreed interpretation) → `PRD.md` → code. A conflict is a question for the owner, then a row in `BUSINESS_RECONCILIATION.md` §7.
@@ -29,6 +31,7 @@ Precedence when they disagree: `docs/reference` (business intent) → `BUSINESS_
 | New env variable | `.env.example`, `DEVELOPMENT_SETUP.md` §4 |
 | Finished a task | Check boxes in the task file, `PROJECT_STATE.md` |
 | Architectural decision with trade-offs | New ADR |
+| Changed branch/commit/PR conventions or pre-push commands | Rule 03, `Tutorial_denimflow-bo.md`, `README.md`, PR template, `AGENTS.md` (same PR) |
 
 ## ADR template (`docs/adr/NNNN-title.md`)
 

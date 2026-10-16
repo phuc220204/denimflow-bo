@@ -17,7 +17,7 @@
 
 ## Checklist
 
-- [ ] `pnpm lint && pnpm typecheck && pnpm test` pass locally
+- [ ] `pnpm format:check && pnpm lint && pnpm typecheck && pnpm test` pass locally
 - [ ] New logic has tests (business rules named by ID, e.g. `BR-08 ...`)
 - [ ] Schema change: migration included, RLS enabled, `DATABASE_DESIGN.md` updated (EN + VI)
 - [ ] Business behavior change: `BUSINESS_RECONCILIATION.md` updated (EN + VI)
