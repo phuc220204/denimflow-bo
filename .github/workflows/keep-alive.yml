@@ -1,0 +1,30 @@
+# Pings the API /health every ~10 minutes so the Render free instance stays awake and the
+# Supabase project keeps seeing activity (task T0.6). Set the repository variable
+# API_HEALTH_URL (Settings → Secrets and variables → Actions → Variables) after the first
+# deploy (T0.7); until then the job is skipped.
+#
+# Best effort only: GitHub may delay scheduled runs and disables schedules in public
+# repositories after 60 days without repository activity.
+name: Keep alive
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    name: Ping /health
+    if: ${{ vars.API_HEALTH_URL != '' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      # The URL is passed through env, not interpolated into the script (avoids injection).
+      # A cold Render instance needs about a minute to wake up, hence the long timeout.
+      - name: Call the health endpoint
+        env:
+          API_HEALTH_URL: ${{ vars.API_HEALTH_URL }}
+        run: curl --fail --silent --show-error --max-time 90 --retry 3 --retry-delay 20 "$API_HEALTH_URL"
