@@ -1,0 +1,12 @@
+node_modules/
+dist/
+build/
+coverage/
+.wrangler/
+*.log
+.DS_Store
+
+# secrets: KHÔNG BAO GIỜ commit
+.env
+.env.*
+!.env.example
