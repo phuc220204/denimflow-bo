@@ -28,6 +28,7 @@ Use two Supabase projects: **`denimflow-dev`** (local development, tests of migr
 | Git | recent | `git --version` |
 | Node.js | current LTS (see `.nvmrc`) | `node --version` |
 | pnpm | version pinned in root `package.json` (`packageManager`) | `pnpm --version`; install with `corepack enable` or `npm i -g pnpm` |
+| Docker Desktop | recent (runs the throwaway test database) | `docker --version` |
 | Editor | VS Code (UTF-8, LF) | — |
 
 Accounts: GitHub, Supabase, Render, Cloudflare. Windows tips: use PowerShell or Git Bash; keep the repo path short (avoid very long paths); `.gitattributes` forces LF line endings, do not override it.
@@ -52,6 +53,7 @@ Daily commands:
 | `pnpm dev` | Web + API in watch mode |
 | `pnpm format:check` / `pnpm lint` / `pnpm typecheck` / `pnpm test` / `pnpm build` | Quality gates (CI runs the same); `pnpm format` auto-fixes formatting |
 | `pnpm --filter @denimflow/engine test` | Engine unit tests (fast, no DB) |
+| `pnpm --filter @denimflow/api db:test:up` / `db:test:down` | Start/stop the test Postgres in Docker (port 54329). API tests need it and never touch Supabase; override with `TEST_DATABASE_URL` |
 | `pnpm --filter @denimflow/api db:migrate:dev --name <name>` | Create and apply a migration |
 | `pnpm --filter @denimflow/api db:studio` | Browse the dev database |
 

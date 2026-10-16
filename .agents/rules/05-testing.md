@@ -7,7 +7,7 @@ Principle: business rules are the product. Test them first and name tests after 
 | Level | Tool | Scope | Target |
 |---|---|---|---|
 | Engine unit | Vitest | `packages/engine`: every BR the engine owns, state transitions, gate chain, condition evaluation, BR-01 template validation | High coverage (aim ≥ 80% lines); fast, no I/O |
-| API integration | Jest + Supertest | One happy path and the main rule violations per endpoint, against a real Postgres | Per task |
+| API integration | Vitest + Supertest (Nest 12 `ts-esm` template, ADR 0004) | One happy path and the main rule violations per endpoint, against a real Postgres | Per task |
 | Web component | Vitest + Testing Library + MSW | Forms and critical screens (designer, worklist, QC) | Key flows only |
 | E2E smoke | Playwright | The demo scenario in `PRD.md` §6 | Sprint 5 |
 

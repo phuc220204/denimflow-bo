@@ -5,7 +5,7 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default defineConfig([
-  globalIgnores(['**/node_modules/', '**/dist/', '**/coverage/', '.husky/_/']),
+  globalIgnores(['**/node_modules/', '**/dist/', '**/coverage/', '.husky/_/', '**/src/generated/']),
   js.configs.recommended,
   tseslint.configs.recommended,
   {

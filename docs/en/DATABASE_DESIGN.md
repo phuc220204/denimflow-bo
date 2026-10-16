@@ -80,7 +80,7 @@ Notation: `PK`, `FK → table`, `UQ`, `NN` (not null), `CK` (check). Unlisted co
 
 | Table | Columns |
 |---|---|
-| `profiles` | `id uuid PK` (= Supabase `auth.users.id`), `full_name NN`, `email NN UQ`, `role Role NN`, `station_id FK → stations NULL`, `is_active NN default true` |
+| `profiles` | `id uuid PK` (= Supabase `auth.users.id`), `full_name NN`, `email NN UQ`, `role Role NN`, `station_id FK → stations NULL`, `is_active NN default true`. Implementation: `station_id` is added in Sprint 1 together with `stations`; no FK to `auth.users`, so migrations also run on plain Postgres (tests, CI) |
 | `stations` | `id PK`, `code NN UQ`, `name NN`, `station_type StationType NN`, `is_outsourced NN default false` |
 | `styles` | `id PK`, `style_code NN UQ`, `name NN`, `fit_type`, `default_template_id FK → workflow_templates NULL`, `has_embroidery NN default false`, `is_active NN` |
 | `fabric_types` | `id PK`, `code NN UQ`, `weight_oz numeric(4,1)`, `composition`, `stretch_type StretchType NN` |
@@ -125,7 +125,7 @@ Notation: `PK`, `FK → table`, `UQ`, `NN` (not null), `CK` (check). Unlisted co
 | `evidence` | `id PK`, `step_instance_id FK NN`, `file_path NN`, `note`, `uploaded_by FK NN`, `uploaded_at NN` |
 | `qc_inspections` | `id PK`, `step_instance_id FK NN`, `inspector_id FK NN`, `qc_profile_id FK NULL`, `sample_size int NN`, `measured_shrinkage_percent numeric(5,2) NULL`, `measured_color_fading_level smallint NULL`, `result QcResult NN`, `rework_target_step_id FK → step_instances NULL`, `reason`, `notes` |
 | `defects` | `id PK`, `inspection_id FK NN`, `bundle_id FK NULL`, `defect_type NN`, `qty int NN CK > 0` |
-| `audit_logs` | `id bigint identity PK`, `entity_type NN`, `entity_id uuid NN`, `action NN`, `old_value jsonb`, `new_value jsonb`, `actor_id uuid NULL` (NULL = system), `created_at NN default now()` — **append-only** |
+| `audit_logs` | `id bigint PK` auto-increment (`bigserial`, Prisma `autoincrement()`), `entity_type NN`, `entity_id uuid NN`, `action NN`, `old_value jsonb`, `new_value jsonb`, `actor_id uuid NULL` (NULL = system), `created_at NN default now()` — **append-only** |
 | `workflow_change_requests` *(post-MVP)* | `id PK`, `instance_id FK`, `requested_by FK`, `payload jsonb`, `status ChangeRequestStatus`, `approved_by FK NULL` |
 
 ## 5. Enums
@@ -215,7 +215,7 @@ Lock the inspected step row (and the rework target); check BR-11 (inspector ≠ 
 ## 8. Security
 
 - `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` on **every** table, with **no policies**. Supabase exposes tables through an auto-generated REST API using the anon key; deny-all RLS makes that API return nothing. Prisma connects with a privileged role and bypasses RLS, so authorization is implemented in the API.
-- Add a CI/dev check query that lists `public` tables without RLS and fails if any exist.
+- Add a CI/dev check query that lists `public` tables without RLS and fails if any exist (API test `enables RLS on every table in the public schema`). Prisma's own `_prisma_migrations` table lives in `public` too, so the first migration enables RLS on it.
 - Storage: one **private** bucket for evidence and acknowledgements; object path `orders/{orderId}/{kind}/{uuid}.{ext}`; signed URLs with a short expiry; the API validates type and size before issuing an upload URL.
 - Connection strings: pooled `DATABASE_URL` (transaction mode, `pgbouncer=true`-style parameter as required by the Prisma version) for runtime; `DIRECT_URL` (direct or session pooler) for migrations.
 

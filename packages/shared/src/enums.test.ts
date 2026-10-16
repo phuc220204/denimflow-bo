@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { OrderStatus, Role, StepStatus, orderStatusSchema, roleSchema } from './enums';
-import { healthResponseSchema } from './health';
+import { OrderStatus, Role, StepStatus, orderStatusSchema, roleSchema } from './enums.js';
+import { healthResponseSchema } from './health.js';
 
 describe('enums (DATABASE_DESIGN.md §5)', () => {
   it('Role has the 7 documented roles', () => {

@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "target": "ES2023",
+    "lib": ["ES2023"],
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "strictPropertyInitialization": false,
+    "outDir": "./dist",
+    "rootDir": ".",
+    "declaration": false,
+    "types": ["node", "vitest/globals"],
+    // Type-check and test against the sources of workspace packages, so a fresh clone
+    // does not need `pnpm build` first. tsconfig.build.json removes this condition.
+    "customConditions": ["@denimflow/source"]
+  },
+  "include": ["src", "test", "prisma", "prisma.config.ts", "vitest.config.ts"]
+}

@@ -9,7 +9,7 @@ Constraints: free tiers only. Read `HELP.md` links for the installed versions. A
 - Create the Render web service (later, after T0.7) and the Cloudflare project (after T0.5).
 - Put real values only in dashboards and local `.env`. Never in chat or git.
 Acceptance:
-- [x] Owner confirms both Supabase projects exist and the keys are stored privately.
+- [ ] Owner confirms both Supabase projects exist and the keys are stored privately.
 
 ### T0.2 Monorepo root   [owner: agent]
 Branch: `chore/monorepo-root`
@@ -26,7 +26,7 @@ Branch: `feat/shared-engine-skeleton`
 Do:
 - `@denimflow/shared`: Zod, enums from `DATABASE_DESIGN.md` §5, a `health` response schema.
 - `@denimflow/engine`: empty `src/index.ts`, Vitest configured, one placeholder test, **no framework imports**.
-- Build both with `tsup` to **dual ESM + CJS** (NestJS default is CommonJS, Vite is ESM). Why: otherwise the API cannot import them.
+- Build both with `tsup` to **dual ESM + CJS** (the plan assumed a CommonJS NestJS; NestJS 12 turned out to be ESM-only, see ADR 0004, so the CJS output now serves CommonJS tools only).
 Acceptance:
 - [x] `import { ... } from '@denimflow/shared'` works from both a CJS and an ESM consumer (prove with a tiny test or script).
 

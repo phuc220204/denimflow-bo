@@ -4,6 +4,7 @@ dist/
 coverage/
 .husky/_/
 docs/reference/
+**/src/generated/
 
 # Markdown docs are hand-formatted: Prettier would re-pad every table on each edit
 # and produce noisy diffs in the bilingual docs (owner decision, T0.2).

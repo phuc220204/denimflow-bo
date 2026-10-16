@@ -123,7 +123,7 @@ Separation of duties (BR-11): whoever performed a step cannot approve its QC, an
 - **API**: NestJS, Prisma, Zod
 - **Data, Auth, Files**: Supabase (PostgreSQL, Auth, Storage)
 - **State and forms (web)**: TanStack Query, React Router, React Hook Form + Zod
-- **Testing**: Vitest (engine, web), Jest + Supertest (API), Testing Library, MSW, Playwright (E2E)
+- **Testing**: Vitest (engine, web, API), Supertest (API HTTP tests), Testing Library, MSW, Playwright (E2E)
 - **Code quality**: ESLint, Prettier, Husky, lint-staged
 - **CI/CD and hosting**: GitHub Actions; Cloudflare (web), Render free web service (API), Supabase free (database)
 
