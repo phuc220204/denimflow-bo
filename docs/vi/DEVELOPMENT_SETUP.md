@@ -50,7 +50,7 @@ Lệnh dùng hằng ngày:
 | Lệnh | Mục đích |
 |---|---|
 | `pnpm dev` | Web + API ở chế độ watch |
-| `pnpm lint` / `pnpm typecheck` / `pnpm test` / `pnpm build` | Các cổng chất lượng (CI chạy y hệt) |
+| `pnpm format:check` / `pnpm lint` / `pnpm typecheck` / `pnpm test` / `pnpm build` | Các cổng chất lượng (CI chạy y hệt); `pnpm format` tự sửa định dạng |
 | `pnpm --filter @denimflow/engine test` | Unit test engine (nhanh, không cần DB) |
 | `pnpm --filter @denimflow/api db:migrate:dev --name <name>` | Tạo và áp một migration |
 | `pnpm --filter @denimflow/api db:studio` | Xem database dev |
@@ -130,7 +130,7 @@ Sau lần deploy đầu: thêm URL web vào redirect URL của Supabase Auth và
 
 | Workflow | Kích hoạt | Làm gì |
 |---|---|---|
-| `ci.yml` | PR, push lên `main` | install (có cache), lint, typecheck, test (Postgres service container), build |
+| `ci.yml` | PR, push lên `main` | install (có cache), format check, lint, typecheck, test (Postgres service container), build |
 | `migrate.yml` | thủ công (`workflow_dispatch`) | `prisma migrate deploy` lên production bằng `DIRECT_URL` lưu trong Actions secret; có thể đặt sau một environment được bảo vệ |
 | `keep-alive.yml` | theo lịch (~10 phút) | `curl` tới `/health` của API (URL nằm trong repository variable) để giảm cold start của Render và việc Supabase bị pause |
 

@@ -18,6 +18,7 @@ Humans: read `README.md`. This file is the single source of truth for agent beha
 3. `docs/en/PRD.md` — scope, roles, MVP acceptance criteria.
 4. `docs/en/BUSINESS_RECONCILIATION.md` — BR-01..19, workflow, state machines, FR traceability. **Business truth lives here.**
 5. `docs/en/DATABASE_DESIGN.md` — schema, constraints, transactions.
+   Before any UI work also read `docs/design/DESIGN.md` (tokens, components, Vietnamese labels).
 6. `HELP.md` — official documentation links. Check the docs of the **installed** version before using an API; do not rely on memory.
 7. `.agents/rules/` and `.agents/skills/` — conventions and step-by-step procedures.
 
@@ -47,6 +48,7 @@ packages/engine Workflow engine    (State, Chain of Responsibility, Strategy, Fa
 packages/shared Zod + enums + DTOs
 docs/en, docs/vi  Bilingual docs   (en = agent-facing canonical, vi = mirror)
 docs/adr        Architecture decision records
+docs/design     UI design system (DESIGN.md: tokens + Vietnamese glossary) and Stitch prompts
 .agents         rules/, skills/, tasks/
 ```
 
@@ -57,7 +59,7 @@ docs/adr        Architecture decision records
 ```
 pnpm install --frozen-lockfile
 pnpm dev                 # web + api in parallel
-pnpm lint && pnpm typecheck && pnpm test && pnpm build   # must pass before every PR
+pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build   # must pass before every PR
 pnpm --filter @denimflow/api db:migrate:dev   # create/apply a migration locally
 pnpm --filter @denimflow/api db:seed
 ```
@@ -87,7 +89,7 @@ pnpm --filter @denimflow/api db:seed
 ## 8. Definition of done (every task)
 
 - [ ] Acceptance criteria of the task file are met.
-- [ ] `pnpm lint && pnpm typecheck && pnpm test` pass; new logic has tests.
+- [ ] `pnpm format:check && pnpm lint && pnpm typecheck && pnpm test` pass; new logic has tests.
 - [ ] Schema change ⇒ Prisma migration + RLS + `DATABASE_DESIGN.md` updated (EN and VI).
 - [ ] Business behavior change ⇒ `BUSINESS_RECONCILIATION.md` updated (status, log).
 - [ ] No secrets, no `console.log` debugging, no commented-out code.
