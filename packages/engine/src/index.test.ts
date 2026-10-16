@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ENGINE_NAME } from './index';
+import { ENGINE_NAME } from './index.js';
 
 describe('engine package', () => {
   it('loads and exposes its name (placeholder until Sprint 2)', () => {
