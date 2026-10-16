@@ -42,6 +42,7 @@ Acceptance:
 - [ ] `GET /health` is 200 locally with the dev database.
 - [ ] `GET /me` is 401 without a token and 200 with a valid token for a seeded profile.
 - [ ] Migration applies on an empty database; RLS enabled on both tables.
+Status: part A merged (#6), verified on Docker and in CI; dev-database checks wait for T0.1. Part B (auth, `/me`, seed) pending.
 
 ### T0.5 apps/web skeleton   [owner: agent]
 Branch: `feat/web-skeleton`
@@ -60,7 +61,7 @@ Do:
 - `.github/workflows/keep-alive.yml`: scheduled (every ~10 min) `curl` to the API `/health` URL from a repository variable. Document that GitHub may delay or disable schedules on inactive repos.
 - Workflow permissions: `contents: read` only.
 Acceptance:
-- [ ] CI is green on the PR itself.
+- [x] CI is green on the PR itself.
 
 ### T0.7 First deploy   [owner: human, with agent guidance]
 - Apply migrations to `denimflow-prod` using the `DIRECT_URL` (the owner runs the command the agent provides, or a `migrate` workflow does).

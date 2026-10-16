@@ -6,10 +6,9 @@ Last updated: 2026-10-17
 ## Phase
 
 **Sprint 0 in progress** (`.agents/tasks/S0-scaffold-and-pipeline.md`).
-Done: T0.2 monorepo root (#3), T0.3 `@denimflow/shared` + `@denimflow/engine` skeletons with dual ESM/CJS build (#4).
-In review: T0.4 part A (NestJS 12 ESM app, Prisma 7, `/health`, first migration; verified on a local Docker Postgres). Part B = auth, `/me`, seed.
-**Waiting on owner:** T0.1 Supabase dev/prod projects (not created yet). Needed for the T0.4 checks on the dev database, the seed and T0.7.
-**Next:** T0.4 part B (tests do not need Supabase), T0.6 CI, T0.5 web skeleton.
+Done: T0.2 monorepo root (#3), T0.3 `@denimflow/shared` + `@denimflow/engine` skeletons with dual ESM/CJS build (#4), T0.4 part A (NestJS 12 ESM app, Prisma 7, `/health`, first migration; #6), T0.6 CI + keep-alive (#7; CI green on `main`, including the API tests on a Postgres service container).
+**Waiting on owner:** T0.1 Supabase dev/prod projects (not created yet). Needed for the T0.4 checks on the dev database, the seed and T0.7. T0.8 can be done now: require the `CI` status check in `protect-main`, then add CODEOWNERS.
+**Next:** T0.4 part B (auth, `/me`, seed; tests do not need Supabase), T0.5 web skeleton.
 
 ## Decisions (settled)
 
@@ -39,7 +38,7 @@ In review: T0.4 part A (NestJS 12 ESM app, Prisma 7, `/health`, first migration;
 
 | Sprint | Goal | Status |
 |---|---|---|
-| S0 | Scaffold + deploy pipeline (walking skeleton) | in progress (T0.2–T0.3 done, T0.4 in review, T0.1 pending) |
+| S0 | Scaffold + deploy pipeline (walking skeleton) | in progress (T0.2, T0.3, T0.4 part A, T0.6 done; T0.1 pending) |
 | S1 | Auth + RBAC + master data | not started |
 | S2 | Workflow engine core + designer MVP | not started |
 | S3 | Order create / Confirm / snapshot | not started |
