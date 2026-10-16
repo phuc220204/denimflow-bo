@@ -53,8 +53,7 @@ Use these when you need the exact API of a library. **Check the docs of the vers
 
 ## Testing
 
-- Vitest (engine, web): https://vitest.dev
-- Jest (API, Nest default): https://jestjs.io/docs/getting-started
+- Vitest (engine, web, API): https://vitest.dev
 - Testing Library: https://testing-library.com/docs/
 - MSW (mock API in web): https://mswjs.io/docs/
 - Playwright (E2E): https://playwright.dev/docs/intro

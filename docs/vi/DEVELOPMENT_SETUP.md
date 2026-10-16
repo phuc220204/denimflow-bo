@@ -28,6 +28,7 @@ Dùng hai project Supabase: **`denimflow-dev`** (phát triển local, thử migr
 | Git | bản gần đây | `git --version` |
 | Node.js | LTS hiện hành (xem `.nvmrc`) | `node --version` |
 | pnpm | phiên bản ghim trong `package.json` gốc (`packageManager`) | `pnpm --version`; cài bằng `corepack enable` hoặc `npm i -g pnpm` |
+| Docker Desktop | bản gần đây (chạy database test tạm thời) | `docker --version` |
 | Editor | VS Code (UTF-8, LF) | — |
 
 Tài khoản: GitHub, Supabase, Render, Cloudflare. Mẹo Windows: dùng PowerShell hoặc Git Bash; giữ đường dẫn repo ngắn (tránh đường dẫn quá dài); `.gitattributes` ép dùng LF, đừng ghi đè.
@@ -52,6 +53,7 @@ Lệnh dùng hằng ngày:
 | `pnpm dev` | Web + API ở chế độ watch |
 | `pnpm format:check` / `pnpm lint` / `pnpm typecheck` / `pnpm test` / `pnpm build` | Các cổng chất lượng (CI chạy y hệt); `pnpm format` tự sửa định dạng |
 | `pnpm --filter @denimflow/engine test` | Unit test engine (nhanh, không cần DB) |
+| `pnpm --filter @denimflow/api db:test:up` / `db:test:down` | Bật/tắt Postgres test trong Docker (port 54329). Test của API cần nó và không bao giờ đụng Supabase; đổi bằng `TEST_DATABASE_URL` |
 | `pnpm --filter @denimflow/api db:migrate:dev --name <name>` | Tạo và áp một migration |
 | `pnpm --filter @denimflow/api db:studio` | Xem database dev |
 

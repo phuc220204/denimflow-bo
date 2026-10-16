@@ -80,7 +80,7 @@ Ký hiệu: `PK`, `FK → bảng`, `UQ`, `NN` (not null), `CK` (check). Cột `c
 
 | Bảng | Cột |
 |---|---|
-| `profiles` | `id uuid PK` (= `auth.users.id` của Supabase), `full_name NN`, `email NN UQ`, `role Role NN`, `station_id FK → stations NULL`, `is_active NN default true` |
+| `profiles` | `id uuid PK` (= `auth.users.id` của Supabase), `full_name NN`, `email NN UQ`, `role Role NN`, `station_id FK → stations NULL`, `is_active NN default true`. Triển khai: `station_id` được thêm ở Sprint 1 cùng bảng `stations`; không có FK sang `auth.users`, để migration chạy được trên Postgres thường (test, CI) |
 | `stations` | `id PK`, `code NN UQ`, `name NN`, `station_type StationType NN`, `is_outsourced NN default false` |
 | `styles` | `id PK`, `style_code NN UQ`, `name NN`, `fit_type`, `default_template_id FK → workflow_templates NULL`, `has_embroidery NN default false`, `is_active NN` |
 | `fabric_types` | `id PK`, `code NN UQ`, `weight_oz numeric(4,1)`, `composition`, `stretch_type StretchType NN` |
@@ -125,7 +125,7 @@ Ví dụ `condition_expr` (kiểm bằng Zod trong `packages/shared`): `{"op":"e
 | `evidence` | `id PK`, `step_instance_id FK NN`, `file_path NN`, `note`, `uploaded_by FK NN`, `uploaded_at NN` |
 | `qc_inspections` | `id PK`, `step_instance_id FK NN`, `inspector_id FK NN`, `qc_profile_id FK NULL`, `sample_size int NN`, `measured_shrinkage_percent numeric(5,2) NULL`, `measured_color_fading_level smallint NULL`, `result QcResult NN`, `rework_target_step_id FK → step_instances NULL`, `reason`, `notes` |
 | `defects` | `id PK`, `inspection_id FK NN`, `bundle_id FK NULL`, `defect_type NN`, `qty int NN CK > 0` |
-| `audit_logs` | `id bigint identity PK`, `entity_type NN`, `entity_id uuid NN`, `action NN`, `old_value jsonb`, `new_value jsonb`, `actor_id uuid NULL` (NULL = hệ thống), `created_at NN default now()` — **append-only** |
+| `audit_logs` | `id bigint PK` tự tăng (`bigserial`, Prisma `autoincrement()`), `entity_type NN`, `entity_id uuid NN`, `action NN`, `old_value jsonb`, `new_value jsonb`, `actor_id uuid NULL` (NULL = hệ thống), `created_at NN default now()` — **append-only** |
 | `workflow_change_requests` *(sau MVP)* | `id PK`, `instance_id FK`, `requested_by FK`, `payload jsonb`, `status ChangeRequestStatus`, `approved_by FK NULL` |
 
 ## 5. Enum
@@ -215,7 +215,7 @@ Khoá dòng step được kiểm (và step đích rework); kiểm tra BR-11 (ins
 ## 8. Bảo mật
 
 - `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` trên **mọi** bảng, **không có policy nào**. Supabase mở các bảng qua REST API tự sinh bằng anon key; RLS deny-all làm API đó không trả gì. Prisma kết nối bằng role có đặc quyền và bỏ qua RLS, nên phân quyền được cài ở API.
-- Thêm một query kiểm tra trong CI/dev liệt kê các bảng ở schema `public` không bật RLS và fail nếu có.
+- Thêm một query kiểm tra trong CI/dev liệt kê các bảng ở schema `public` không bật RLS và fail nếu có (test API `enables RLS on every table in the public schema`). Bảng `_prisma_migrations` của Prisma cũng nằm trong `public`, nên migration đầu tiên bật RLS cho nó.
 - Storage: một bucket **private** cho minh chứng và giấy xác nhận; object path `orders/{orderId}/{kind}/{uuid}.{ext}`; signed URL hết hạn ngắn; API kiểm tra loại file và dung lượng trước khi cấp URL upload.
 - Connection string: `DATABASE_URL` dạng pooled (transaction mode, tham số kiểu `pgbouncer=true` tuỳ phiên bản Prisma) cho runtime; `DIRECT_URL` (direct hoặc session pooler) cho migration.
 
