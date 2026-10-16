@@ -9,18 +9,17 @@ Constraints: free tiers only. Read `HELP.md` links for the installed versions. A
 - Create the Render web service (later, after T0.7) and the Cloudflare project (after T0.5).
 - Put real values only in dashboards and local `.env`. Never in chat or git.
 Acceptance:
-- [ ] Owner confirms both Supabase projects exist and the keys are stored privately.
+- [x] Owner confirms both Supabase projects exist and the keys are stored privately.
 
 ### T0.2 Monorepo root   [owner: agent]
 Branch: `chore/monorepo-root`
 Do:
 - `package.json` (private, `packageManager` pinned, `engines.node` = current LTS), `pnpm-workspace.yaml` (`apps/*`, `packages/*`), `tsconfig.base.json` (strict), ESLint + Prettier configs, `.editorconfig`, `.nvmrc`.
 - Root scripts: `dev` (web + API), `dev:web`, `dev:api`, `build`, `lint`, `typecheck`, `test` using `pnpm -r`; plus `format` (`prettier --write .`), `format:check` (`prettier --check .`) and `clean` (remove build output and caches).
-- Git hooks: Husky (installed by the `prepare` script) with a `pre-commit` hook running `lint-staged` (`eslint --fix` on staged ts/tsx/js, `prettier --write` on staged ts/tsx/js/json/css/md/yaml). Add `.prettierrc` and `.prettierignore`. Why: catches style errors before CI; hooks are a convenience, CI stays the real gate.
-- Add `apps/*/.env.example` files (fake values only) matching `DEVELOPMENT_SETUP.md` §4.
+- Git hooks: Husky (installed by the `prepare` script) with a `pre-commit` hook running `lint-staged` (`eslint --fix` + `prettier --write` on staged ts/tsx/js/mjs/cjs, `prettier --write` on staged json/css/yaml). Add `.prettierrc` and `.prettierignore`. Why: catches style errors before CI; hooks are a convenience, CI stays the real gate. Markdown is not formatted by Prettier (owner decision, PR #3: avoids re-padding tables in the bilingual docs).
 Acceptance:
-- [ ] `pnpm install` works from a clean clone; `pnpm format:check` and `pnpm lint` run (even with no sources yet).
-- [ ] A deliberately mis-formatted staged file is fixed or rejected by the `pre-commit` hook.
+- [x] `pnpm install` works from a clean clone; `pnpm format:check` and `pnpm lint` run (even with no sources yet).
+- [x] A deliberately mis-formatted staged file is fixed or rejected by the `pre-commit` hook.
 
 ### T0.3 packages/shared and packages/engine skeletons   [owner: agent]
 Branch: `feat/shared-engine-skeleton`
@@ -29,7 +28,7 @@ Do:
 - `@denimflow/engine`: empty `src/index.ts`, Vitest configured, one placeholder test, **no framework imports**.
 - Build both with `tsup` to **dual ESM + CJS** (NestJS default is CommonJS, Vite is ESM). Why: otherwise the API cannot import them.
 Acceptance:
-- [ ] `import { ... } from '@denimflow/shared'` works from both a CJS and an ESM consumer (prove with a tiny test or script).
+- [x] `import { ... } from '@denimflow/shared'` works from both a CJS and an ESM consumer (prove with a tiny test or script).
 
 ### T0.4 apps/api skeleton   [owner: agent]
 Branch: `feat/api-skeleton`
@@ -38,7 +37,7 @@ Do:
 - Prisma set up for Supabase (pooled `DATABASE_URL` + `DIRECT_URL`); first migration creates `profiles`, `audit_logs` (+ append-only trigger) and enables RLS.
 - `JwtAuthGuard` verifying the Supabase JWT, `RolesGuard` + `@Roles()`, `GET /me` returning the profile and role.
 - Exception filter and `BusinessRuleViolation`.
-- `apps/api/.env.example` (placeholders).
+- `apps/api/.env.example`: fake values only, every API variable of `DEVELOPMENT_SETUP.md` §4.
 Acceptance:
 - [ ] `GET /health` is 200 locally with the dev database.
 - [ ] `GET /me` is 401 without a token and 200 with a valid token for a seeded profile.
@@ -50,7 +49,7 @@ Do:
 - Vite + React + TS + Tailwind + shadcn/ui; React Router; TanStack Query; Supabase client for Auth only; i18n dictionary with a single Vietnamese (`vi`) locale (UI language is Vietnamese, D8); Inter font with the Vietnamese subset; theme tokens from `docs/design/DESIGN.md`; MSW set up.
 - Login page, protected layout, a Home page that shows `/me` and `/health`.
 - SPA fallback: all routes serve `index.html` (Cloudflare setting, see `DEVELOPMENT_SETUP.md` §7).
-- `apps/web/.env.example`.
+- `apps/web/.env.example`: fake values only, every web (`VITE_*`) variable of `DEVELOPMENT_SETUP.md` §4; no server secrets.
 Acceptance:
 - [ ] Log in with a seeded user locally; Home shows name, role and API health.
 

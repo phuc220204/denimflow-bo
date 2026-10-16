@@ -223,8 +223,10 @@ pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build
 
 A `pre-commit` hook (`.husky/pre-commit`) runs on every `git commit` and invokes `lint-staged` on the staged files only:
 
-- `*.{ts,tsx,js,jsx}`: `eslint --fix`
-- `*.{ts,tsx,js,jsx,json,css,md,yaml,yml}`: `prettier --write`
+- `*.{ts,tsx,js,mjs,cjs}`: `eslint --fix`, then `prettier --write`
+- `*.{json,css,yaml,yml}`: `prettier --write`
+
+Markdown files are not formatted by Prettier (listed in `.prettierignore`), so editing one table cell does not re-pad the whole table.
 
 If an error cannot be fixed automatically, the commit is rejected: read the output, fix it, stage again and commit again. Do not bypass hooks with `--no-verify`.
 
