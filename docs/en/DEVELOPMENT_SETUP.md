@@ -132,13 +132,13 @@ After the first deploy: add the web URL to Supabase Auth redirect URLs and to th
 
 | Workflow | Trigger | What it does |
 |---|---|---|
-| `ci.yml` | PR, push to `main` | install (cached), format check, lint, typecheck, test (Postgres service container), build |
+| `ci.yml` | PR, push to `main` | One job named **`CI`**: install (cached, `--frozen-lockfile`), format check, lint, typecheck, test (Postgres 17 service container via `TEST_DATABASE_URL`), build, shared CJS/ESM export check |
 | `migrate.yml` | manual (`workflow_dispatch`) | `prisma migrate deploy` against production using the `DIRECT_URL` stored as an Actions secret; optionally gated by a protected environment |
-| `keep-alive.yml` | schedule (~10 min) | `curl` the API `/health` (URL in a repository variable) to reduce Render cold starts and Supabase pauses |
+| `keep-alive.yml` | schedule (~10 min), manual | `curl` the API `/health` to reduce Render cold starts and Supabase pauses. URL in the repository variable `API_HEALTH_URL` (Settings → Secrets and variables → Actions → Variables), set after the first deploy (T0.7); the job is skipped while it is empty |
 
-Workflows use `permissions: contents: read`. GitHub may delay scheduled runs and may disable schedules on inactive repositories; the keep-alive is a convenience, not a guarantee.
+Workflows use `permissions: contents: read`, and actions are pinned to full commit SHAs (the comment shows the version); update both together. GitHub may delay scheduled runs and disables schedules in public repositories after 60 days without activity; the keep-alive is a convenience, not a guarantee. Pinging every 10 minutes keeps the Render instance awake about 744 h/month, within the 750 free hours for one service.
 
-After the first green `ci.yml`: add **Require status checks to pass** to the `protect-main` ruleset (owner task T0.8).
+After the first green `ci.yml`: add **Require status checks to pass** to the `protect-main` ruleset and select the check **`CI`** (owner task T0.8).
 
 ## 9. Troubleshooting
 

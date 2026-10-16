@@ -132,13 +132,13 @@ Sau lần deploy đầu: thêm URL web vào redirect URL của Supabase Auth và
 
 | Workflow | Kích hoạt | Làm gì |
 |---|---|---|
-| `ci.yml` | PR, push lên `main` | install (có cache), format check, lint, typecheck, test (Postgres service container), build |
+| `ci.yml` | PR, push lên `main` | Một job tên **`CI`**: install (có cache, `--frozen-lockfile`), format check, lint, typecheck, test (Postgres 17 service container qua `TEST_DATABASE_URL`), build, kiểm tra export CJS/ESM của shared |
 | `migrate.yml` | thủ công (`workflow_dispatch`) | `prisma migrate deploy` lên production bằng `DIRECT_URL` lưu trong Actions secret; có thể đặt sau một environment được bảo vệ |
-| `keep-alive.yml` | theo lịch (~10 phút) | `curl` tới `/health` của API (URL nằm trong repository variable) để giảm cold start của Render và việc Supabase bị pause |
+| `keep-alive.yml` | theo lịch (~10 phút), thủ công | `curl` tới `/health` của API để giảm cold start của Render và việc Supabase bị pause. URL nằm trong repository variable `API_HEALTH_URL` (Settings → Secrets and variables → Actions → Variables), đặt sau lần deploy đầu (T0.7); job được skip khi biến còn trống |
 
-Các workflow dùng `permissions: contents: read`. GitHub có thể trễ lịch chạy và có thể tắt lịch trên repo không hoạt động; keep-alive là tiện ích, không phải bảo đảm.
+Các workflow dùng `permissions: contents: read`, và action được ghim theo SHA commit đầy đủ (comment ghi version); khi nâng cấp thì đổi cả hai. GitHub có thể trễ lịch chạy và tắt lịch trên repo public không có hoạt động trong 60 ngày; keep-alive là tiện ích, không phải bảo đảm. Ping mỗi 10 phút giữ Render thức khoảng 744 giờ/tháng, nằm trong 750 giờ miễn phí cho một service.
 
-Sau lần `ci.yml` xanh đầu tiên: thêm **Require status checks to pass** vào ruleset `protect-main` (việc của owner, T0.8).
+Sau lần `ci.yml` xanh đầu tiên: thêm **Require status checks to pass** vào ruleset `protect-main` và chọn check **`CI`** (việc của owner, T0.8).
 
 ## 9. Xử lý sự cố
 
