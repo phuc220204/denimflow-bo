@@ -17,4 +17,4 @@ The project docs were written assuming "NestJS defaults to CommonJS" and "Jest f
 - Cons / trade-offs: relative imports need the `.js` extension; some older NestJS examples online use CommonJS and Jest and need adapting.
 - `@denimflow/shared` and `@denimflow/engine` keep their dual ESM + CJS build (cheap, keeps CJS tools working), but the CJS output is no longer required by the API.
 - Workspace packages expose a `@denimflow/source` export condition (their `src/index.ts`). The API's `tsconfig.json` and Vitest use the sources, so a fresh clone can type-check and test without building; `tsconfig.build.json` drops the condition so the runtime uses `dist/`.
-- Follow-ups: rule 05 and HELP.md updated in the same PR; the sentence "NestJS default is CommonJS" in task T0.3 is corrected in a docs follow-up (it overlaps an open docs PR).
+- Rule 05, HELP.md, README and the T0.3 task text are updated in the same PR.
