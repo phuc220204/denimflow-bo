@@ -5,8 +5,9 @@ Last updated: 2026-10-17
 
 ## Phase
 
-Repository created, PR-only ruleset active on `main`, content pack (docs, `.agents`) added.
-**Next: Sprint 0** — scaffold the monorepo and deploy a "hello world" through the whole pipeline (`.agents/tasks/S0-scaffold-and-pipeline.md`).
+**Sprint 0 in progress** (`.agents/tasks/S0-scaffold-and-pipeline.md`).
+Done: T0.1 Supabase dev/prod projects (owner), T0.2 monorepo root (#3), T0.3 `@denimflow/shared` + `@denimflow/engine` skeletons with dual ESM/CJS build (#4).
+**Next:** T0.4 API skeleton (unblocked: T0.1 done), T0.5 web skeleton (can run in parallel), T0.6 CI.
 
 ## Decisions (settled)
 
@@ -36,7 +37,7 @@ Repository created, PR-only ruleset active on `main`, content pack (docs, `.agen
 
 | Sprint | Goal | Status |
 |---|---|---|
-| S0 | Scaffold + deploy pipeline (walking skeleton) | not started |
+| S0 | Scaffold + deploy pipeline (walking skeleton) | in progress (T0.1–T0.3 done) |
 | S1 | Auth + RBAC + master data | not started |
 | S2 | Workflow engine core + designer MVP | not started |
 | S3 | Order create / Confirm / snapshot | not started |
@@ -48,3 +49,5 @@ Repository created, PR-only ruleset active on `main`, content pack (docs, `.agen
 - Render free API sleeps after 15 min idle (about 1 min cold start). Ping `/health` before demos.
 - Supabase free projects pause after a week of inactivity. Keep migrations + seed in the repo to rebuild.
 - Free-tier limits change. Re-check provider pricing pages before the final demo.
+- `tsup` (package build) is no longer actively maintained. Switch to `tsdown` once it reaches 1.0 (config is ~5 lines per package).
+- TypeScript is pinned to 6.0.x because `typescript-eslint` 8.x supports `typescript <6.1`. Upgrade to 7 when typescript-eslint supports it.
