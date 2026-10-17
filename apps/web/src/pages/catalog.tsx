@@ -3,12 +3,14 @@ import {
   CheckCircle2,
   Droplets,
   Factory,
+  Grid,
   Layers,
   Palette,
   Plus,
   RefreshCw,
   Scissors,
   Search,
+  Sliders,
   X,
 } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
@@ -45,8 +47,10 @@ import {
   type WashTypeItem,
 } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
+import { FabricColorMatrixTab } from './catalog-matrix-tab';
+import { QcProfilesTab } from './catalog-qc-profiles-tab';
 
-type TabKey = 'styles' | 'fabrics' | 'colors' | 'washes' | 'stations';
+type TabKey = 'styles' | 'fabrics' | 'colors' | 'washes' | 'stations' | 'matrix' | 'qc-profiles';
 type CatalogItem = StyleItem | FabricTypeItem | ColorOptionItem | WashTypeItem | StationItem;
 
 export const CatalogPage: React.FC = () => {
@@ -307,6 +311,8 @@ export const CatalogPage: React.FC = () => {
     { key: 'colors' as TabKey, label: 'Màu nhuộm', icon: Palette, count: colors.length },
     { key: 'washes' as TabKey, label: 'Kiểu giặt mài', icon: Droplets, count: washes.length },
     { key: 'stations' as TabKey, label: 'Trạm sản xuất', icon: Factory, count: stations.length },
+    { key: 'matrix' as TabKey, label: 'Ma trận Vải – Màu (BR-04)', icon: Grid, count: 'Lưới' },
+    { key: 'qc-profiles' as TabKey, label: 'Tiêu chuẩn QC (BR-19)', icon: Sliders, count: 'QC' },
   ];
 
   const currentLoading =
@@ -328,7 +334,7 @@ export const CatalogPage: React.FC = () => {
           <h1 className="text-xl font-bold text-text">Danh mục Dữ liệu Xưởng May</h1>
           <p className="text-sm text-text-muted mt-1">
             Quản lý dữ liệu tham chiếu nền tảng: Mã kiểu dáng, cuộn vải Denim, màu sắc, kiểu giặt
-            mài và các trạm gia công.
+            mài, trạm gia công, ma trận vải-màu và tiêu chuẩn QC Profile.
           </p>
         </div>
 
@@ -349,7 +355,7 @@ export const CatalogPage: React.FC = () => {
             <span>Làm mới</span>
           </Button>
 
-          {isAdmin ? (
+          {isAdmin && activeTab !== 'matrix' && activeTab !== 'qc-profiles' ? (
             <Button
               variant="primary"
               size="sm"
@@ -359,11 +365,11 @@ export const CatalogPage: React.FC = () => {
               <Plus className="h-4 w-4" />
               <span>Thêm mới</span>
             </Button>
-          ) : (
+          ) : !isAdmin ? (
             <Badge tone="info" className="py-1 px-3">
               Chế độ xem
             </Badge>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -435,340 +441,348 @@ export const CatalogPage: React.FC = () => {
       </div>
 
       {/* Search Bar */}
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-text-muted" />
-          <Input
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Tìm theo mã hoặc tên..."
-            className="pl-9 h-9 text-sm"
-          />
+      {activeTab !== 'matrix' && activeTab !== 'qc-profiles' && (
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-text-muted" />
+            <Input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Tìm theo mã hoặc tên..."
+              className="pl-9 h-9 text-sm"
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Content Area */}
-      <Card>
-        <CardContent className="p-0">
-          {currentLoading ? (
-            <div className="flex items-center justify-center p-12 text-sm text-text-muted">
-              <RefreshCw className="h-5 w-5 animate-spin mr-2" />
-              <span>Đang tải danh mục...</span>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              {/* TAB 1: STYLES */}
-              {activeTab === 'styles' && (
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-surface-tint border-b border-border text-xs uppercase text-text-muted font-semibold">
-                    <tr>
-                      <th className="py-3 px-4">Mã kiểu dáng</th>
-                      <th className="py-3 px-4">Tên sản phẩm</th>
-                      <th className="py-3 px-4">Dáng quần (Fit)</th>
-                      <th className="py-3 px-4">Thêu / In ấn</th>
-                      <th className="py-3 px-4">Trạng thái</th>
-                      {isAdmin && <th className="py-3 px-4 text-right">Thao tác</th>}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {filteredStyles.length === 0 ? (
+      {activeTab === 'matrix' ? (
+        <FabricColorMatrixTab />
+      ) : activeTab === 'qc-profiles' ? (
+        <QcProfilesTab />
+      ) : (
+        <Card>
+          <CardContent className="p-0">
+            {currentLoading ? (
+              <div className="flex items-center justify-center p-12 text-sm text-text-muted">
+                <RefreshCw className="h-5 w-5 animate-spin mr-2" />
+                <span>Đang tải danh mục...</span>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                {/* TAB 1: STYLES */}
+                {activeTab === 'styles' && (
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-surface-tint border-b border-border text-xs uppercase text-text-muted font-semibold">
                       <tr>
-                        <td colSpan={6} className="text-center py-8 text-text-muted text-sm">
-                          Chưa có mã hàng Jeans nào phù hợp.
-                        </td>
+                        <th className="py-3 px-4">Mã kiểu dáng</th>
+                        <th className="py-3 px-4">Tên sản phẩm</th>
+                        <th className="py-3 px-4">Dáng quần (Fit)</th>
+                        <th className="py-3 px-4">Thêu / In ấn</th>
+                        <th className="py-3 px-4">Trạng thái</th>
+                        {isAdmin && <th className="py-3 px-4 text-right">Thao tác</th>}
                       </tr>
-                    ) : (
-                      filteredStyles.map((item) => (
-                        <tr key={item.id} className="hover:bg-background/50">
-                          <td className="py-3 px-4 font-mono font-medium text-primary">
-                            {item.styleCode}
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {filteredStyles.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="text-center py-8 text-text-muted text-sm">
+                            Chưa có mã hàng Jeans nào phù hợp.
                           </td>
-                          <td className="py-3 px-4 font-medium text-text">{item.name}</td>
-                          <td className="py-3 px-4 text-text-muted">
-                            {item.fitType || 'Tiêu chuẩn'}
-                          </td>
-                          <td className="py-3 px-4">
-                            {item.hasEmbroidery ? (
-                              <Badge tone="info">Có thêu</Badge>
-                            ) : (
-                              <span className="text-text-muted text-xs">Không thêu</span>
+                        </tr>
+                      ) : (
+                        filteredStyles.map((item) => (
+                          <tr key={item.id} className="hover:bg-background/50">
+                            <td className="py-3 px-4 font-mono font-medium text-primary">
+                              {item.styleCode}
+                            </td>
+                            <td className="py-3 px-4 font-medium text-text">{item.name}</td>
+                            <td className="py-3 px-4 text-text-muted">
+                              {item.fitType || 'Tiêu chuẩn'}
+                            </td>
+                            <td className="py-3 px-4">
+                              {item.hasEmbroidery ? (
+                                <Badge tone="info">Có thêu</Badge>
+                              ) : (
+                                <span className="text-text-muted text-xs">Không thêu</span>
+                              )}
+                            </td>
+                            <td className="py-3 px-4">
+                              {item.isActive ? (
+                                <Badge tone="success">Đang áp dụng</Badge>
+                              ) : (
+                                <Badge tone="neutral">Tạm dừng</Badge>
+                              )}
+                            </td>
+                            {isAdmin && (
+                              <td className="py-3 px-4 text-right space-x-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleOpenEdit(item)}
+                                  className="h-8 px-2 text-xs"
+                                >
+                                  Sửa
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setDeletingId(item.id)}
+                                  className="h-8 px-2 text-xs text-danger hover:text-danger hover:border-danger"
+                                >
+                                  Xóa
+                                </Button>
+                              </td>
                             )}
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                )}
+
+                {/* TAB 2: FABRICS */}
+                {activeTab === 'fabrics' && (
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-surface-tint border-b border-border text-xs uppercase text-text-muted font-semibold">
+                      <tr>
+                        <th className="py-3 px-4">Mã loại vải</th>
+                        <th className="py-3 px-4">Tên loại vải</th>
+                        <th className="py-3 px-4">Định lượng (oz)</th>
+                        <th className="py-3 px-4">Thành phần sợi</th>
+                        <th className="py-3 px-4">Độ co giãn</th>
+                        {isAdmin && <th className="py-3 px-4 text-right">Thao tác</th>}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {filteredFabrics.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="text-center py-8 text-text-muted text-sm">
+                            Chưa có loại vải Denim nào.
                           </td>
-                          <td className="py-3 px-4">
-                            {item.isActive ? (
-                              <Badge tone="success">Đang áp dụng</Badge>
-                            ) : (
-                              <Badge tone="neutral">Tạm dừng</Badge>
+                        </tr>
+                      ) : (
+                        filteredFabrics.map((item) => (
+                          <tr key={item.id} className="hover:bg-background/50">
+                            <td className="py-3 px-4 font-mono font-medium text-primary">
+                              {item.code}
+                            </td>
+                            <td className="py-3 px-4 font-medium text-text">{item.name}</td>
+                            <td className="py-3 px-4 text-text-muted">
+                              {item.weightOz ? `${item.weightOz} oz` : '—'}
+                            </td>
+                            <td className="py-3 px-4 text-text-muted">{item.composition || '—'}</td>
+                            <td className="py-3 px-4">
+                              {item.stretchType === 'STRETCH' ? (
+                                <Badge tone="info">Co giãn</Badge>
+                              ) : (
+                                <Badge tone="neutral">Không co giãn (Rigid)</Badge>
+                              )}
+                            </td>
+                            {isAdmin && (
+                              <td className="py-3 px-4 text-right space-x-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleOpenEdit(item)}
+                                  className="h-8 px-2 text-xs"
+                                >
+                                  Sửa
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setDeletingId(item.id)}
+                                  className="h-8 px-2 text-xs text-danger hover:text-danger hover:border-danger"
+                                >
+                                  Xóa
+                                </Button>
+                              </td>
                             )}
-                          </td>
-                          {isAdmin && (
-                            <td className="py-3 px-4 text-right space-x-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleOpenEdit(item)}
-                                className="h-8 px-2 text-xs"
-                              >
-                                Sửa
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setDeletingId(item.id)}
-                                className="h-8 px-2 text-xs text-danger hover:text-danger hover:border-danger"
-                              >
-                                Xóa
-                              </Button>
-                            </td>
-                          )}
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              )}
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                )}
 
-              {/* TAB 2: FABRICS */}
-              {activeTab === 'fabrics' && (
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-surface-tint border-b border-border text-xs uppercase text-text-muted font-semibold">
-                    <tr>
-                      <th className="py-3 px-4">Mã loại vải</th>
-                      <th className="py-3 px-4">Tên loại vải</th>
-                      <th className="py-3 px-4">Định lượng (oz)</th>
-                      <th className="py-3 px-4">Thành phần sợi</th>
-                      <th className="py-3 px-4">Độ co giãn</th>
-                      {isAdmin && <th className="py-3 px-4 text-right">Thao tác</th>}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {filteredFabrics.length === 0 ? (
+                {/* TAB 3: COLORS */}
+                {activeTab === 'colors' && (
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-surface-tint border-b border-border text-xs uppercase text-text-muted font-semibold">
                       <tr>
-                        <td colSpan={6} className="text-center py-8 text-text-muted text-sm">
-                          Chưa có loại vải Denim nào.
-                        </td>
+                        <th className="py-3 px-4">Mã màu</th>
+                        <th className="py-3 px-4">Tên màu nhuộm</th>
+                        <th className="py-3 px-4">Họ màu / Nhóm</th>
+                        {isAdmin && <th className="py-3 px-4 text-right">Thao tác</th>}
                       </tr>
-                    ) : (
-                      filteredFabrics.map((item) => (
-                        <tr key={item.id} className="hover:bg-background/50">
-                          <td className="py-3 px-4 font-mono font-medium text-primary">
-                            {item.code}
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {filteredColors.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="text-center py-8 text-text-muted text-sm">
+                            Chưa có mã màu nhuộm nào.
                           </td>
-                          <td className="py-3 px-4 font-medium text-text">{item.name}</td>
-                          <td className="py-3 px-4 text-text-muted">
-                            {item.weightOz ? `${item.weightOz} oz` : '—'}
-                          </td>
-                          <td className="py-3 px-4 text-text-muted">{item.composition || '—'}</td>
-                          <td className="py-3 px-4">
-                            {item.stretchType === 'STRETCH' ? (
-                              <Badge tone="info">Co giãn</Badge>
-                            ) : (
-                              <Badge tone="neutral">Không co giãn (Rigid)</Badge>
+                        </tr>
+                      ) : (
+                        filteredColors.map((item) => (
+                          <tr key={item.id} className="hover:bg-background/50">
+                            <td className="py-3 px-4 font-mono font-medium text-primary">
+                              {item.code}
+                            </td>
+                            <td className="py-3 px-4 font-medium text-text">{item.name}</td>
+                            <td className="py-3 px-4">
+                              <Badge tone="neutral">{item.colorFamily || 'Khác'}</Badge>
+                            </td>
+                            {isAdmin && (
+                              <td className="py-3 px-4 text-right space-x-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleOpenEdit(item)}
+                                  className="h-8 px-2 text-xs"
+                                >
+                                  Sửa
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setDeletingId(item.id)}
+                                  className="h-8 px-2 text-xs text-danger hover:text-danger hover:border-danger"
+                                >
+                                  Xóa
+                                </Button>
+                              </td>
                             )}
-                          </td>
-                          {isAdmin && (
-                            <td className="py-3 px-4 text-right space-x-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleOpenEdit(item)}
-                                className="h-8 px-2 text-xs"
-                              >
-                                Sửa
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setDeletingId(item.id)}
-                                className="h-8 px-2 text-xs text-danger hover:text-danger hover:border-danger"
-                              >
-                                Xóa
-                              </Button>
-                            </td>
-                          )}
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              )}
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                )}
 
-              {/* TAB 3: COLORS */}
-              {activeTab === 'colors' && (
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-surface-tint border-b border-border text-xs uppercase text-text-muted font-semibold">
-                    <tr>
-                      <th className="py-3 px-4">Mã màu</th>
-                      <th className="py-3 px-4">Tên màu nhuộm</th>
-                      <th className="py-3 px-4">Họ màu / Nhóm</th>
-                      {isAdmin && <th className="py-3 px-4 text-right">Thao tác</th>}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {filteredColors.length === 0 ? (
+                {/* TAB 4: WASHES */}
+                {activeTab === 'washes' && (
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-surface-tint border-b border-border text-xs uppercase text-text-muted font-semibold">
                       <tr>
-                        <td colSpan={4} className="text-center py-8 text-text-muted text-sm">
-                          Chưa có mã màu nhuộm nào.
-                        </td>
+                        <th className="py-3 px-4">Mã kiểu giặt</th>
+                        <th className="py-3 px-4">Tên công nghệ giặt</th>
+                        <th className="py-3 px-4">Mô tả đặc tính hiệu ứng</th>
+                        {isAdmin && <th className="py-3 px-4 text-right">Thao tác</th>}
                       </tr>
-                    ) : (
-                      filteredColors.map((item) => (
-                        <tr key={item.id} className="hover:bg-background/50">
-                          <td className="py-3 px-4 font-mono font-medium text-primary">
-                            {item.code}
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {filteredWashes.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="text-center py-8 text-text-muted text-sm">
+                            Chưa có kiểu giặt mài nào.
                           </td>
-                          <td className="py-3 px-4 font-medium text-text">{item.name}</td>
-                          <td className="py-3 px-4">
-                            <Badge tone="neutral">{item.colorFamily || 'Khác'}</Badge>
-                          </td>
-                          {isAdmin && (
-                            <td className="py-3 px-4 text-right space-x-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleOpenEdit(item)}
-                                className="h-8 px-2 text-xs"
-                              >
-                                Sửa
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setDeletingId(item.id)}
-                                className="h-8 px-2 text-xs text-danger hover:text-danger hover:border-danger"
-                              >
-                                Xóa
-                              </Button>
-                            </td>
-                          )}
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              )}
-
-              {/* TAB 4: WASHES */}
-              {activeTab === 'washes' && (
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-surface-tint border-b border-border text-xs uppercase text-text-muted font-semibold">
-                    <tr>
-                      <th className="py-3 px-4">Mã kiểu giặt</th>
-                      <th className="py-3 px-4">Tên công nghệ giặt</th>
-                      <th className="py-3 px-4">Mô tả đặc tính hiệu ứng</th>
-                      {isAdmin && <th className="py-3 px-4 text-right">Thao tác</th>}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {filteredWashes.length === 0 ? (
-                      <tr>
-                        <td colSpan={4} className="text-center py-8 text-text-muted text-sm">
-                          Chưa có kiểu giặt mài nào.
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredWashes.map((item) => (
-                        <tr key={item.id} className="hover:bg-background/50">
-                          <td className="py-3 px-4 font-mono font-medium text-primary">
-                            {item.code}
-                          </td>
-                          <td className="py-3 px-4 font-medium text-text">{item.name}</td>
-                          <td className="py-3 px-4 text-text-muted text-xs leading-relaxed max-w-md">
-                            {item.description || '—'}
-                          </td>
-                          {isAdmin && (
-                            <td className="py-3 px-4 text-right space-x-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleOpenEdit(item)}
-                                className="h-8 px-2 text-xs"
-                              >
-                                Sửa
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setDeletingId(item.id)}
-                                className="h-8 px-2 text-xs text-danger hover:text-danger hover:border-danger"
-                              >
-                                Xóa
-                              </Button>
+                      ) : (
+                        filteredWashes.map((item) => (
+                          <tr key={item.id} className="hover:bg-background/50">
+                            <td className="py-3 px-4 font-mono font-medium text-primary">
+                              {item.code}
                             </td>
-                          )}
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              )}
-
-              {/* TAB 5: STATIONS */}
-              {activeTab === 'stations' && (
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-surface-tint border-b border-border text-xs uppercase text-text-muted font-semibold">
-                    <tr>
-                      <th className="py-3 px-4">Mã trạm</th>
-                      <th className="py-3 px-4">Tên phân xưởng / chuyền</th>
-                      <th className="py-3 px-4">Loại công đoạn</th>
-                      <th className="py-3 px-4">Mô hình sản xuất</th>
-                      {isAdmin && <th className="py-3 px-4 text-right">Thao tác</th>}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {filteredStations.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="text-center py-8 text-text-muted text-sm">
-                          Chưa có trạm sản xuất nào.
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredStations.map((item) => (
-                        <tr key={item.id} className="hover:bg-background/50">
-                          <td className="py-3 px-4 font-mono font-medium text-primary">
-                            {item.code}
-                          </td>
-                          <td className="py-3 px-4 font-medium text-text">{item.name}</td>
-                          <td className="py-3 px-4">
-                            <Badge tone="neutral">{item.stationType}</Badge>
-                          </td>
-                          <td className="py-3 px-4">
-                            {item.isOutsourced ? (
-                              <Badge tone="warning">Gia công ngoài</Badge>
-                            ) : (
-                              <Badge tone="info">Nội bộ xưởng</Badge>
+                            <td className="py-3 px-4 font-medium text-text">{item.name}</td>
+                            <td className="py-3 px-4 text-text-muted text-xs leading-relaxed max-w-md">
+                              {item.description || '—'}
+                            </td>
+                            {isAdmin && (
+                              <td className="py-3 px-4 text-right space-x-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleOpenEdit(item)}
+                                  className="h-8 px-2 text-xs"
+                                >
+                                  Sửa
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setDeletingId(item.id)}
+                                  className="h-8 px-2 text-xs text-danger hover:text-danger hover:border-danger"
+                                >
+                                  Xóa
+                                </Button>
+                              </td>
                             )}
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                )}
+
+                {/* TAB 5: STATIONS */}
+                {activeTab === 'stations' && (
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-surface-tint border-b border-border text-xs uppercase text-text-muted font-semibold">
+                      <tr>
+                        <th className="py-3 px-4">Mã trạm</th>
+                        <th className="py-3 px-4">Tên phân xưởng / chuyền</th>
+                        <th className="py-3 px-4">Loại công đoạn</th>
+                        <th className="py-3 px-4">Mô hình sản xuất</th>
+                        {isAdmin && <th className="py-3 px-4 text-right">Thao tác</th>}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {filteredStations.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="text-center py-8 text-text-muted text-sm">
+                            Chưa có trạm sản xuất nào.
                           </td>
-                          {isAdmin && (
-                            <td className="py-3 px-4 text-right space-x-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleOpenEdit(item)}
-                                className="h-8 px-2 text-xs"
-                              >
-                                Sửa
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setDeletingId(item.id)}
-                                className="h-8 px-2 text-xs text-danger hover:text-danger hover:border-danger"
-                              >
-                                Xóa
-                              </Button>
-                            </td>
-                          )}
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                      ) : (
+                        filteredStations.map((item) => (
+                          <tr key={item.id} className="hover:bg-background/50">
+                            <td className="py-3 px-4 font-mono font-medium text-primary">
+                              {item.code}
+                            </td>
+                            <td className="py-3 px-4 font-medium text-text">{item.name}</td>
+                            <td className="py-3 px-4">
+                              <Badge tone="neutral">{item.stationType}</Badge>
+                            </td>
+                            <td className="py-3 px-4">
+                              {item.isOutsourced ? (
+                                <Badge tone="warning">Gia công ngoài</Badge>
+                              ) : (
+                                <Badge tone="info">Nội bộ xưởng</Badge>
+                              )}
+                            </td>
+                            {isAdmin && (
+                              <td className="py-3 px-4 text-right space-x-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleOpenEdit(item)}
+                                  className="h-8 px-2 text-xs"
+                                >
+                                  Sửa
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setDeletingId(item.id)}
+                                  className="h-8 px-2 text-xs text-danger hover:text-danger hover:border-danger"
+                                >
+                                  Xóa
+                                </Button>
+                              </td>
+                            )}
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* CREATE / EDIT MODAL */}
       {isModalOpen && (

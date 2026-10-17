@@ -10,14 +10,17 @@ import {
   Put,
 } from '@nestjs/common';
 import { AuthService } from '../auth/auth.service.js';
+import { QcProfileType } from '../../generated/prisma/enums.js';
 import {
   createColorOptionSchema,
   createFabricTypeSchema,
   createStationSchema,
   createStyleSchema,
   createWashTypeSchema,
+  toggleFabricColorRuleSchema,
   updateColorOptionSchema,
   updateFabricTypeSchema,
+  updateQcProfileSchema,
   updateStationSchema,
   updateStyleSchema,
   updateWashTypeSchema,
@@ -36,6 +39,16 @@ export class CatalogController {
     if (user.role !== 'ADMIN') {
       throw new ForbiddenException(
         'Chỉ Quản trị viên (Admin) mới có quyền chỉnh sửa dữ liệu danh mục',
+      );
+    }
+    return user.id;
+  }
+
+  private async assertAdminOrProcessEngineer(authHeader?: string): Promise<string> {
+    const user = await this.authService.getMe(authHeader);
+    if (user.role !== 'ADMIN' && user.role !== 'PROCESS_ENGINEER') {
+      throw new ForbiddenException(
+        'Chỉ Quản trị viên (Admin) hoặc Kỹ sư quy trình (Process Engineer) mới có quyền chỉnh sửa thông số QC Profile',
       );
     }
     return user.id;
@@ -204,5 +217,47 @@ export class CatalogController {
   async deleteWashType(@Param('id') id: string, @Headers('authorization') authHeader?: string) {
     const actorId = await this.assertAdmin(authHeader);
     return this.catalogService.deleteWashType(id, actorId);
+  }
+
+  // ==========================================
+  // FABRIC-COLOR MATRIX (BR-04, FR-02)
+  // ==========================================
+
+  @Get('matrix')
+  async getMatrix() {
+    return this.catalogService.getMatrix();
+  }
+
+  @Post('matrix/toggle')
+  async toggleMatrixRule(@Body() body: unknown, @Headers('authorization') authHeader?: string) {
+    const actorId = await this.assertAdmin(authHeader);
+    const dto = toggleFabricColorRuleSchema.parse(body);
+    return this.catalogService.toggleMatrixRule(dto, actorId);
+  }
+
+  @Get('fabrics/:id/allowed-colors')
+  async getAllowedColors(@Param('id') id: string) {
+    return this.catalogService.getAllowedColors(id);
+  }
+
+  // ==========================================
+  // QC PROFILES (BR-19, FR-28)
+  // ==========================================
+
+  @Get('styles/:id/qc-profiles')
+  async getQcProfiles(@Param('id') id: string) {
+    return this.catalogService.getQcProfiles(id);
+  }
+
+  @Put('styles/:id/qc-profiles/:profileType')
+  async updateQcProfile(
+    @Param('id') id: string,
+    @Param('profileType') profileType: string,
+    @Body() body: unknown,
+    @Headers('authorization') authHeader?: string,
+  ) {
+    const actorId = await this.assertAdminOrProcessEngineer(authHeader);
+    const dto = updateQcProfileSchema.parse(body);
+    return this.catalogService.updateQcProfile(id, profileType as QcProfileType, dto, actorId);
   }
 }

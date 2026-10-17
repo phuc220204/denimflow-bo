@@ -55,3 +55,26 @@ export const createWashTypeSchema = z.object({
 export const updateWashTypeSchema = createWashTypeSchema.partial();
 export type CreateWashTypeDto = z.infer<typeof createWashTypeSchema>;
 export type UpdateWashTypeDto = z.infer<typeof updateWashTypeSchema>;
+
+// Fabric-Color Rule (BR-04, FR-02)
+export const toggleFabricColorRuleSchema = z.object({
+  fabricTypeId: z.string().uuid('Mã định danh loại vải không hợp lệ'),
+  colorId: z.string().uuid('Mã định danh màu sắc không hợp lệ'),
+  isAllowed: z.boolean(),
+});
+export type ToggleFabricColorRuleDto = z.infer<typeof toggleFabricColorRuleSchema>;
+
+// QC Profile (BR-19, FR-28)
+export const updateQcProfileSchema = z.object({
+  maxShrinkagePercent: z
+    .number()
+    .min(0, 'Độ co tối đa phải lớn hơn hoặc bằng 0')
+    .max(100, 'Độ co tối đa không quá 100%'),
+  maxColorFadingLevel: z
+    .number()
+    .int()
+    .min(0, 'Mức phai màu từ 0 đến 5')
+    .max(5, 'Mức phai màu tối đa là cấp 5'),
+  isActive: z.boolean().default(true).optional(),
+});
+export type UpdateQcProfileDto = z.infer<typeof updateQcProfileSchema>;

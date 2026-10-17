@@ -1,6 +1,6 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
-import { StationType, StretchType } from '../../generated/prisma/enums.js';
+import { QcProfileType, StationType, StretchType } from '../../generated/prisma/enums.js';
 import { PrismaService } from '../../infrastructure/prisma/prisma.service.js';
 import { CatalogService } from './catalog.service.js';
 
@@ -38,6 +38,26 @@ describe('CatalogService', () => {
         create: vi.fn().mockResolvedValue({ id: '33333333-3333-3333-3333-333333333333' }),
         update: vi.fn().mockResolvedValue({ id: '33333333-3333-3333-3333-333333333333' }),
         delete: vi.fn().mockResolvedValue({ id: '33333333-3333-3333-3333-333333333333' }),
+      },
+      fabricColorRule: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        upsert: vi.fn().mockResolvedValue({
+          id: '55555555-5555-5555-5555-555555555555',
+          fabricTypeId: '33333333-3333-3333-3333-333333333333',
+          colorId: '44444444-4444-4444-4444-444444444444',
+          isAllowed: false,
+        }),
+      },
+      qcProfile: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        upsert: vi.fn().mockResolvedValue({
+          id: '66666666-6666-6666-6666-666666666666',
+          styleId: mockStyle.id,
+          profileType: QcProfileType.FULL_PROCESS,
+          maxShrinkagePercent: 3.5,
+          maxColorFadingLevel: 1,
+          isActive: true,
+        }),
       },
       auditLog: {
         create: vi.fn().mockResolvedValue({ id: 1n }),
@@ -153,6 +173,58 @@ describe('CatalogService', () => {
     });
 
     expect(result).toBeDefined();
+    expect(prisma.$transaction).toHaveBeenCalledOnce();
+  });
+
+  it('toggles fabric-color matrix rule and writes audit log (BR-04, BR-16)', async () => {
+    const prisma = createMockPrisma({
+      fabricType: {
+        findUnique: vi
+          .fn()
+          .mockResolvedValue({ id: '33333333-3333-3333-3333-333333333333', code: 'DN-12-RIGID' }),
+      },
+      colorOption: {
+        findUnique: vi
+          .fn()
+          .mockResolvedValue({ id: '44444444-4444-4444-4444-444444444444', code: 'CLR-GREY' }),
+      },
+    });
+
+    const service = new CatalogService(prisma as unknown as PrismaService);
+
+    const result = await service.toggleMatrixRule(
+      {
+        fabricTypeId: '33333333-3333-3333-3333-333333333333',
+        colorId: '44444444-4444-4444-4444-444444444444',
+        isAllowed: false,
+      },
+      '11111111-1111-1111-1111-111111111111',
+    );
+
+    expect(result.isAllowed).toBe(false);
+    expect(prisma.$transaction).toHaveBeenCalledOnce();
+  });
+
+  it('updates QC profile thresholds and writes audit log (BR-19, BR-16)', async () => {
+    const prisma = createMockPrisma({
+      style: {
+        findUnique: vi.fn().mockResolvedValue(mockStyle),
+      },
+    });
+
+    const service = new CatalogService(prisma as unknown as PrismaService);
+
+    const result = await service.updateQcProfile(
+      mockStyle.id,
+      QcProfileType.FULL_PROCESS,
+      {
+        maxShrinkagePercent: 3.5,
+        maxColorFadingLevel: 1,
+      },
+      '11111111-1111-1111-1111-111111111111',
+    );
+
+    expect(result.maxShrinkagePercent).toBe(3.5);
     expect(prisma.$transaction).toHaveBeenCalledOnce();
   });
 });

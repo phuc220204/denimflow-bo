@@ -1,5 +1,12 @@
 import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient, StationType, StretchType } from './generated/prisma/client.js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import {
+  PrismaClient,
+  QcProfileType,
+  Role,
+  StationType,
+  StretchType,
+} from './generated/prisma/client.js';
 
 interface StationSeed {
   code: string;
@@ -26,8 +33,17 @@ const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString }),
 });
 
+let supabase: SupabaseClient | null = null;
+if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}
+
+const DEFAULT_PASSWORD = process.env.SEED_DEFAULT_PASSWORD || 'DenimFlow@2026!';
+
 async function main() {
-  console.log('Seeding catalog master data...');
+  console.log('--- Bắt đầu khởi tạo dữ liệu mẫu DenimFlow BO (Sprint 1) ---');
 
   // 1. Stations
   const stations: StationSeed[] = [
@@ -88,7 +104,7 @@ async function main() {
       create: s,
     });
   }
-  console.log(`Seeded ${stations.length} stations.`);
+  console.log(`[1/6] Đã khởi tạo ${stations.length} trạm làm việc (Station).`);
 
   // 2. Styles
   const styles = [
@@ -122,7 +138,7 @@ async function main() {
       create: st,
     });
   }
-  console.log(`Seeded ${styles.length} styles.`);
+  console.log(`[2/6] Đã khởi tạo ${styles.length} kiểu dáng (Style).`);
 
   // 3. Fabric Types
   const fabricTypes: FabricSeed[] = [
@@ -156,7 +172,7 @@ async function main() {
       create: f,
     });
   }
-  console.log(`Seeded ${fabricTypes.length} fabric types.`);
+  console.log(`[3/6] Đã khởi tạo ${fabricTypes.length} loại vải (FabricType).`);
 
   // 4. Color Options
   const colors = [
@@ -173,7 +189,7 @@ async function main() {
       create: c,
     });
   }
-  console.log(`Seeded ${colors.length} color options.`);
+  console.log(`[4/6] Đã khởi tạo ${colors.length} tùy chọn màu (ColorOption).`);
 
   // 5. Wash Types
   const washes = [
@@ -206,14 +222,225 @@ async function main() {
       create: w,
     });
   }
-  console.log(`Seeded ${washes.length} wash types.`);
+  console.log(`[5/6] Đã khởi tạo ${washes.length} kiểu giặt (WashType).`);
 
-  console.log('Catalog seeding finished successfully!');
+  // 6. Fabric-Color Matrix (T1.4, BR-04)
+  // Demo Scenario PRD §6:
+  // DN-12-RIGID: Indigo, Black, LightBlue allowed; Grey disallowed.
+  const dbFabrics = await prisma.fabricType.findMany();
+  const dbColors = await prisma.colorOption.findMany();
+
+  const fabricByCode = new Map(dbFabrics.map((f) => [f.code, f.id]));
+  const colorByCode = new Map(dbColors.map((c) => [c.code, c.id]));
+
+  const matrixRules: Array<{ fabricCode: string; colorCode: string; isAllowed: boolean }> = [
+    // DN-12-RIGID
+    { fabricCode: 'DN-12-RIGID', colorCode: 'CLR-INDIGO', isAllowed: true },
+    { fabricCode: 'DN-12-RIGID', colorCode: 'CLR-BLACK', isAllowed: true },
+    { fabricCode: 'DN-12-RIGID', colorCode: 'CLR-GREY', isAllowed: false },
+    { fabricCode: 'DN-12-RIGID', colorCode: 'CLR-LIGHTBLUE', isAllowed: true },
+    // DN-10-STRETCH
+    { fabricCode: 'DN-10-STRETCH', colorCode: 'CLR-INDIGO', isAllowed: true },
+    { fabricCode: 'DN-10-STRETCH', colorCode: 'CLR-BLACK', isAllowed: true },
+    { fabricCode: 'DN-10-STRETCH', colorCode: 'CLR-GREY', isAllowed: true },
+    { fabricCode: 'DN-10-STRETCH', colorCode: 'CLR-LIGHTBLUE', isAllowed: true },
+    // DN-14-HEAVY
+    { fabricCode: 'DN-14-HEAVY', colorCode: 'CLR-INDIGO', isAllowed: true },
+    { fabricCode: 'DN-14-HEAVY', colorCode: 'CLR-BLACK', isAllowed: true },
+    { fabricCode: 'DN-14-HEAVY', colorCode: 'CLR-GREY', isAllowed: false },
+    { fabricCode: 'DN-14-HEAVY', colorCode: 'CLR-LIGHTBLUE', isAllowed: false },
+  ];
+
+  for (const rule of matrixRules) {
+    const fabricTypeId = fabricByCode.get(rule.fabricCode);
+    const colorId = colorByCode.get(rule.colorCode);
+    if (fabricTypeId && colorId) {
+      await prisma.fabricColorRule.upsert({
+        where: {
+          fabricTypeId_colorId: {
+            fabricTypeId,
+            colorId,
+          },
+        },
+        update: { isAllowed: rule.isAllowed },
+        create: {
+          fabricTypeId,
+          colorId,
+          isAllowed: rule.isAllowed,
+        },
+      });
+    }
+  }
+  console.log(`[T1.4] Đã khởi tạo ma trận vải - màu (Fabric-Color Matrix).`);
+
+  // 7. QC Profiles per Style (T1.5, BR-19, R-14)
+  const dbStyles = await prisma.style.findMany();
+  for (const style of dbStyles) {
+    // 1. FULL_PROCESS (Tiêu chuẩn khi chạy qua bước giặt sạch)
+    await prisma.qcProfile.upsert({
+      where: {
+        styleId_profileType: {
+          styleId: style.id,
+          profileType: QcProfileType.FULL_PROCESS,
+        },
+      },
+      update: {
+        maxShrinkagePercent: 3.0,
+        maxColorFadingLevel: 1,
+        isActive: true,
+      },
+      create: {
+        styleId: style.id,
+        profileType: QcProfileType.FULL_PROCESS,
+        maxShrinkagePercent: 3.0,
+        maxColorFadingLevel: 1,
+        isActive: true,
+      },
+    });
+
+    // 2. SKIP_CLEAN_WASH (Dung sai nới lỏng khi khách hàng ký cam kết bỏ giặt sạch)
+    await prisma.qcProfile.upsert({
+      where: {
+        styleId_profileType: {
+          styleId: style.id,
+          profileType: QcProfileType.SKIP_CLEAN_WASH,
+        },
+      },
+      update: {
+        maxShrinkagePercent: 5.0,
+        maxColorFadingLevel: 2,
+        isActive: true,
+      },
+      create: {
+        styleId: style.id,
+        profileType: QcProfileType.SKIP_CLEAN_WASH,
+        maxShrinkagePercent: 5.0,
+        maxColorFadingLevel: 2,
+        isActive: true,
+      },
+    });
+  }
+  console.log(
+    `[T1.5] Đã khởi tạo cấu hình QC Profile (FULL_PROCESS & SKIP_CLEAN_WASH) cho ${dbStyles.length} kiểu dáng.`,
+  );
+
+  // 8. 7 Demo Users (T1.1, FR-01)
+  const cuttingStation = await prisma.station.findUnique({ where: { code: 'CUT-01' } });
+  const qcStation = await prisma.station.findUnique({ where: { code: 'QC-01' } });
+
+  const demoUsers: Array<{
+    id: string;
+    email: string;
+    fullName: string;
+    role: Role;
+    stationId?: string;
+  }> = [
+    {
+      id: '00000000-0000-0000-0000-000000000001',
+      email: 'admin@denimflow.internal',
+      fullName: 'Quản Trị Viên Hệ Thống',
+      role: Role.ADMIN,
+    },
+    {
+      id: '00000000-0000-0000-0000-000000000002',
+      email: 'pe@denimflow.internal',
+      fullName: 'Kỹ Sư Quy Trình May',
+      role: Role.PROCESS_ENGINEER,
+    },
+    {
+      id: '00000000-0000-0000-0000-000000000003',
+      email: 'planner@denimflow.internal',
+      fullName: 'Điều Độ Kế Hoạch Sản Xuất',
+      role: Role.PRODUCTION_PLANNER,
+    },
+    {
+      id: '00000000-0000-0000-0000-000000000004',
+      email: 'warehouse@denimflow.internal',
+      fullName: 'Thủ Kho Vải & Phụ Liệu',
+      role: Role.WAREHOUSE_KEEPER,
+    },
+    {
+      id: '00000000-0000-0000-0000-000000000005',
+      email: 'operator@denimflow.internal',
+      fullName: 'Tổ Trưởng Chuyền Cắt',
+      role: Role.STATION_OPERATOR,
+      stationId: cuttingStation?.id,
+    },
+    {
+      id: '00000000-0000-0000-0000-000000000006',
+      email: 'qc@denimflow.internal',
+      fullName: 'Kiểm Động Chất Lượng KCS',
+      role: Role.QC_INSPECTOR,
+      stationId: qcStation?.id,
+    },
+    {
+      id: '00000000-0000-0000-0000-000000000007',
+      email: 'manager@denimflow.internal',
+      fullName: 'Giám Đốc Quản Lý Xưởng',
+      role: Role.MANAGER,
+    },
+  ];
+
+  for (const u of demoUsers) {
+    let authUserId = u.id;
+
+    if (supabase) {
+      try {
+        // Try to create or find existing supabase auth user
+        const { data: created, error: createErr } = await supabase.auth.admin.createUser({
+          email: u.email,
+          password: DEFAULT_PASSWORD,
+          email_confirm: true,
+          user_metadata: {
+            full_name: u.fullName,
+            role: u.role,
+          },
+        });
+
+        if (created?.user) {
+          authUserId = created.user.id;
+        } else if (createErr) {
+          // If already registered, find user id by listing
+          const { data: listData } = await supabase.auth.admin.listUsers();
+          const existing = listData?.users.find((eu) => eu.email === u.email);
+          if (existing) {
+            authUserId = existing.id;
+          }
+        }
+      } catch (err) {
+        console.warn(`Supabase auth user create note for ${u.email}:`, err);
+      }
+    }
+
+    // Upsert into Profile table
+    await prisma.profile.upsert({
+      where: { email: u.email },
+      update: {
+        fullName: u.fullName,
+        role: u.role,
+        stationId: u.stationId ?? null,
+        isActive: true,
+      },
+      create: {
+        id: authUserId,
+        email: u.email,
+        fullName: u.fullName,
+        role: u.role,
+        stationId: u.stationId ?? null,
+        isActive: true,
+      },
+    });
+  }
+  console.log(
+    `[T1.1] Đã khởi tạo 7 tài khoản demo đại diện 7 vai trò (mật khẩu mặc định: ${DEFAULT_PASSWORD}).`,
+  );
+
+  console.log('--- Hoàn tất khởi tạo toàn bộ dữ liệu mẫu Sprint 1! ---');
 }
 
 main()
   .catch((err) => {
-    console.error('Seed error:', err);
+    console.error('Lỗi khởi tạo seed data:', err);
     process.exit(1);
   })
   .finally(() => prisma.$disconnect());

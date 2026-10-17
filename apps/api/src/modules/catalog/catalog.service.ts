@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '../../generated/prisma/client.js';
+import { QcProfileType } from '../../generated/prisma/enums.js';
 import { PrismaService } from '../../infrastructure/prisma/prisma.service.js';
 import type {
   CreateColorOptionDto,
@@ -7,8 +8,10 @@ import type {
   CreateStationDto,
   CreateStyleDto,
   CreateWashTypeDto,
+  ToggleFabricColorRuleDto,
   UpdateColorOptionDto,
   UpdateFabricTypeDto,
+  UpdateQcProfileDto,
   UpdateStationDto,
   UpdateStyleDto,
   UpdateWashTypeDto,
@@ -647,5 +650,195 @@ export class CatalogService {
       }
       throw err;
     }
+  }
+
+  // ==========================================
+  // 6. FABRIC-COLOR MATRIX (BR-04, FR-02)
+  // ==========================================
+
+  async getMatrix() {
+    const [fabrics, colors, rules] = await Promise.all([
+      this.prisma.fabricType.findMany({ orderBy: { code: 'asc' } }),
+      this.prisma.colorOption.findMany({ orderBy: { code: 'asc' } }),
+      this.prisma.fabricColorRule.findMany(),
+    ]);
+
+    return {
+      fabrics,
+      colors,
+      rules,
+    };
+  }
+
+  async toggleMatrixRule(dto: ToggleFabricColorRuleDto, actorId?: string | null) {
+    const fabricUuid = this.toUuid(dto.fabricTypeId);
+    const colorUuid = this.toUuid(dto.colorId);
+
+    const [fabric, color] = await Promise.all([
+      this.prisma.fabricType.findUnique({ where: { id: fabricUuid } }),
+      this.prisma.colorOption.findUnique({ where: { id: colorUuid } }),
+    ]);
+
+    if (!fabric) {
+      throw new NotFoundException('Không tìm thấy loại vải');
+    }
+    if (!color) {
+      throw new NotFoundException('Không tìm thấy màu sắc');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.fabricColorRule.findUnique({
+        where: {
+          fabricTypeId_colorId: {
+            fabricTypeId: fabricUuid,
+            colorId: colorUuid,
+          },
+        },
+      });
+
+      const updated = await tx.fabricColorRule.upsert({
+        where: {
+          fabricTypeId_colorId: {
+            fabricTypeId: fabricUuid,
+            colorId: colorUuid,
+          },
+        },
+        update: {
+          isAllowed: dto.isAllowed,
+        },
+        create: {
+          fabricTypeId: fabricUuid,
+          colorId: colorUuid,
+          isAllowed: dto.isAllowed,
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          entityType: 'FABRIC_COLOR_RULE',
+          entityId: updated.id,
+          action: 'TOGGLE_MATRIX',
+          oldValue: existing ? { isAllowed: existing.isAllowed } : Prisma.JsonNull,
+          newValue: {
+            fabricCode: fabric.code,
+            colorCode: color.code,
+            isAllowed: dto.isAllowed,
+          },
+          actorId: this.toActorId(actorId),
+        },
+      });
+
+      return updated;
+    });
+  }
+
+  async getAllowedColors(fabricTypeId: string) {
+    const fabricUuid = this.toUuid(fabricTypeId);
+    const fabric = await this.prisma.fabricType.findUnique({ where: { id: fabricUuid } });
+    if (!fabric) {
+      throw new NotFoundException('Không tìm thấy loại vải');
+    }
+
+    const rules = await this.prisma.fabricColorRule.findMany({
+      where: {
+        fabricTypeId: fabricUuid,
+        isAllowed: true,
+      },
+      include: {
+        colorOption: true,
+      },
+      orderBy: {
+        colorOption: { code: 'asc' },
+      },
+    });
+
+    return rules.map((r) => r.colorOption);
+  }
+
+  // ==========================================
+  // 7. QC PROFILES (BR-19, FR-28)
+  // ==========================================
+
+  async getQcProfiles(styleId: string) {
+    const styleUuid = this.toUuid(styleId);
+    const style = await this.prisma.style.findUnique({ where: { id: styleUuid } });
+    if (!style) {
+      throw new NotFoundException('Không tìm thấy kiểu dáng');
+    }
+
+    return this.prisma.qcProfile.findMany({
+      where: { styleId: styleUuid },
+      orderBy: { profileType: 'asc' },
+    });
+  }
+
+  async updateQcProfile(
+    styleId: string,
+    profileType: QcProfileType,
+    dto: UpdateQcProfileDto,
+    actorId?: string | null,
+  ) {
+    const styleUuid = this.toUuid(styleId);
+    const style = await this.prisma.style.findUnique({ where: { id: styleUuid } });
+    if (!style) {
+      throw new NotFoundException('Không tìm thấy kiểu dáng');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.qcProfile.findUnique({
+        where: {
+          styleId_profileType: {
+            styleId: styleUuid,
+            profileType,
+          },
+        },
+      });
+
+      const updated = await tx.qcProfile.upsert({
+        where: {
+          styleId_profileType: {
+            styleId: styleUuid,
+            profileType,
+          },
+        },
+        update: {
+          maxShrinkagePercent: dto.maxShrinkagePercent,
+          maxColorFadingLevel: dto.maxColorFadingLevel,
+          isActive: dto.isActive !== undefined ? dto.isActive : true,
+        },
+        create: {
+          styleId: styleUuid,
+          profileType,
+          maxShrinkagePercent: dto.maxShrinkagePercent,
+          maxColorFadingLevel: dto.maxColorFadingLevel,
+          isActive: dto.isActive !== undefined ? dto.isActive : true,
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          entityType: 'QC_PROFILE',
+          entityId: updated.id,
+          action: 'UPDATE_QC_PROFILE',
+          oldValue: existing
+            ? {
+                maxShrinkagePercent: Number(existing.maxShrinkagePercent),
+                maxColorFadingLevel: existing.maxColorFadingLevel,
+                isActive: existing.isActive,
+              }
+            : Prisma.JsonNull,
+          newValue: {
+            styleCode: style.styleCode,
+            profileType,
+            maxShrinkagePercent: dto.maxShrinkagePercent,
+            maxColorFadingLevel: dto.maxColorFadingLevel,
+            isActive: updated.isActive,
+          },
+          actorId: this.toActorId(actorId),
+        },
+      });
+
+      return updated;
+    });
   }
 }
