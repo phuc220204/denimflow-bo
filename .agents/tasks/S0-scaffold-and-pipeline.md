@@ -10,6 +10,7 @@ Constraints: free tiers only. Read `HELP.md` links for the installed versions. A
 - Put real values only in dashboards and local `.env`. Never in chat or git.
 Acceptance:
 - [ ] Owner confirms both Supabase projects exist and the keys are stored privately.
+Status: `denimflow-dev` created (2026-10-17, region Singapore) and its values are in the owner's local `apps/api/.env`; `denimflow-prod` not created yet.
 
 ### T0.2 Monorepo root   [owner: agent]
 Branch: `chore/monorepo-root`
@@ -39,10 +40,10 @@ Do:
 - Exception filter and `BusinessRuleViolation`.
 - `apps/api/.env.example`: fake values only, every API variable of `DEVELOPMENT_SETUP.md` §4.
 Acceptance:
-- [ ] `GET /health` is 200 locally with the dev database.
+- [x] `GET /health` is 200 locally with the dev database.
 - [ ] `GET /me` is 401 without a token and 200 with a valid token for a seeded profile.
-- [ ] Migration applies on an empty database; RLS enabled on both tables.
-Status: part A merged (#6), verified on Docker and in CI; dev-database checks wait for T0.1. Part B (auth, `/me`, seed) pending.
+- [x] Migration applies on an empty database; RLS enabled on both tables.
+Status: part A merged (#6). On Supabase dev (2026-10-17): migration applied, RLS on `profiles`, `audit_logs` and `_prisma_migrations`, BR-16 trigger blocks DELETE, `GET /health` → `200 {"status":"ok","db":"up"}` through the transaction pooler. Part B (auth, `/me`, seed) pending.
 
 ### T0.5 apps/web skeleton   [owner: agent]
 Branch: `feat/web-skeleton`
