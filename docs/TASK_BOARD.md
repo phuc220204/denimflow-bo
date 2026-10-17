@@ -19,11 +19,11 @@ Ký hiệu: ✅ xong · 🟢 làm được ngay · ⏳ chờ task khác · 👤 
 
 | Mã | Việc | Ghi chú |
 |---|---|---|
-| [T0.4B](../.agents/tasks/S0-scaffold-and-pipeline.md) | Auth cho API: `JwtAuthGuard`, `RolesGuard`, `GET /me`, seed 7 user | Test dùng khoá và JWKS giả, không cần Supabase. Thử `/me` bằng token thật thì cần T0.1 |
-| [T0.5](../.agents/tasks/S0-scaffold-and-pipeline.md) | Web skeleton: Vite + React + Tailwind + shadcn/ui, trang Login, Home hiện `/me` và `/health` | UI tiếng Việt (D8), đọc `docs/design/DESIGN.md`. Đăng nhập thật cần T0.1 |
+| [T0.4B](../.agents/tasks/S0-scaffold-and-pipeline.md) | Auth cho API: `JwtAuthGuard`, `RolesGuard`, `GET /me`, seed 7 user | Test dùng khoá và JWKS giả, không cần Supabase. Supabase dev đã có: xin owner giá trị `.env` để seed và thử `/me` bằng token thật |
+| [T0.5](../.agents/tasks/S0-scaffold-and-pipeline.md) | Web skeleton: Vite + React + Tailwind + shadcn/ui, trang Login, Home hiện `/me` và `/health` | UI tiếng Việt (D8), đọc `docs/design/DESIGN.md`. Supabase dev đã có: xin owner `VITE_SUPABASE_URL` và publishable key để đăng nhập thật |
 | [T2.1](../.agents/tasks/S2-workflow-engine-and-designer.md) | Engine: domain model và State machine cho Order, StepInstance | TypeScript thuần trong `packages/engine`, không cần DB |
 | [T2.2](../.agents/tasks/S2-workflow-engine-and-designer.md) | Engine: bộ đánh giá điều kiện (Strategy) + JSON AST, Zod schema trong `shared` | TypeScript thuần, không cần DB |
-| [T0.1](../.agents/tasks/S0-scaffold-and-pipeline.md) 👤 | Tạo 2 project Supabase `denimflow-dev`, `denimflow-prod` | Owner |
+| [T0.1](../.agents/tasks/S0-scaffold-and-pipeline.md) 👤 | Tạo project Supabase `denimflow-prod` (`denimflow-dev` đã xong) | Owner |
 | [T0.8](../.agents/tasks/S0-scaffold-and-pipeline.md) 👤 | Bật "Require status checks" (check `CI`) trong ruleset `protect-main`, thêm CODEOWNERS | Owner |
 
 ## Bảng đầy đủ
@@ -32,10 +32,10 @@ Ký hiệu: ✅ xong · 🟢 làm được ngay · ⏳ chờ task khác · 👤 
 
 | Mã | Việc | FR/BR | Phụ thuộc | Mức | Người nhận | Trạng thái | PR |
 |---|---|---|---|---|---|---|---|
-| [T0.1](../.agents/tasks/S0-scaffold-and-pipeline.md) 👤 | Tạo 2 project Supabase dev/prod | — | — | MVP | Owner | 🟢 | |
+| [T0.1](../.agents/tasks/S0-scaffold-and-pipeline.md) 👤 | Tạo 2 project Supabase dev/prod | — | — | MVP | Owner | Dev ✅, prod 🟢 | |
 | [T0.2](../.agents/tasks/S0-scaffold-and-pipeline.md) | Monorepo root (pnpm, TS, ESLint, Prettier, Husky) | — | — | MVP | | ✅ | #3 |
 | [T0.3](../.agents/tasks/S0-scaffold-and-pipeline.md) | Skeleton `shared` + `engine` (build ESM + CJS) | — | T0.2 | MVP | | ✅ | #4 |
-| [T0.4A](../.agents/tasks/S0-scaffold-and-pipeline.md) | API skeleton: NestJS, Prisma, `/health`, migration đầu | BR-16 | T0.3 | MVP | | ✅ (kiểm tra trên Supabase dev chờ T0.1) | #6 |
+| [T0.4A](../.agents/tasks/S0-scaffold-and-pipeline.md) | API skeleton: NestJS, Prisma, `/health`, migration đầu | BR-16 | T0.3 | MVP | | ✅ (đã kiểm tra trên Supabase dev) | #6 |
 | [T0.4B](../.agents/tasks/S0-scaffold-and-pipeline.md) | API auth: JWT guard, roles, `/me`, seed 7 user | — | T0.4A | MVP ☁️ | | 🟢 | |
 | [T0.5](../.agents/tasks/S0-scaffold-and-pipeline.md) | Web skeleton: Login, layout bảo vệ, Home | — | T0.3 | MVP ☁️ | | 🟢 | |
 | [T0.6](../.agents/tasks/S0-scaffold-and-pipeline.md) | CI + keep-alive (GitHub Actions) | — | T0.2 | MVP | | ✅ | #7 |
