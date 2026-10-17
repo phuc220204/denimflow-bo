@@ -10,6 +10,8 @@
 | Setup, env vars, deploy, troubleshooting | `docs/<lang>/DEVELOPMENT_SETUP.md` |
 | Architecture decisions | `docs/adr/NNNN-title.md` |
 | Team workflow guide for humans (Vietnamese): env, branch/commit conventions, pre-push checklist | `Tutorial_denimflow-bo.md` (keep in sync with rule 03) |
+| Onboarding: clone, install, run checks and the API locally, common problems | `docs/<lang>/GETTING_STARTED.md` (update when setup steps change) |
+| Team task board (Vietnamese, single language): who takes which task, dependencies | `docs/TASK_BOARD.md` (details stay in `.agents/tasks/`) |
 | UI design system, Vietnamese UI glossary, Stitch prompts (single language, Vietnamese UI text) | `docs/design/` |
 | Original business documents (Proposal V2.0, Appendix) | `docs/reference/` (read-only source) |
 

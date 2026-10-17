@@ -9,6 +9,7 @@ Last updated: 2026-10-17
 Done: T0.2 monorepo root (#3), T0.3 `@denimflow/shared` + `@denimflow/engine` skeletons with dual ESM/CJS build (#4), T0.4 part A (NestJS 12 ESM app, Prisma 7, `/health`, first migration; #6), T0.6 CI + keep-alive (#7; CI green on `main`, including the API tests on a Postgres service container).
 **Waiting on owner:** T0.1 Supabase dev/prod projects (not created yet). Needed for the T0.4 checks on the dev database, the seed and T0.7. T0.8 can be done now: require the `CI` status check in `protect-main`, then add CODEOWNERS.
 **Next:** T0.4 part B (auth, `/me`, seed; tests do not need Supabase), T0.5 web skeleton.
+Team: tasks are picked in `docs/TASK_BOARD.md`; onboarding guide `docs/<lang>/GETTING_STARTED.md`.
 
 ## Decisions (settled)
 
