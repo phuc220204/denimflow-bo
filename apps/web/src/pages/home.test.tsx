@@ -11,10 +11,17 @@ vi.mock('../lib/auth-context', async () => {
   return {
     ...actual,
     useAuth: () => ({
-      user: actual.DEMO_USERS['admin@denimflow.local'],
+      user: {
+        id: '00000000-0000-0000-0000-000000000001',
+        email: 'admin@denimflow.local',
+        fullName: 'Trần Văn Quản Trị',
+        role: 'ADMIN',
+        isActive: true,
+      },
       token: 'mock-token',
       isLoading: false,
       login: vi.fn(),
+      register: vi.fn(),
       logout: vi.fn(),
     }),
   };
@@ -33,7 +40,7 @@ describe('HomePage', () => {
     });
   });
 
-  it('renders user profile and fetches health status from MSW', async () => {
+  it('renders operation center and fetches health telemetry from MSW', async () => {
     render(
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
@@ -42,15 +49,15 @@ describe('HomePage', () => {
       </QueryClientProvider>,
     );
 
-    // Assert user profile
-    expect(screen.getByText(/Xin chào, Trần Văn Quản Trị!/i)).toBeInTheDocument();
-    expect(screen.getByText('admin@denimflow.local')).toBeInTheDocument();
-    expect(screen.getAllByText('Quản trị viên').length).toBeGreaterThanOrEqual(1);
+    // Assert shift role and operator
+    expect(screen.getByText(/Quản trị viên — Bàn Điều Hành Trực Tiếp/i)).toBeInTheDocument();
+    expect(screen.getByText('Trần Văn Quản Trị')).toBeInTheDocument();
 
-    // Assert /health status loaded from MSW
+    // Assert pipeline and telemetry loaded from MSW
+    expect(screen.getByText(/Chuỗi Công Đoạn Mẫu Jean Tiêu Chuẩn/i)).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.getByText(/Sẵn sàng \(HTTP 200\)/i)).toBeInTheDocument();
-      expect(screen.getByText(/Đã kết nối \(UP\)/i)).toBeInTheDocument();
+      expect(screen.getByText(/Sẵn sàng \(200\)/i)).toBeInTheDocument();
+      expect(screen.getByText(/Postgres \(UP\)/i)).toBeInTheDocument();
     });
   });
 });

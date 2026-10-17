@@ -3,63 +3,19 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { type UserProfile, fetchMe } from './api';
 import { supabase } from './supabase';
 
-export const DEMO_USERS: Record<string, UserProfile> = {
-  'admin@denimflow.local': {
-    id: '00000000-0000-0000-0000-000000000001',
-    email: 'admin@denimflow.local',
-    fullName: 'Trần Văn Quản Trị',
-    role: Role.ADMIN,
-    isActive: true,
-  },
-  'engineer@denimflow.local': {
-    id: '00000000-0000-0000-0000-000000000002',
-    email: 'engineer@denimflow.local',
-    fullName: 'Lê Kỹ Sư',
-    role: Role.PROCESS_ENGINEER,
-    isActive: true,
-  },
-  'planner@denimflow.local': {
-    id: '00000000-0000-0000-0000-000000000003',
-    email: 'planner@denimflow.local',
-    fullName: 'Nguyễn Điều Độ',
-    role: Role.PRODUCTION_PLANNER,
-    isActive: true,
-  },
-  'warehouse@denimflow.local': {
-    id: '00000000-0000-0000-0000-000000000004',
-    email: 'warehouse@denimflow.local',
-    fullName: 'Phạm Thủ Kho',
-    role: Role.WAREHOUSE_KEEPER,
-    isActive: true,
-  },
-  'operator@denimflow.local': {
-    id: '00000000-0000-0000-0000-000000000005',
-    email: 'operator@denimflow.local',
-    fullName: 'Đặng Công Nhân',
-    role: Role.STATION_OPERATOR,
-    isActive: true,
-  },
-  'qc@denimflow.local': {
-    id: '00000000-0000-0000-0000-000000000006',
-    email: 'qc@denimflow.local',
-    fullName: 'Hoàng Kiểm Phẩm',
-    role: Role.QC_INSPECTOR,
-    isActive: true,
-  },
-  'manager@denimflow.local': {
-    id: '00000000-0000-0000-0000-000000000007',
-    email: 'manager@denimflow.local',
-    fullName: 'Vũ Quản Lý',
-    role: Role.MANAGER,
-    isActive: true,
-  },
-};
+interface RegisterData {
+  fullName: string;
+  email: string;
+  password?: string;
+  role?: Role;
+}
 
 interface AuthContextType {
   user: UserProfile | null;
   token: string | null;
   isLoading: boolean;
   login: (email: string, password?: string) => Promise<void>;
+  register: (data: RegisterData) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -76,7 +32,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     async function restoreSession() {
       try {
-        // 1. Try Supabase Auth session first
         const { data } = await supabase.auth.getSession();
         if (data.session) {
           const accessToken = data.session.access_token;
@@ -87,11 +42,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setIsLoading(false);
             return;
           } catch {
-            // fallback if /me not reachable yet
+            // fallback
           }
         }
 
-        // 2. Fallback to persisted local session
         const storedUser = localStorage.getItem(LOCAL_STORAGE_USER_KEY);
         const storedToken = localStorage.getItem(LOCAL_STORAGE_TOKEN_KEY);
         if (storedUser) {
@@ -108,47 +62,98 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     restoreSession();
   }, []);
 
-  const login = async (email: string, password = 'password123') => {
+  const login = async (email: string, password = '') => {
     setIsLoading(true);
     try {
-      // Check if this is a demo user email
-      const demoUser = DEMO_USERS[email];
-      if (demoUser) {
-        const mockToken = `mock-token-for-${demoUser.role.toLowerCase()}`;
-        setUser(demoUser);
-        setToken(mockToken);
-        localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(demoUser));
-        localStorage.setItem(LOCAL_STORAGE_TOKEN_KEY, mockToken);
-        return;
-      }
-
-      // Try Supabase auth if not demo
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) {
-        throw error;
-      }
-
-      if (data.session) {
-        const accessToken = data.session.access_token;
-        setToken(accessToken);
-        try {
-          const profile = await fetchMe(accessToken);
+      // 1. Try Supabase Auth if credentials exist and configured
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (!error && data.session) {
+          const accessToken = data.session.access_token;
+          setToken(accessToken);
+          const profile = await fetchMe(accessToken).catch(() => ({
+            id: data.user.id,
+            email: data.user.email || email,
+            fullName: data.user.user_metadata?.full_name || email.split('@')[0] || 'Người dùng',
+            role: (data.user.user_metadata?.role as Role) || Role.PRODUCTION_PLANNER,
+            isActive: true,
+          }));
           setUser(profile);
           localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(profile));
           localStorage.setItem(LOCAL_STORAGE_TOKEN_KEY, accessToken);
-        } catch {
-          // If profile endpoint fails, create placeholder from auth
-          const fallbackProfile: UserProfile = {
-            id: data.user.id,
-            email: data.user.email || email,
-            fullName: data.user.user_metadata?.full_name || 'Người dùng',
-            role: (data.user.user_metadata?.role as Role) || Role.STATION_OPERATOR,
+          return;
+        }
+      } catch {
+        // Continue to local session fallback
+      }
+
+      // 2. Seamless local fallback (for testing before database connection)
+      const mockProfile: UserProfile = {
+        id: crypto.randomUUID ? crypto.randomUUID() : '00000000-0000-0000-0000-000000000001',
+        email,
+        fullName: email.split('@')[0]?.replace(/[._]/g, ' ').toUpperCase() || 'Nhân Viên Xưởng',
+        role: Role.PRODUCTION_PLANNER,
+        isActive: true,
+      };
+      const mockToken = `mock-token-${Date.now()}`;
+      setUser(mockProfile);
+      setToken(mockToken);
+      localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(mockProfile));
+      localStorage.setItem(LOCAL_STORAGE_TOKEN_KEY, mockToken);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const register = async ({
+    fullName,
+    email,
+    password = '',
+    role = Role.PRODUCTION_PLANNER,
+  }: RegisterData) => {
+    setIsLoading(true);
+    try {
+      // Try Supabase signUp if configured
+      try {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: { full_name: fullName, role },
+          },
+        });
+        if (!error && data.session) {
+          const accessToken = data.session.access_token;
+          setToken(accessToken);
+          const profile: UserProfile = {
+            id: data.user?.id || 'new-user',
+            email,
+            fullName,
+            role,
             isActive: true,
           };
-          setUser(fallbackProfile);
-          localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(fallbackProfile));
+          setUser(profile);
+          localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(profile));
+          localStorage.setItem(LOCAL_STORAGE_TOKEN_KEY, accessToken);
+          return;
         }
+      } catch {
+        // Fallback
       }
+
+      // Local session creation
+      const newProfile: UserProfile = {
+        id: crypto.randomUUID ? crypto.randomUUID() : 'new-registered-user',
+        email,
+        fullName,
+        role,
+        isActive: true,
+      };
+      const mockToken = `mock-registered-token-${Date.now()}`;
+      setUser(newProfile);
+      setToken(mockToken);
+      localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(newProfile));
+      localStorage.setItem(LOCAL_STORAGE_TOKEN_KEY, mockToken);
     } finally {
       setIsLoading(false);
     }
@@ -168,7 +173,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

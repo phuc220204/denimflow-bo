@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
@@ -7,7 +7,7 @@ import { i18n } from '../lib/i18n/dictionary';
 import { LoginPage } from './login';
 
 describe('LoginPage', () => {
-  it('renders login form and demo quick login options', async () => {
+  it('renders standard login and register tabs', async () => {
     await act(async () => {
       render(
         <AuthProvider>
@@ -18,16 +18,23 @@ describe('LoginPage', () => {
       );
     });
 
-    // Assert main header and Vietnamese labels
+    // Assert main header and title
     expect(screen.getByText(i18n.app.title)).toBeInTheDocument();
-    expect(screen.getByText(i18n.auth.loginTitle)).toBeInTheDocument();
-    expect(screen.getByLabelText(i18n.auth.emailLabel)).toBeInTheDocument();
-    expect(screen.getByLabelText(i18n.auth.passwordLabel)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: i18n.auth.loginButton })).toBeInTheDocument();
+    expect(screen.getByText('Đăng nhập hệ thống')).toBeInTheDocument();
 
-    // Assert demo quick logins
-    expect(screen.getByText(i18n.auth.demoQuickLogin)).toBeInTheDocument();
-    expect(screen.getByText('Trần Văn Quản Trị')).toBeInTheDocument();
-    expect(screen.getByText('Quản trị viên')).toBeInTheDocument();
+    // Assert login fields
+    expect(screen.getByLabelText('Email')).toBeInTheDocument();
+    expect(screen.getByLabelText('Mật khẩu')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Đăng nhập' })).toBeInTheDocument();
+
+    // Switch to Register Tab
+    const registerTab = screen.getByRole('tab', { name: 'Đăng ký' });
+    fireEvent.click(registerTab);
+
+    // Assert register fields
+    expect(screen.getByText('Đăng ký tài khoản')).toBeInTheDocument();
+    expect(screen.getByLabelText('Họ và tên')).toBeInTheDocument();
+    expect(screen.getByLabelText('Vai trò phụ trách')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Tạo tài khoản' })).toBeInTheDocument();
   });
 });

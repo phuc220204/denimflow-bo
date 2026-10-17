@@ -1,20 +1,30 @@
-import { Shield, UserCheck } from 'lucide-react';
+import { Role } from '@denimflow/shared';
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
-import { DEMO_USERS, useAuth } from '../lib/auth-context';
+import { useAuth } from '../lib/auth-context';
 import { i18n } from '../lib/i18n/dictionary';
 
 export const LoginPage: React.FC = () => {
-  const { login, user } = useAuth();
+  const { login, register, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [mode, setMode] = useState<'login' | 'register'>('login');
+
+  // Login states
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+
+  // Register states
+  const [regFullName, setRegFullName] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+  const [regPassword, setRegPassword] = useState('');
+  const [regConfirmPassword, setRegConfirmPassword] = useState('');
+  const [regRole, setRegRole] = useState<Role>(Role.PRODUCTION_PLANNER);
+
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -26,122 +36,237 @@ export const LoginPage: React.FC = () => {
     }
   }, [user, navigate, location]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) {
+    if (!loginEmail) {
       setError('Vui lòng nhập địa chỉ email');
       return;
     }
     setError(null);
     setIsSubmitting(true);
     try {
-      await login(email, password);
+      await login(loginEmail, loginPassword);
       navigate('/');
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : i18n.auth.invalidCredentials;
-      setError(message);
+      setError(err instanceof Error ? err.message : 'Đăng nhập không thành công');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleSelectDemoUser = async (demoEmail: string) => {
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!regFullName.trim()) {
+      setError('Vui lòng nhập họ và tên');
+      return;
+    }
+    if (!regEmail.trim()) {
+      setError('Vui lòng nhập địa chỉ email');
+      return;
+    }
+    if (regPassword && regConfirmPassword && regPassword !== regConfirmPassword) {
+      setError('Mật khẩu xác nhận không khớp');
+      return;
+    }
+
     setError(null);
     setIsSubmitting(true);
     try {
-      await login(demoEmail);
+      await register({
+        fullName: regFullName,
+        email: regEmail,
+        password: regPassword,
+        role: regRole,
+      });
       navigate('/');
-    } catch {
-      setError(i18n.auth.invalidCredentials);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Đăng ký không thành công');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="w-full max-w-md space-y-6">
+    <div className="min-h-screen bg-background flex flex-col justify-center items-center p-4">
+      <div className="w-full max-w-[420px] space-y-6">
         {/* Brand Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex h-12 w-12 rounded bg-primary text-white items-center justify-center font-bold text-xl mb-1">
+          <div className="inline-flex h-11 w-11 rounded bg-primary text-white items-center justify-center font-bold text-base tracking-wider mb-1">
             DF
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-text">{i18n.app.title}</h1>
-          <p className="text-sm text-text-muted">{i18n.app.subtitle}</p>
+          <h1 className="text-xl font-bold tracking-tight text-text">{i18n.app.title}</h1>
+          <p className="text-xs text-text-muted">{i18n.app.subtitle}</p>
         </div>
 
-        {/* Login Card */}
+        {/* Auth Card */}
         <Card className="border border-border bg-surface shadow-sm">
-          <CardHeader>
-            <CardTitle>{i18n.auth.loginTitle}</CardTitle>
-            <CardDescription>{i18n.auth.loginSubtitle}</CardDescription>
+          {/* Mode Switch Tabs */}
+          <div className="grid grid-cols-2 border-b border-border" role="tablist">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === 'login'}
+              onClick={() => {
+                setMode('login');
+                setError(null);
+              }}
+              className={`py-3 text-xs font-semibold transition-colors ${
+                mode === 'login'
+                  ? 'border-b-2 border-primary text-primary bg-surface'
+                  : 'text-text-muted hover:text-text bg-background/50'
+              }`}
+            >
+              Đăng nhập
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === 'register'}
+              onClick={() => {
+                setMode('register');
+                setError(null);
+              }}
+              className={`py-3 text-xs font-semibold transition-colors ${
+                mode === 'register'
+                  ? 'border-b-2 border-primary text-primary bg-surface'
+                  : 'text-text-muted hover:text-text bg-background/50'
+              }`}
+            >
+              Đăng ký
+            </button>
+          </div>
+
+          <CardHeader className="pt-5 pb-3">
+            <CardTitle className="text-base">
+              {mode === 'login' ? 'Đăng nhập hệ thống' : 'Đăng ký tài khoản'}
+            </CardTitle>
+            <CardDescription className="text-xs">
+              {mode === 'login'
+                ? 'Nhập email và mật khẩu để vào bàn điều phối xưởng'
+                : 'Điền thông tin và chọn vai trò phụ trách công việc'}
+            </CardDescription>
           </CardHeader>
+
           <CardContent className="space-y-4">
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <Input
-                label={i18n.auth.emailLabel}
-                type="email"
-                placeholder={i18n.auth.emailPlaceholder}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={isSubmitting}
-                autoFocus
-              />
+            {error && (
+              <div className="p-3 rounded bg-danger-tint border border-danger/20 text-danger-text text-xs">
+                {error}
+              </div>
+            )}
 
-              <Input
-                label={i18n.auth.passwordLabel}
-                type="password"
-                placeholder={i18n.auth.passwordPlaceholder}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={isSubmitting}
-              />
+            {mode === 'login' ? (
+              /* Login Form */
+              <form onSubmit={handleLogin} className="space-y-3.5">
+                <Input
+                  label="Email"
+                  type="email"
+                  placeholder="name@example.com"
+                  value={loginEmail}
+                  onChange={(e) => setLoginEmail(e.target.value)}
+                  disabled={isSubmitting}
+                  autoFocus
+                />
 
-              {error && (
-                <div className="p-3 rounded bg-danger-tint border border-danger/20 text-danger-text text-sm">
-                  {error}
+                <Input
+                  label="Mật khẩu"
+                  type="password"
+                  placeholder="••••••••"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  disabled={isSubmitting}
+                />
+
+                <div className="flex items-center justify-between text-xs pt-1">
+                  <label className="flex items-center gap-1.5 text-text-muted cursor-pointer">
+                    <input
+                      type="checkbox"
+                      defaultChecked
+                      className="rounded border-border text-primary focus:ring-primary"
+                    />
+                    <span>Ghi nhớ đăng nhập</span>
+                  </label>
+                  <span className="text-text-muted hover:text-primary cursor-pointer">
+                    Quên mật khẩu?
+                  </span>
                 </div>
-              )}
 
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? i18n.auth.loggingIn : i18n.auth.loginButton}
-              </Button>
-            </form>
+                <Button type="submit" className="w-full mt-2" disabled={isSubmitting}>
+                  {isSubmitting ? 'Đang đăng nhập...' : 'Đăng nhập'}
+                </Button>
+              </form>
+            ) : (
+              /* Register Form */
+              <form onSubmit={handleRegister} className="space-y-3.5">
+                <Input
+                  label="Họ và tên"
+                  type="text"
+                  placeholder="Nguyễn Văn A"
+                  value={regFullName}
+                  onChange={(e) => setRegFullName(e.target.value)}
+                  disabled={isSubmitting}
+                  autoFocus
+                />
 
-            {/* Quick Demo Logins for Testing & Evaluation */}
-            <div className="pt-4 border-t border-border space-y-2">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-text-muted uppercase tracking-wider">
-                <UserCheck className="h-3.5 w-3.5" />
-                <span>{i18n.auth.demoQuickLogin}</span>
-              </div>
-              <p className="text-xs text-text-muted">
-                Bấm vào một vai trò dưới đây để đăng nhập kiểm thử tức thì:
-              </p>
-              <div className="grid grid-cols-2 gap-2 pt-1">
-                {Object.values(DEMO_USERS).map((u) => (
-                  <button
-                    key={u.email}
-                    type="button"
-                    onClick={() => handleSelectDemoUser(u.email)}
+                <Input
+                  label="Email"
+                  type="email"
+                  placeholder="name@example.com"
+                  value={regEmail}
+                  onChange={(e) => setRegEmail(e.target.value)}
+                  disabled={isSubmitting}
+                />
+
+                <div className="space-y-1">
+                  <label htmlFor="role-select" className="block text-sm font-medium text-text">
+                    Vai trò phụ trách
+                  </label>
+                  <select
+                    id="role-select"
+                    value={regRole}
+                    onChange={(e) => setRegRole(e.target.value as Role)}
                     disabled={isSubmitting}
-                    className="flex flex-col items-start p-2 rounded border border-border hover:border-primary hover:bg-primary-tint/50 text-left transition-colors"
+                    className="flex h-9 w-full rounded border border-border bg-surface px-3 py-1 text-sm text-text transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   >
-                    <span className="text-xs font-medium text-text">{u.fullName}</span>
-                    <Badge tone="info" className="mt-1 text-[10px] px-1.5 py-0">
-                      {i18n.roles[u.role] || u.role}
-                    </Badge>
-                  </button>
-                ))}
-              </div>
-            </div>
+                    <option value={Role.PRODUCTION_PLANNER}>Điều độ sản xuất</option>
+                    <option value={Role.PROCESS_ENGINEER}>Kỹ sư quy trình</option>
+                    <option value={Role.QC_INSPECTOR}>Nhân viên QC</option>
+                    <option value={Role.STATION_OPERATOR}>Công nhân trạm</option>
+                    <option value={Role.WAREHOUSE_KEEPER}>Thủ kho</option>
+                    <option value={Role.MANAGER}>Quản lý</option>
+                    <option value={Role.ADMIN}>Quản trị viên</option>
+                  </select>
+                </div>
+
+                <Input
+                  label="Mật khẩu"
+                  type="password"
+                  placeholder="••••••••"
+                  value={regPassword}
+                  onChange={(e) => setRegPassword(e.target.value)}
+                  disabled={isSubmitting}
+                />
+
+                <Input
+                  label="Xác nhận mật khẩu"
+                  type="password"
+                  placeholder="••••••••"
+                  value={regConfirmPassword}
+                  onChange={(e) => setRegConfirmPassword(e.target.value)}
+                  disabled={isSubmitting}
+                />
+
+                <Button type="submit" className="w-full mt-2" disabled={isSubmitting}>
+                  {isSubmitting ? 'Đang tạo tài khoản...' : 'Tạo tài khoản'}
+                </Button>
+              </form>
+            )}
           </CardContent>
         </Card>
 
-        {/* Security Footer Notice */}
-        <div className="text-center flex items-center justify-center gap-1.5 text-xs text-text-muted">
-          <Shield className="h-3.5 w-3.5" />
-          <span>Hệ thống chỉ dành cho cán bộ công nhân viên được cấp quyền</span>
-        </div>
+        {/* Footer info */}
+        <p className="text-center text-xs text-text-muted">
+          Hệ thống Back Office gia công may Jean &bull; DenimFlow BO
+        </p>
       </div>
     </div>
   );

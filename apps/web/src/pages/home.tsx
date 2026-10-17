@@ -1,232 +1,404 @@
+import { Role } from '@denimflow/shared';
 import { useQuery } from '@tanstack/react-query';
 import {
   Activity,
+  ArrowRight,
+  BarChart3,
   CheckCircle2,
+  ChevronRight,
+  ClipboardList,
   Database,
-  Layers,
+  Factory,
+  GitFork,
+  Package,
   RefreshCw,
   Server,
-  UserCircle,
-  XCircle,
+  ShieldCheck,
+  Sparkles,
+  UserCheck,
 } from 'lucide-react';
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '../components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { fetchHealth } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
 import { i18n } from '../lib/i18n/dictionary';
 
+// Standard 8 Key Stages in Jeans Production
+const PIPELINE_STEPS = [
+  { code: 'ORD', label: 'Tiếp nhận đơn', status: 'done' as const },
+  { code: 'MAT', label: 'Vải & Vật tư', status: 'done' as const },
+  { code: 'CUT', label: 'Cắt bán thành phẩm', status: 'current' as const },
+  { code: 'SEW', label: 'May ráp cụm', status: 'pending' as const },
+  { code: 'EMB', label: 'Thêu / In ấn', status: 'pending' as const },
+  { code: 'WSH', label: 'Giặt hiệu ứng', status: 'pending' as const },
+  { code: 'QC', label: 'Kiểm định QC', status: 'pending' as const },
+  { code: 'PCK', label: 'Đóng gói & Bàn giao', status: 'pending' as const },
+];
+
 export const HomePage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   const {
     data: health,
     isLoading: isHealthLoading,
-    isError: isHealthError,
-    error: healthError,
     refetch: refetchHealth,
     isFetching: isHealthFetching,
   } = useQuery({
     queryKey: ['health'],
     queryFn: fetchHealth,
-    refetchInterval: 30000, // 30s auto poll
+    refetchInterval: 30000,
     retry: 1,
   });
 
   const roleLabel = user ? i18n.roles[user.role] || user.role : '';
 
+  const getRoleActions = (role: Role) => {
+    switch (role) {
+      case Role.PRODUCTION_PLANNER:
+        return [
+          {
+            title: 'Tạo đơn gia công mới',
+            desc: 'Chọn mã hàng, dải size & ma trận vải màu (FR-07, FR-08)',
+            icon: ClipboardList,
+          },
+          {
+            title: 'Phân bổ vật tư & BOM',
+            desc: 'Tính toán định mức tiêu hao nguyên phụ liệu (FR-09, BR-06)',
+            icon: Package,
+          },
+          {
+            title: 'Duyệt mẫu Pre-Production (PP)',
+            desc: 'Xác nhận thông số kỹ thuật trước khi cắt hàng loạt',
+            icon: CheckCircle2,
+          },
+        ];
+      case Role.PROCESS_ENGINEER:
+        return [
+          {
+            title: 'Thiết kế quy trình Jean',
+            desc: 'Cấu hình đồ thị các công đoạn & điểm rẽ nhánh (FR-04)',
+            icon: GitFork,
+          },
+          {
+            title: 'Quản lý phiên bản Template',
+            desc: 'Kiểm duyệt và xuất bản mẫu quy trình chính thức (BR-01, BR-02)',
+            icon: Sparkles,
+          },
+          {
+            title: 'Cấu hình điều kiện rẽ nhánh (Strategy)',
+            desc: 'Kiểm tra quy tắc bỏ giặt sạch, may phối (BR-18, BR-19)',
+            icon: ShieldCheck,
+          },
+        ];
+      case Role.QC_INSPECTOR:
+        return [
+          {
+            title: 'Nghiệm thu trạm hoàn thiện',
+            desc: 'Thẩm định chất lượng đường may, form dáng & độ bền màu (FR-16)',
+            icon: CheckCircle2,
+          },
+          {
+            title: 'Lập phiếu yêu cầu làm lại (Rework)',
+            desc: 'Ghi nhận vị trí lỗi, kiểm soát số vòng làm lại (BR-10, BR-11)',
+            icon: RefreshCw,
+          },
+          {
+            title: 'Hồ sơ QC Profile',
+            desc: 'Đối chiếu ngưỡng dung sai theo mẫu khách hàng cam kết',
+            icon: ShieldCheck,
+          },
+        ];
+      case Role.STATION_OPERATOR:
+        return [
+          {
+            title: 'Danh sách việc của trạm (Worklist)',
+            desc: 'Tiếp nhận bó bán thành phẩm từ công đoạn trước (FR-12)',
+            icon: Factory,
+          },
+          {
+            title: 'Ghi nhận số lượng đạt & phế phẩm',
+            desc: 'Bảo toàn số lượng đầu vào/đầu ra theo quy tắc BR-08',
+            icon: Activity,
+          },
+          {
+            title: 'Cập nhật hoàn thành công đoạn',
+            desc: 'Xác thực Gatekeeper để chuyển bó sang trạm kế tiếp (BR-14)',
+            icon: ArrowRight,
+          },
+        ];
+      case Role.WAREHOUSE_KEEPER:
+        return [
+          {
+            title: 'Kiểm định vải đầu vào',
+            desc: 'Đo độ co giãn, kiểm tra lô vải mộc & denim wash',
+            icon: Package,
+          },
+          {
+            title: 'Xuất cấp nguyên phụ liệu',
+            desc: 'Cấp phát chỉ may, nút, rivet và nhãn mác theo BOM đơn',
+            icon: ClipboardList,
+          },
+          {
+            title: 'Nhập kho thành phẩm',
+            desc: 'Tiếp nhận lô hàng đạt chuẩn từ trạm đóng gói (FR-26)',
+            icon: CheckCircle2,
+          },
+        ];
+      case Role.MANAGER:
+        return [
+          {
+            title: 'Giám sát tiến độ WIP toàn xưởng',
+            desc: 'Theo dõi số lượng hàng đang chạy tại từng công đoạn (FR-21)',
+            icon: BarChart3,
+          },
+          {
+            title: 'Phân tích điểm nghẽn & tồn đọng',
+            desc: 'Cảnh báo trạm chậm tiến độ hoặc tỷ lệ lỗi tăng cao',
+            icon: Activity,
+          },
+          {
+            title: 'Xem báo cáo bàn giao khách hàng',
+            desc: 'Thống kê sản lượng hoàn tất theo từng hợp đồng gia công',
+            icon: ClipboardList,
+          },
+        ];
+      case Role.ADMIN:
+      default:
+        return [
+          {
+            title: 'Quản trị phân quyền người dùng',
+            desc: 'Cấp phát tài khoản và vai trò nhân sự xưởng (FR-01)',
+            icon: UserCheck,
+          },
+          {
+            title: 'Cấu hình danh mục nền tảng',
+            desc: 'Quản lý danh sách vải, màu sắc, máy móc và xưởng con (FR-02)',
+            icon: Database,
+          },
+          {
+            title: 'Nhật ký kiểm toán hệ thống (AuditLog)',
+            desc: 'Truy vết toàn diện mọi giao dịch thay đổi dữ liệu (BR-16)',
+            icon: Server,
+          },
+        ];
+    }
+  };
+
+  const actions = user ? getRoleActions(user.role) : [];
+
   return (
     <div className="space-y-6">
-      {/* Top Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-border">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-text">
-            {i18n.home.welcome}, {user?.fullName}!
-          </h1>
-          <p className="text-sm text-text-muted">{i18n.home.systemNotice}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge tone="info" className="text-xs">
-            {roleLabel}
-          </Badge>
-          <Badge tone="neutral" className="text-xs">
-            Sprint 0: Walking Skeleton
-          </Badge>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* User Profile Card (shows /me data) */}
-        <Card>
-          <CardHeader>
+      {/* Shift & Role Banner */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-5 rounded border border-border bg-surface">
+        <div className="flex items-center gap-4">
+          <div className="h-12 w-12 rounded bg-primary-tint text-primary flex items-center justify-center font-bold text-lg shrink-0">
+            <Factory className="h-6 w-6" />
+          </div>
+          <div>
             <div className="flex items-center gap-2">
-              <UserCircle className="h-5 w-5 text-primary" />
-              <CardTitle>{i18n.home.profileSectionTitle}</CardTitle>
-            </div>
-            <CardDescription>Dữ liệu xác thực từ phiên đăng nhập hiện tại</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-center justify-between py-1.5 border-b border-border text-sm">
-              <span className="text-text-muted">{i18n.home.fullNameLabel}</span>
-              <span className="font-semibold text-text">{user?.fullName}</span>
-            </div>
-
-            <div className="flex items-center justify-between py-1.5 border-b border-border text-sm">
-              <span className="text-text-muted">{i18n.home.emailLabel}</span>
-              <span className="font-mono text-text text-xs">{user?.email}</span>
-            </div>
-
-            <div className="flex items-center justify-between py-1.5 border-b border-border text-sm">
-              <span className="text-text-muted">{i18n.home.roleLabel}</span>
-              <div className="flex items-center gap-1.5">
-                <Badge tone="primary">{roleLabel}</Badge>
-                <span className="text-xs font-mono text-text-muted">({user?.role})</span>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between py-1.5 text-sm">
-              <span className="text-text-muted">{i18n.home.statusLabel}</span>
-              <Badge tone={user?.isActive ? 'success' : 'danger'}>
-                {user?.isActive ? i18n.home.activeStatus : 'Bị khoá'}
+              <h1 className="text-lg font-bold text-text">{roleLabel} — Bàn Điều Hành Trực Tiếp</h1>
+              <Badge tone="primary" className="text-xs">
+                Ca hiện tại
               </Badge>
             </div>
-          </CardContent>
-        </Card>
+            <p className="text-xs text-text-muted mt-0.5">
+              Phụ trách: <span className="font-semibold text-text">{user?.fullName}</span> &bull;
+              Trạng thái: <span className="text-success-text font-medium">Sẵn sàng nhận lệnh</span>
+            </p>
+          </div>
+        </div>
 
-        {/* API & Database Health Card (shows /health data) */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Activity className="h-5 w-5 text-primary" />
-                <CardTitle>{i18n.home.apiHealthSectionTitle}</CardTitle>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => refetchHealth()}
-                disabled={isHealthFetching}
-                className="gap-1.5 text-xs h-7"
-              >
-                <RefreshCw className={`h-3 w-3 ${isHealthFetching ? 'animate-spin' : ''}`} />
-                <span>{i18n.home.refreshStatus}</span>
-              </Button>
-            </div>
-            <CardDescription>
-              Kiểm tra tình trạng sống của NestJS API và kết nối Database
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {/* API Service Status */}
-            <div className="flex items-center justify-between py-1.5 border-b border-border text-sm">
-              <div className="flex items-center gap-2">
-                <Server className="h-4 w-4 text-text-muted" />
-                <span className="text-text-muted">{i18n.home.apiStatusLabel}</span>
-              </div>
-              {isHealthLoading ? (
-                <span className="text-xs text-text-muted">{i18n.common.loading}</span>
-              ) : health?.status === 'ok' ? (
-                <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className="h-4 w-4 text-success" />
-                  <Badge tone="success">Sẵn sàng (HTTP 200)</Badge>
-                </div>
-              ) : (
-                <div className="flex items-center gap-1.5">
-                  <XCircle className="h-4 w-4 text-danger" />
-                  <Badge tone="danger">Không khả dụng</Badge>
-                </div>
-              )}
-            </div>
-
-            {/* Database Connection Status */}
-            <div className="flex items-center justify-between py-1.5 border-b border-border text-sm">
-              <div className="flex items-center gap-2">
-                <Database className="h-4 w-4 text-text-muted" />
-                <span className="text-text-muted">{i18n.home.dbStatusLabel}</span>
-              </div>
-              {isHealthLoading ? (
-                <span className="text-xs text-text-muted">{i18n.common.loading}</span>
-              ) : health?.db === 'up' ? (
-                <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className="h-4 w-4 text-success" />
-                  <Badge tone="success">Đã kết nối (UP)</Badge>
-                </div>
-              ) : health?.db === 'down' ? (
-                <div className="flex items-center gap-1.5">
-                  <XCircle className="h-4 w-4 text-danger" />
-                  <Badge tone="danger">Mất kết nối (DOWN)</Badge>
-                </div>
-              ) : (
-                <Badge tone="warning">Chưa rõ</Badge>
-              )}
-            </div>
-
-            {/* Detailed error if any */}
-            {isHealthError && (
-              <div className="p-2.5 rounded bg-warning-tint border border-warning/20 text-warning-text text-xs">
-                Không thể gọi tới API ({healthError?.message || 'Lỗi mạng'}). Backend có thể đang
-                tắt hoặc cần chạy `pnpm --filter @denimflow/api dev`.
-              </div>
-            )}
-          </CardContent>
-          <CardFooter className="text-xs text-text-muted justify-between">
-            <span>
-              Endpoint: <code className="font-mono text-primary">GET /health</code>
-            </span>
-            <span>Tần suất tự động: 30s</span>
-          </CardFooter>
-        </Card>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              logout();
+              navigate('/login');
+            }}
+            className="text-xs gap-1.5"
+          >
+            <span>Đổi vị trí trực</span>
+          </Button>
+        </div>
       </div>
 
-      {/* System Architecture Overview */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Layers className="h-5 w-5 text-primary" />
-            <CardTitle>{i18n.home.systemOverviewTitle}</CardTitle>
+      {/* System Telemetry & Gate Status */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {/* API Telemetry */}
+        <div className="p-3.5 rounded border border-border bg-surface flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-text-muted">Dịch vụ API</span>
+            <Server className="h-4 w-4 text-text-muted" />
           </div>
-          <CardDescription>
-            Kiến trúc Modular Monolith & Clean Architecture (Option B)
-          </CardDescription>
+          <div className="mt-2 flex items-center gap-1.5">
+            {isHealthLoading ? (
+              <span className="text-xs text-text-muted">Đang kiểm tra...</span>
+            ) : health?.status === 'ok' ? (
+              <>
+                <span className="h-2 w-2 rounded-full bg-success" />
+                <span className="text-xs font-semibold text-text">Sẵn sàng (200)</span>
+              </>
+            ) : (
+              <>
+                <span className="h-2 w-2 rounded-full bg-danger" />
+                <span className="text-xs font-semibold text-danger-text">Mất tín hiệu</span>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Database Telemetry */}
+        <div className="p-3.5 rounded border border-border bg-surface flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-text-muted">Cơ sở dữ liệu</span>
+            <Database className="h-4 w-4 text-text-muted" />
+          </div>
+          <div className="mt-2 flex items-center gap-1.5">
+            {isHealthLoading ? (
+              <span className="text-xs text-text-muted">Đang kết nối...</span>
+            ) : health?.db === 'up' ? (
+              <>
+                <span className="h-2 w-2 rounded-full bg-success" />
+                <span className="text-xs font-semibold text-text">Postgres (UP)</span>
+              </>
+            ) : (
+              <>
+                <span className="h-2 w-2 rounded-full bg-danger" />
+                <span className="text-xs font-semibold text-danger-text">Mất kết nối</span>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Dynamic Workflow Engine */}
+        <div className="p-3.5 rounded border border-border bg-surface flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-text-muted">Workflow Engine</span>
+            <GitFork className="h-4 w-4 text-primary" />
+          </div>
+          <div className="mt-2 flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-success" />
+            <span className="text-xs font-semibold text-text">Jean Standard V1</span>
+          </div>
+        </div>
+
+        {/* Gate Conservation Rule */}
+        <div className="p-3.5 rounded border border-border bg-surface flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-text-muted">Bảo toàn số lượng</span>
+            <ShieldCheck className="h-4 w-4 text-primary" />
+          </div>
+          <div className="mt-2 flex items-center gap-1.5">
+            <Badge tone="info" className="text-[10px] px-1.5 py-0 font-mono">
+              BR-08 KÍCH HOẠT
+            </Badge>
+          </div>
+        </div>
+      </div>
+
+      {/* Production Pipeline Overview (Industrial Stepper) */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <CardTitle className="text-sm font-semibold">
+                Chuỗi Công Đoạn Mẫu Jean Tiêu Chuẩn (Jean Standard Flow)
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Mô hình quy trình động gồm 8 chặng chính được bảo vệ bởi Gatekeeper và QC Checkpoint
+              </CardDescription>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => refetchHealth()}
+              disabled={isHealthFetching}
+              className="h-7 text-xs gap-1"
+            >
+              <RefreshCw className={`h-3 w-3 ${isHealthFetching ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Cập nhật</span>
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-            <div className="p-3 rounded border border-border bg-background space-y-1">
-              <span className="font-semibold text-text block">1. Dynamic Workflow Engine</span>
-              <p className="text-xs text-text-muted">
-                `packages/engine`: Pure TypeScript không phụ thuộc framework, cài đặt State Machine,
-                Chain of Responsibility (Gates), Strategy (BOM, điều kiện rẽ nhánh).
-              </p>
-            </div>
-
-            <div className="p-3 rounded border border-border bg-background space-y-1">
-              <span className="font-semibold text-text block">2. API & Data Layer</span>
-              <p className="text-xs text-text-muted">
-                `apps/api`: NestJS, Prisma ORM, Supabase PostgreSQL. RLS deny-all, lưu trữ AuditLog
-                bất biến (BR-16) cho mọi tác vụ đa dòng.
-              </p>
-            </div>
-
-            <div className="p-3 rounded border border-border bg-background space-y-1">
-              <span className="font-semibold text-text block">
-                3. Single Language UI (Tiếng Việt)
-              </span>
-              <p className="text-xs text-text-muted">
-                `apps/web`: React + Vite + Tailwind + shadcn/ui. Thiết kế phẳng chuẩn nghiệp vụ, từ
-                điển tiếng Việt thống nhất theo DESIGN.md.
-              </p>
-            </div>
+          {/* Stepper Track */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 pt-1">
+            {PIPELINE_STEPS.map((step, idx) => (
+              <div
+                key={step.code}
+                className={`p-3 rounded border text-left transition-all ${
+                  step.status === 'done'
+                    ? 'border-success/30 bg-success-tint/30 text-success-text'
+                    : step.status === 'current'
+                      ? 'border-primary bg-primary-tint text-primary ring-1 ring-primary'
+                      : 'border-border bg-background text-text-muted opacity-75'
+                }`}
+              >
+                <div className="flex items-center justify-between text-[11px] font-mono font-bold">
+                  <span>0{idx + 1}</span>
+                  <span>{step.code}</span>
+                </div>
+                <span className="text-xs font-semibold block mt-1.5 leading-snug">
+                  {step.label}
+                </span>
+                <span className="text-[10px] mt-1 block opacity-80">
+                  {step.status === 'done'
+                    ? '✓ Đã nghiệm thu'
+                    : step.status === 'current'
+                      ? 'Đang thực hiện'
+                      : 'Chờ chuyển bước'}
+                </span>
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>
+
+      {/* Role-Specific Work Actions */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-text">Nhiệm vụ trọng tâm của {roleLabel}</h2>
+            <p className="text-xs text-text-muted">
+              Các luồng xử lý chính được phân quyền cho vị trí này trong ca trực
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {actions.map((act) => {
+            const Icon = act.icon;
+            return (
+              <div
+                key={act.title}
+                className="group p-4 rounded border border-border bg-surface hover:border-primary hover:bg-primary-tint/10 transition-all flex flex-col justify-between"
+              >
+                <div className="space-y-2.5">
+                  <div className="h-8 w-8 rounded bg-primary-tint text-primary flex items-center justify-center transition-colors group-hover:bg-primary group-hover:text-white">
+                    <Icon className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <span className="text-sm font-semibold text-text block group-hover:text-primary">
+                      {act.title}
+                    </span>
+                    <p className="text-xs text-text-muted mt-1 leading-relaxed">{act.desc}</p>
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-border flex items-center justify-between text-xs text-primary font-medium">
+                  <span>Mở bảng tác vụ</span>
+                  <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 };
