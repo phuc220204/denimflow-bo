@@ -20,6 +20,7 @@ import {
   Users,
 } from 'lucide-react';
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -138,35 +139,39 @@ export const HomePage: React.FC = () => {
                 </CardContent>
               </Card>
 
-              <Card className="border-slate-200 hover:border-indigo-300 transition-colors cursor-pointer">
-                <CardHeader className="pb-3">
-                  <FileSpreadsheet className="h-6 w-6 text-indigo-600 mb-1" />
-                  <CardTitle className="text-base font-semibold">Ma trận vải & Màu sắc</CardTitle>
-                  <CardDescription className="text-xs">
-                    Quy định loại vải nào được phép áp dụng màu nhuộm cụ thể.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <span className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600">
-                    Cập nhật ma trận <ArrowRight className="h-3.5 w-3.5" />
-                  </span>
-                </CardContent>
-              </Card>
+              <Link to="/catalog" className="block">
+                <Card className="h-full border-slate-200 hover:border-indigo-300 hover:shadow-sm transition-all cursor-pointer">
+                  <CardHeader className="pb-3">
+                    <FileSpreadsheet className="h-6 w-6 text-indigo-600 mb-1" />
+                    <CardTitle className="text-base font-semibold">Ma trận vải & Màu sắc</CardTitle>
+                    <CardDescription className="text-xs">
+                      Quy định loại vải nào được phép áp dụng màu nhuộm cụ thể.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600">
+                      Cập nhật ma trận <ArrowRight className="h-3.5 w-3.5" />
+                    </span>
+                  </CardContent>
+                </Card>
+              </Link>
 
-              <Card className="border-slate-200 hover:border-indigo-300 transition-colors cursor-pointer">
-                <CardHeader className="pb-3">
-                  <ShieldCheck className="h-6 w-6 text-indigo-600 mb-1" />
-                  <CardTitle className="text-base font-semibold">Tiêu chuẩn kiểm định</CardTitle>
-                  <CardDescription className="text-xs">
-                    Cấu hình độ co giãn tối đa và mức phai màu cho phép khi giặt.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <span className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600">
-                    Xem hồ sơ tiêu chuẩn <ArrowRight className="h-3.5 w-3.5" />
-                  </span>
-                </CardContent>
-              </Card>
+              <Link to="/catalog" className="block">
+                <Card className="h-full border-slate-200 hover:border-indigo-300 hover:shadow-sm transition-all cursor-pointer">
+                  <CardHeader className="pb-3">
+                    <ShieldCheck className="h-6 w-6 text-indigo-600 mb-1" />
+                    <CardTitle className="text-base font-semibold">Tiêu chuẩn kiểm định</CardTitle>
+                    <CardDescription className="text-xs">
+                      Cấu hình độ co giãn tối đa và mức phai màu cho phép khi giặt.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600">
+                      Xem hồ sơ tiêu chuẩn <ArrowRight className="h-3.5 w-3.5" />
+                    </span>
+                  </CardContent>
+                </Card>
+              </Link>
             </div>
           </div>
         );
@@ -439,35 +444,41 @@ export const HomePage: React.FC = () => {
             </div>
 
             <div className="grid gap-4 sm:grid-cols-3">
-              <Card className="border-slate-200 hover:border-slate-400 transition-colors cursor-pointer">
-                <CardHeader className="pb-3">
-                  <Users className="h-6 w-6 text-slate-700 mb-1" />
-                  <CardTitle className="text-base font-semibold">Tài khoản & Phân quyền</CardTitle>
-                  <CardDescription className="text-xs">
-                    Cấp tài khoản nhân viên, phân công bộ phận và mở khóa tài khoản.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-800">
-                    Quản lý tài khoản <ArrowRight className="h-3.5 w-3.5" />
-                  </span>
-                </CardContent>
-              </Card>
+              <Link to="/users" className="block">
+                <Card className="h-full border-slate-200 hover:border-slate-400 hover:shadow-sm transition-all cursor-pointer">
+                  <CardHeader className="pb-3">
+                    <Users className="h-6 w-6 text-slate-700 mb-1" />
+                    <CardTitle className="text-base font-semibold">
+                      Tài khoản & Phân quyền
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      Cấp tài khoản nhân viên, phân công bộ phận và mở khóa tài khoản.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-800">
+                      Quản lý tài khoản <ArrowRight className="h-3.5 w-3.5" />
+                    </span>
+                  </CardContent>
+                </Card>
+              </Link>
 
-              <Card className="border-slate-200 hover:border-slate-400 transition-colors cursor-pointer">
-                <CardHeader className="pb-3">
-                  <FileSpreadsheet className="h-6 w-6 text-slate-700 mb-1" />
-                  <CardTitle className="text-base font-semibold">Danh mục xưởng may</CardTitle>
-                  <CardDescription className="text-xs">
-                    Quản lý danh mục loại vải, màu nhuộm, kiểu giặt và trạm sản xuất.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-800">
-                    Mở danh mục <ArrowRight className="h-3.5 w-3.5" />
-                  </span>
-                </CardContent>
-              </Card>
+              <Link to="/catalog" className="block">
+                <Card className="h-full border-slate-200 hover:border-slate-400 hover:shadow-sm transition-all cursor-pointer">
+                  <CardHeader className="pb-3">
+                    <FileSpreadsheet className="h-6 w-6 text-slate-700 mb-1" />
+                    <CardTitle className="text-base font-semibold">Danh mục xưởng may</CardTitle>
+                    <CardDescription className="text-xs">
+                      Quản lý danh mục loại vải, màu nhuộm, kiểu giặt và trạm sản xuất.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-800">
+                      Mở danh mục <ArrowRight className="h-3.5 w-3.5" />
+                    </span>
+                  </CardContent>
+                </Card>
+              </Link>
 
               <Card className="border-slate-200 hover:border-slate-400 transition-colors cursor-pointer">
                 <CardHeader className="pb-3">

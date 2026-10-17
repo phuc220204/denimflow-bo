@@ -9,6 +9,7 @@ import {
   Package,
   ShieldCheck,
   User,
+  Users,
 } from 'lucide-react';
 import React from 'react';
 import { Link, Navigate, Outlet, useLocation } from 'react-router-dom';
@@ -16,16 +17,17 @@ import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../lib/auth-context';
 import { i18n } from '../lib/i18n/dictionary';
+import { ForbiddenPage } from '../pages/forbidden';
 
 // Permissions matrix: maps each Role to the routes they are allowed to access (PRD.md §4)
 const ROLE_ALLOWED_ROUTES: Record<string, string[]> = {
-  ADMIN: ['/', '/catalog', '/audit'],
+  ADMIN: ['/', '/users', '/catalog', '/audit'],
   PROCESS_ENGINEER: ['/', '/workflow', '/catalog'],
-  PRODUCTION_PLANNER: ['/', '/orders', '/worklist'],
-  WAREHOUSE_KEEPER: ['/', '/inventory'],
+  PRODUCTION_PLANNER: ['/', '/orders', '/worklist', '/catalog'],
+  WAREHOUSE_KEEPER: ['/', '/inventory', '/catalog'],
   STATION_OPERATOR: ['/', '/worklist'],
-  QC_INSPECTOR: ['/', '/qc', '/worklist'],
-  MANAGER: ['/', '/orders', '/audit'],
+  QC_INSPECTOR: ['/', '/qc', '/worklist', '/catalog'],
+  MANAGER: ['/', '/orders', '/audit', '/catalog'],
 };
 
 export const ProtectedLayout: React.FC = () => {
@@ -51,6 +53,7 @@ export const ProtectedLayout: React.FC = () => {
 
   const allNavItems = [
     { label: i18n.nav.home, href: '/', icon: Home, disabled: false },
+    { label: 'Phân quyền & Nhân sự', href: '/users', icon: Users, disabled: false },
     { label: i18n.nav.orders, href: '/orders', icon: ClipboardList, disabled: true },
     { label: i18n.nav.workflow, href: '/workflow', icon: GitFork, disabled: true },
     { label: i18n.nav.worklist, href: '/worklist', icon: Factory, disabled: true },
@@ -63,6 +66,7 @@ export const ProtectedLayout: React.FC = () => {
   // Filter navigation items strictly for the active user's role (RBAC)
   const allowedHrefs = ROLE_ALLOWED_ROUTES[user.role] || ['/'];
   const navItems = allNavItems.filter((item) => allowedHrefs.includes(item.href));
+  const isForbidden = location.pathname !== '/' && !allowedHrefs.includes(location.pathname);
 
   return (
     <div className="flex min-h-screen bg-background text-text">
@@ -174,7 +178,7 @@ export const ProtectedLayout: React.FC = () => {
 
         {/* Page Body */}
         <main className="flex-1 p-6 bg-background">
-          <Outlet />
+          {isForbidden ? <ForbiddenPage /> : <Outlet />}
         </main>
       </div>
     </div>

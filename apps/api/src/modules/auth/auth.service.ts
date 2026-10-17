@@ -1,4 +1,10 @@
-import { BadRequestException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { randomUUID } from 'node:crypto';
 import { APP_CONFIG, type AppConfig } from '../../config/env.schema.js';
@@ -148,7 +154,7 @@ export class AuthService {
       }
 
       if (!profile.isActive) {
-        throw new UnauthorizedException('Tài khoản đã bị tạm khóa');
+        throw new ForbiddenException('Tài khoản đã bị tạm khóa bởi Quản trị viên');
       }
 
       return {
@@ -191,6 +197,28 @@ export class AuthService {
 
     const token = authHeader.replace('Bearer ', '').trim();
 
+    if (token.startsWith('local-token-')) {
+      const id = token.replace('local-token-', '') as unknown as Uuid;
+      const profile = await this.prisma.profile.findFirst({
+        where: { id },
+      });
+
+      if (!profile) {
+        throw new UnauthorizedException('Phiên đăng nhập không hợp lệ');
+      }
+      if (!profile.isActive) {
+        throw new ForbiddenException('Tài khoản đã bị tạm khóa bởi Quản trị viên');
+      }
+
+      return {
+        id: profile.id,
+        email: profile.email,
+        fullName: profile.fullName,
+        role: profile.role,
+        isActive: profile.isActive,
+      };
+    }
+
     if (this.supabase) {
       const { data, error } = await this.supabase.auth.getUser(token);
       if (error || !data.user) {
@@ -202,8 +230,11 @@ export class AuthService {
         where: { id: uuid },
       });
 
-      if (!profile || !profile.isActive) {
-        throw new UnauthorizedException('Tài khoản không tồn tại hoặc đã bị khóa');
+      if (!profile) {
+        throw new UnauthorizedException('Tài khoản không tồn tại');
+      }
+      if (!profile.isActive) {
+        throw new ForbiddenException('Tài khoản đã bị tạm khóa bởi Quản trị viên');
       }
 
       return {
@@ -223,6 +254,9 @@ export class AuthService {
 
     if (!profile) {
       throw new UnauthorizedException('Phiên đăng nhập không hợp lệ');
+    }
+    if (!profile.isActive) {
+      throw new ForbiddenException('Tài khoản đã bị tạm khóa bởi Quản trị viên');
     }
 
     return {
