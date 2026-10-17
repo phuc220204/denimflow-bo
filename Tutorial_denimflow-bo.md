@@ -208,6 +208,8 @@ pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build
 
 ### Bước 1. Clone repo và cài dependency
 
+> Hướng dẫn cài đặt từng bước, cập nhật theo trạng thái hiện tại của repo (Docker, chạy API khi chưa có Supabase, lỗi hay gặp): [`docs/vi/GETTING_STARTED.md`](docs/vi/GETTING_STARTED.md). Chọn task ở [`docs/TASK_BOARD.md`](docs/TASK_BOARD.md).
+
 ```bash
 git clone https://github.com/<owner>/denimflow-bo.git
 cd denimflow-bo

@@ -131,6 +131,8 @@ Separation of duties (BR-11): whoever performed a step cannot approve its QC, an
 
 ## Getting Started
 
+> New to the repo? Follow the step-by-step guide [`docs/en/GETTING_STARTED.md`](docs/en/GETTING_STARTED.md) ([Tiếng Việt](docs/vi/GETTING_STARTED.md)). It reflects what exists today and how to run the API before Supabase is set up. Pick a task in [`docs/TASK_BOARD.md`](docs/TASK_BOARD.md).
+
 ### Prerequisites
 
 - **Node.js**: current LTS (the exact version is in `.nvmrc`)
