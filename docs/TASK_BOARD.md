@@ -48,7 +48,7 @@ Ký hiệu: ✅ xong · 🟢 làm được ngay · ⏳ chờ task khác · 👤 
 |---|---|---|---|---|---|---|---|
 | [T1.1](../.agents/tasks/S1-auth-rbac-master-data.md) | Admin quản lý user: tạo, khoá, liệt kê (seed đã làm ở T0.4B) | FR-01 | T0.4B | MVP ☁️ | | ⏳ | |
 | [T1.2](../.agents/tasks/S1-auth-rbac-master-data.md) | Web: menu theo role, chặn route, trang 403 | FR-01 | T0.5, T1.1 | MVP | | ⏳ | |
-| [T1.3](../.agents/tasks/S1-auth-rbac-master-data.md) | Danh mục: Style, FabricType, ColorOption, WashType, Station (bảng + CRUD + màn hình) | FR-02 | T0.4B | MVP | | ⏳ | |
+| [T1.3](../.agents/tasks/S1-auth-rbac-master-data.md) | Danh mục: Style, FabricType, ColorOption, WashType, Station (bảng + CRUD + màn hình) | FR-02 | T0.4B | MVP | tmdzvkl | Sẵn sàng mở PR | |
 | [T1.4](../.agents/tasks/S1-auth-rbac-master-data.md) | Ma trận vải–màu (Fabric–Color Matrix) | FR-02, BR-04 | T1.3 | MVP | | ⏳ | |
 | [T1.5](../.agents/tasks/S1-auth-rbac-master-data.md) | Cấu hình QC Profile (chỉ dữ liệu) | FR-28, BR-19 | T1.3 | MVP | | ⏳ | |
 
