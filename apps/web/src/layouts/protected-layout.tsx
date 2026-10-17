@@ -17,6 +17,17 @@ import { Button } from '../components/ui/button';
 import { useAuth } from '../lib/auth-context';
 import { i18n } from '../lib/i18n/dictionary';
 
+// Permissions matrix: maps each Role to the routes they are allowed to access (PRD.md §4)
+const ROLE_ALLOWED_ROUTES: Record<string, string[]> = {
+  ADMIN: ['/', '/catalog', '/audit'],
+  PROCESS_ENGINEER: ['/', '/workflow', '/catalog'],
+  PRODUCTION_PLANNER: ['/', '/orders', '/worklist'],
+  WAREHOUSE_KEEPER: ['/', '/inventory'],
+  STATION_OPERATOR: ['/', '/worklist'],
+  QC_INSPECTOR: ['/', '/qc', '/worklist'],
+  MANAGER: ['/', '/orders', '/audit'],
+};
+
 export const ProtectedLayout: React.FC = () => {
   const { user, isLoading, logout } = useAuth();
   const location = useLocation();
@@ -38,8 +49,8 @@ export const ProtectedLayout: React.FC = () => {
 
   const roleLabel = i18n.roles[user.role] || user.role;
 
-  const navItems = [
-    { label: i18n.nav.home, href: '/', icon: Home },
+  const allNavItems = [
+    { label: i18n.nav.home, href: '/', icon: Home, disabled: false },
     { label: i18n.nav.orders, href: '/orders', icon: ClipboardList, disabled: true },
     { label: i18n.nav.workflow, href: '/workflow', icon: GitFork, disabled: true },
     { label: i18n.nav.worklist, href: '/worklist', icon: Factory, disabled: true },
@@ -48,6 +59,10 @@ export const ProtectedLayout: React.FC = () => {
     { label: i18n.nav.catalog, href: '/catalog', icon: FileSpreadsheet, disabled: true },
     { label: i18n.nav.audit, href: '/audit', icon: History, disabled: true },
   ];
+
+  // Filter navigation items strictly for the active user's role (RBAC)
+  const allowedHrefs = ROLE_ALLOWED_ROUTES[user.role] || ['/'];
+  const navItems = allNavItems.filter((item) => allowedHrefs.includes(item.href));
 
   return (
     <div className="flex min-h-screen bg-background text-text">
@@ -64,13 +79,16 @@ export const ProtectedLayout: React.FC = () => {
                 {i18n.app.title}
               </span>
               <span className="text-[11px] text-text-muted block leading-none">
-                Jeans Subcontracting
+                Hệ thống Quản lý Xưởng
               </span>
             </div>
           </div>
 
-          {/* Navigation Links */}
+          {/* Navigation Links according to role permissions */}
           <nav className="p-3 space-y-1">
+            <div className="px-3 py-1.5 text-[11px] font-semibold text-text-muted uppercase tracking-wider">
+              Chức năng của bạn
+            </div>
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.href;
@@ -79,7 +97,7 @@ export const ProtectedLayout: React.FC = () => {
                 <div
                   key={item.href}
                   className="flex items-center gap-3 px-3 py-2 rounded text-sm text-text-muted opacity-50 cursor-not-allowed"
-                  title="Sẽ khả dụng trong các Sprint sau"
+                  title="Tính năng của phân xưởng sẽ mở trong giai đoạn tiếp theo"
                 >
                   <Icon className="h-4 w-4 shrink-0" />
                   <span>{item.label}</span>
@@ -105,7 +123,7 @@ export const ProtectedLayout: React.FC = () => {
         {/* Sidebar footer info */}
         <div className="p-4 border-t border-border text-xs text-text-muted">
           <p className="font-medium text-text">{i18n.app.version}</p>
-          <p className="text-[11px]">Dynamic Workflow Engine</p>
+          <p className="text-[11px]">DenimFlow &bull; Quản lý Xưởng May</p>
         </div>
       </aside>
 
@@ -119,7 +137,7 @@ export const ProtectedLayout: React.FC = () => {
             </Link>
             <span>/</span>
             <span className="text-text font-medium">
-              {location.pathname === '/' ? 'Bảng tin' : location.pathname}
+              {location.pathname === '/' ? 'Bàn làm việc' : location.pathname}
             </span>
           </div>
 
@@ -141,21 +159,18 @@ export const ProtectedLayout: React.FC = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => logout()}
-              className="gap-1.5 text-text-muted hover:text-danger"
-              title={i18n.auth.logoutButton}
+              onClick={logout}
+              className="flex items-center gap-1.5 text-xs text-text-muted hover:text-danger"
             >
               <LogOut className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{i18n.auth.logoutButton}</span>
+              <span>{i18n.auth.logoutButton}</span>
             </Button>
           </div>
         </header>
 
-        {/* Content body: max-width 1280px, padding 24px */}
-        <main className="flex-1 p-6 overflow-y-auto">
-          <div className="mx-auto max-w-[1280px]">
-            <Outlet />
-          </div>
+        {/* Page Body */}
+        <main className="flex-1 p-6 bg-background">
+          <Outlet />
         </main>
       </div>
     </div>

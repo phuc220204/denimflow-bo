@@ -49,8 +49,8 @@ describe('HomePage', () => {
       </QueryClientProvider>,
     );
 
-    // Assert user info displayed
-    expect(screen.getByText(/Chào mừng, Trần Văn Quản Trị!/i)).toBeInTheDocument();
+    // Assert role-specific workspace header displayed
+    expect(screen.getByText(/Bàn làm việc Quản trị viên hệ thống/i)).toBeInTheDocument();
     expect(screen.getAllByText('admin@denimflow.local').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Quản trị viên').length).toBeGreaterThan(0);
 
