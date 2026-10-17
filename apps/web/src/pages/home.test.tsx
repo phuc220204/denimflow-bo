@@ -40,7 +40,7 @@ describe('HomePage', () => {
     });
   });
 
-  it('renders operation center and fetches health telemetry from MSW', async () => {
+  it('renders user account details and system health telemetry', async () => {
     render(
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
@@ -49,15 +49,15 @@ describe('HomePage', () => {
       </QueryClientProvider>,
     );
 
-    // Assert shift role and operator
-    expect(screen.getByText(/Quản trị viên — Bàn Điều Hành Trực Tiếp/i)).toBeInTheDocument();
-    expect(screen.getByText('Trần Văn Quản Trị')).toBeInTheDocument();
+    // Assert user info displayed
+    expect(screen.getByText(/Chào mừng, Trần Văn Quản Trị!/i)).toBeInTheDocument();
+    expect(screen.getAllByText('admin@denimflow.local').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Quản trị viên').length).toBeGreaterThan(0);
 
-    // Assert pipeline and telemetry loaded from MSW
-    expect(screen.getByText(/Chuỗi Công Đoạn Mẫu Jean Tiêu Chuẩn/i)).toBeInTheDocument();
+    // Assert telemetry loaded from MSW
     await waitFor(() => {
-      expect(screen.getByText(/Sẵn sàng \(200\)/i)).toBeInTheDocument();
-      expect(screen.getByText(/Postgres \(UP\)/i)).toBeInTheDocument();
+      expect(screen.getByText(/Sẵn sàng \(200 OK\)/i)).toBeInTheDocument();
+      expect(screen.getByText(/Đã kết nối \(UP\)/i)).toBeInTheDocument();
     });
   });
 });
