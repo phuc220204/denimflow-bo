@@ -99,8 +99,8 @@ MVP = 14 FRs from the Proposal. Items marked ◐ are **minimal slices** pulled i
 
 | FR | Module | Function | Priority | In MVP | Sprint / task | Status |
 |---|---|---|---|---|---|---|
-| FR-01 | Auth & Master Data | Login, RBAC | MVP | ✔ | S1 T1.1–T1.2 (S0 foundation) | TODO |
-| FR-02 | Auth & Master Data | Style, FabricType, ColorOption, Fabric–Color Matrix | MVP | ✔ | S1 T1.3–T1.4 | TODO |
+| FR-01 | Auth & Master Data | Login, RBAC | MVP | ✔ | S1 T1.1–T1.2 (S0 foundation) | DONE |
+| FR-02 | Auth & Master Data | Style, FabricType, ColorOption, Fabric–Color Matrix | MVP | ✔ | S1 T1.3–T1.4 | DONE |
 | FR-03 | Auth & Master Data | Fabric stock by lot and trims | High | ◐ lots only | S3 T3.4 | TODO |
 | FR-04 | Workflow Designer | Create/edit template (steps, transitions, conditions, gates) | MVP | ✔ | S2 T2.2, T2.4, T2.5 | TODO |
 | FR-05 | Workflow Designer | Validate, publish, assign to Style | MVP | ✔ | S2 T2.3, T2.4 | TODO |
@@ -126,7 +126,7 @@ MVP = 14 FRs from the Proposal. Items marked ◐ are **minimal slices** pulled i
 | FR-25 | Notification & Audit | View/filter AuditLog | High | optional | S5 T5.6 | TODO |
 | FR-26 | Notification & Audit | Packing, packing list, handover record | MVP | ✔ | S5 T5.4 | TODO |
 | FR-27 | Production Order | Custom request, feasibility, dedicated workflow | High | — | post-MVP | DEFERRED |
-| FR-28 | QC & Rework | QC Profile thresholds per Style, applied at final QC | High | ◐ | S1 T1.5, S5 T5.1 | TODO |
+| FR-28 | QC & Rework | QC Profile thresholds per Style, applied at final QC | High | ◐ | S1 T1.5, S5 T5.1 | PARTIAL (S1 slice DONE) |
 | FR-29 | Production Order | Customer acknowledgement; block Confirm until attached | High | ◐ | S3 T3.5 | TODO |
 
 ## 6. Appendix assumptions (Q1 .. Q19): how the code assumes them

@@ -99,8 +99,8 @@ MVP = 14 FR của Proposal. Mục đánh dấu ◐ là **phần tối thiểu** 
 
 | FR | Module | Chức năng | Ưu tiên | Trong MVP | Sprint / task | Trạng thái |
 |---|---|---|---|---|---|---|
-| FR-01 | Auth & Master Data | Đăng nhập, RBAC | MVP | ✔ | S1 T1.1–T1.2 (nền móng S0) | TODO |
-| FR-02 | Auth & Master Data | Style, FabricType, ColorOption, Fabric–Color Matrix | MVP | ✔ | S1 T1.3–T1.4 | TODO |
+| FR-01 | Auth & Master Data | Đăng nhập, RBAC | MVP | ✔ | S1 T1.1–T1.2 (nền móng S0) | XONG |
+| FR-02 | Auth & Master Data | Style, FabricType, ColorOption, Fabric–Color Matrix | MVP | ✔ | S1 T1.3–T1.4 | XONG |
 | FR-03 | Auth & Master Data | Tồn kho vải theo lô và phụ liệu | High | ◐ chỉ lô vải | S3 T3.4 | TODO |
 | FR-04 | Workflow Designer | Tạo/sửa template (step, transition, condition, gate) | MVP | ✔ | S2 T2.2, T2.4, T2.5 | TODO |
 | FR-05 | Workflow Designer | Validate, publish, gán cho Style | MVP | ✔ | S2 T2.3, T2.4 | TODO |
@@ -126,7 +126,7 @@ MVP = 14 FR của Proposal. Mục đánh dấu ◐ là **phần tối thiểu** 
 | FR-25 | Notification & Audit | Xem/lọc AuditLog | High | tuỳ chọn | S5 T5.6 | TODO |
 | FR-26 | Notification & Audit | Đóng gói, packing list, biên bản bàn giao | MVP | ✔ | S5 T5.4 | TODO |
 | FR-27 | Production Order | Yêu cầu custom, đánh giá khả thi, workflow riêng | High | — | sau MVP | DEFERRED |
-| FR-28 | QC & Rework | Ngưỡng QC Profile theo Style, áp dụng ở QC cuối | High | ◐ | S1 T1.5, S5 T5.1 | TODO |
+| FR-28 | QC & Rework | Ngưỡng QC Profile theo Style, áp dụng ở QC cuối | High | ◐ | S1 T1.5, S5 T5.1 | MỘT PHẦN (lát cắt S1 XONG) |
 | FR-29 | Production Order | Giấy xác nhận của khách; chặn Confirm tới khi đính kèm | High | ◐ | S3 T3.5 | TODO |
 
 ## 6. Giả định trong Appendix (Q1 .. Q19): code đang giả định thế nào
