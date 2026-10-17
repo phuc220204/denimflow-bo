@@ -56,7 +56,7 @@ export const ProtectedLayout: React.FC = () => {
     { label: i18n.nav.worklist, href: '/worklist', icon: Factory, disabled: true },
     { label: i18n.nav.qc, href: '/qc', icon: ShieldCheck, disabled: true },
     { label: i18n.nav.inventory, href: '/inventory', icon: Package, disabled: true },
-    { label: i18n.nav.catalog, href: '/catalog', icon: FileSpreadsheet, disabled: true },
+    { label: i18n.nav.catalog, href: '/catalog', icon: FileSpreadsheet, disabled: false },
     { label: i18n.nav.audit, href: '/audit', icon: History, disabled: true },
   ];
 
@@ -137,7 +137,11 @@ export const ProtectedLayout: React.FC = () => {
             </Link>
             <span>/</span>
             <span className="text-text font-medium">
-              {location.pathname === '/' ? 'Bàn làm việc' : location.pathname}
+              {location.pathname === '/'
+                ? 'Bàn làm việc'
+                : location.pathname === '/catalog'
+                  ? 'Danh mục xưởng may'
+                  : location.pathname}
             </span>
           </div>
 

@@ -3,6 +3,7 @@ import React from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { ProtectedLayout } from './layouts/protected-layout';
 import { AuthProvider } from './lib/auth-context';
+import { CatalogPage } from './pages/catalog';
 import { HomePage } from './pages/home';
 import { LoginPage } from './pages/login';
 import { NotFoundPage } from './pages/not-found';
@@ -25,6 +26,7 @@ export const App: React.FC = () => {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/" element={<ProtectedLayout />}>
               <Route index element={<HomePage />} />
+              <Route path="catalog" element={<CatalogPage />} />
             </Route>
             <Route path="*" element={<NotFoundPage />} />
           </Routes>

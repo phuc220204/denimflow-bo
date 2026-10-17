@@ -24,7 +24,7 @@ export class AuthService {
   private readonly supabase: SupabaseClient | null = null;
 
   constructor(
-    private readonly prisma: PrismaService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {
     if (this.config.SUPABASE_URL && this.config.SUPABASE_SERVICE_ROLE_KEY) {

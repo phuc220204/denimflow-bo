@@ -22,17 +22,101 @@ enum Role {
   MANAGER
 }
 
-// id equals auth.users.id in Supabase. station_id is added in Sprint 1 with `stations`.
+enum StationType {
+  CUTTING
+  SEWING
+  EMBROIDERY
+  DYEING
+  WASH
+  FINISHING
+  QC
+  PACKING
+}
+
+enum StretchType {
+  RIGID
+  STRETCH
+}
+
+// id equals auth.users.id in Supabase. station_id is linked to stations.
 model Profile {
   id        String   @id @db.Uuid
   fullName  String   @map("full_name")
   email     String   @unique
   role      Role
+  stationId String?  @map("station_id") @db.Uuid
+  station   Station? @relation(fields: [stationId], references: [id], onDelete: SetNull)
   isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("profiles")
+}
+
+// Stations in the manufacturing floor
+model Station {
+  id           String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code         String      @unique
+  name         String
+  stationType  StationType @map("station_type")
+  isOutsourced Boolean     @default(false) @map("is_outsourced")
+  createdAt    DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime    @updatedAt @map("updated_at") @db.Timestamptz
+  profiles     Profile[]
+
+  @@map("stations")
+}
+
+// Master data: Styles of jeans
+model Style {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  styleCode     String   @unique @map("style_code")
+  name          String
+  fitType       String?  @map("fit_type")
+  hasEmbroidery Boolean  @default(false) @map("has_embroidery")
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("styles")
+}
+
+// Master data: Fabric types
+model FabricType {
+  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code        String      @unique
+  name        String
+  weightOz    Decimal?    @map("weight_oz") @db.Decimal(4, 1)
+  composition String?
+  stretchType StretchType @map("stretch_type")
+  createdAt   DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime    @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("fabric_types")
+}
+
+// Master data: Color options
+model ColorOption {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code        String   @unique
+  name        String
+  colorFamily String?  @map("color_family")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("color_options")
+}
+
+// Master data: Wash types
+model WashType {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code        String   @unique
+  name        String
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("wash_types")
 }
 
 // Append-only (BR-16): a trigger in the migration blocks UPDATE, DELETE and TRUNCATE.
