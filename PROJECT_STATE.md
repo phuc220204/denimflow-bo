@@ -6,10 +6,10 @@ Last updated: 2026-10-17
 ## Phase
 
 **Sprint 0 in progress** (`.agents/tasks/S0-scaffold-and-pipeline.md`).
-Done: T0.2 monorepo root (#3), T0.3 `@denimflow/shared` + `@denimflow/engine` skeletons with dual ESM/CJS build (#4), T0.4 part A (NestJS 12 ESM app, Prisma 7, `/health`, first migration; #6), T0.6 CI + keep-alive (#7; CI green on `main`, including the API tests on a Postgres service container).
+Done: T0.2 monorepo root (#3), T0.3 `@denimflow/shared` + `@denimflow/engine` skeletons with dual ESM/CJS build (#4), T0.4 part A (NestJS 12 ESM app, Prisma 7, `/health`, first migration; #6), T0.5 web skeleton (React, Tailwind, Login, Home; in PR #13), T0.6 CI + keep-alive (#7; CI green on `main`, including the API tests on a Postgres service container).
 Supabase: `denimflow-dev` created and verified (migration applied, RLS on, `/health` up through the transaction pooler); T0.4 part A acceptance on dev met.
 **Waiting on owner:** `denimflow-prod` (rest of T0.1, needed for T0.7); share dev `.env` values with the team privately; T0.8 (require the `CI` status check in `protect-main`, CODEOWNERS).
-**Next:** T0.4 part B (auth, `/me`, seed; tests do not need Supabase), T0.5 web skeleton.
+**Next:** T0.4 part B (auth, `/me`, seed; tests do not need Supabase).
 Team: tasks are picked in `docs/TASK_BOARD.md`; onboarding guide `docs/<lang>/GETTING_STARTED.md`.
 
 ## Decisions (settled)
