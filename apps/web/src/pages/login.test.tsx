@@ -23,7 +23,7 @@ describe('LoginPage', () => {
     expect(screen.getByText('Đăng nhập hệ thống')).toBeInTheDocument();
 
     // Assert login fields
-    expect(screen.getByLabelText('Email')).toBeInTheDocument();
+    expect(screen.getByLabelText('Email làm việc')).toBeInTheDocument();
     expect(screen.getByLabelText('Mật khẩu')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Đăng nhập' })).toBeInTheDocument();
 
@@ -33,8 +33,8 @@ describe('LoginPage', () => {
 
     // Assert register fields
     expect(screen.getByText('Đăng ký tài khoản')).toBeInTheDocument();
-    expect(screen.getByLabelText('Họ và tên')).toBeInTheDocument();
-    expect(screen.getByLabelText('Vai trò phụ trách')).toBeInTheDocument();
+    expect(screen.getByLabelText('Họ và tên nhân viên')).toBeInTheDocument();
+    expect(screen.getByLabelText('Vị trí công tác')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Tạo tài khoản' })).toBeInTheDocument();
   });
 });

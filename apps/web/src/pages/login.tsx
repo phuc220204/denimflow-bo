@@ -142,8 +142,8 @@ export const LoginPage: React.FC = () => {
             </CardTitle>
             <CardDescription className="text-xs">
               {mode === 'login'
-                ? 'Nhập email và mật khẩu để vào bàn điều phối xưởng'
-                : 'Điền thông tin và chọn vai trò phụ trách công việc'}
+                ? 'Nhập email và mật khẩu để bắt đầu làm việc'
+                : 'Điền thông tin và chọn vị trí công tác trong xưởng'}
             </CardDescription>
           </CardHeader>
 
@@ -158,9 +158,9 @@ export const LoginPage: React.FC = () => {
               /* Login Form */
               <form onSubmit={handleLogin} className="space-y-3.5">
                 <Input
-                  label="Email"
+                  label="Email làm việc"
                   type="email"
-                  placeholder="name@example.com"
+                  placeholder="nhanvien@xuoing.com"
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
                   disabled={isSubmitting}
@@ -198,7 +198,7 @@ export const LoginPage: React.FC = () => {
               /* Register Form */
               <form onSubmit={handleRegister} className="space-y-3.5">
                 <Input
-                  label="Họ và tên"
+                  label="Họ và tên nhân viên"
                   type="text"
                   placeholder="Nguyễn Văn A"
                   value={regFullName}
@@ -208,9 +208,9 @@ export const LoginPage: React.FC = () => {
                 />
 
                 <Input
-                  label="Email"
+                  label="Email làm việc"
                   type="email"
-                  placeholder="name@example.com"
+                  placeholder="nhanvien@xuoing.com"
                   value={regEmail}
                   onChange={(e) => setRegEmail(e.target.value)}
                   disabled={isSubmitting}
@@ -218,7 +218,7 @@ export const LoginPage: React.FC = () => {
 
                 <div className="space-y-1">
                   <label htmlFor="role-select" className="block text-sm font-medium text-text">
-                    Vai trò phụ trách
+                    Vị trí công tác
                   </label>
                   <select
                     id="role-select"
@@ -227,20 +227,20 @@ export const LoginPage: React.FC = () => {
                     disabled={isSubmitting}
                     className="flex h-9 w-full rounded border border-border bg-surface px-3 py-1 text-sm text-text transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   >
-                    <option value={Role.PRODUCTION_PLANNER}>Điều độ sản xuất</option>
-                    <option value={Role.PROCESS_ENGINEER}>Kỹ sư quy trình</option>
-                    <option value={Role.QC_INSPECTOR}>Nhân viên QC</option>
-                    <option value={Role.STATION_OPERATOR}>Công nhân trạm</option>
-                    <option value={Role.WAREHOUSE_KEEPER}>Thủ kho</option>
-                    <option value={Role.MANAGER}>Quản lý</option>
-                    <option value={Role.ADMIN}>Quản trị viên</option>
+                    <option value={Role.PRODUCTION_PLANNER}>Kế hoạch sản xuất</option>
+                    <option value={Role.PROCESS_ENGINEER}>Kỹ thuật chuyền / Công nghệ may</option>
+                    <option value={Role.QC_INSPECTOR}>Kiểm tra chất lượng (QC)</option>
+                    <option value={Role.STATION_OPERATOR}>Công nhân may / Công đoạn</option>
+                    <option value={Role.WAREHOUSE_KEEPER}>Quản lý kho nguyên phụ liệu</option>
+                    <option value={Role.MANAGER}>Quản lý xưởng</option>
+                    <option value={Role.ADMIN}>Quản trị viên hệ thống</option>
                   </select>
                 </div>
 
                 <Input
                   label="Mật khẩu"
                   type="password"
-                  placeholder="••••••••"
+                  placeholder="Tối thiểu 6 ký tự"
                   value={regPassword}
                   onChange={(e) => setRegPassword(e.target.value)}
                   disabled={isSubmitting}
@@ -249,7 +249,7 @@ export const LoginPage: React.FC = () => {
                 <Input
                   label="Xác nhận mật khẩu"
                   type="password"
-                  placeholder="••••••••"
+                  placeholder="Nhập lại mật khẩu"
                   value={regConfirmPassword}
                   onChange={(e) => setRegConfirmPassword(e.target.value)}
                   disabled={isSubmitting}
@@ -265,7 +265,7 @@ export const LoginPage: React.FC = () => {
 
         {/* Footer info */}
         <p className="text-center text-xs text-text-muted">
-          Hệ thống Back Office gia công may Jean &bull; DenimFlow BO
+          Hệ thống Quản lý Phân Xưởng May &bull; DenimFlow
         </p>
       </div>
     </div>

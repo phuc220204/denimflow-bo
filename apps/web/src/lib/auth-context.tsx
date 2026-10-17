@@ -1,7 +1,6 @@
 import { Role } from '@denimflow/shared';
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { type UserProfile, fetchMe } from './api';
-import { supabase } from './supabase';
+import { type UserProfile, fetchMe, loginApi, registerApi } from './api';
 
 interface RegisterData {
   fullName: string;
@@ -32,25 +31,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     async function restoreSession() {
       try {
-        const { data } = await supabase.auth.getSession();
-        if (data.session) {
-          const accessToken = data.session.access_token;
-          setToken(accessToken);
+        const storedToken = localStorage.getItem(LOCAL_STORAGE_TOKEN_KEY);
+        const storedUser = localStorage.getItem(LOCAL_STORAGE_USER_KEY);
+
+        if (storedToken) {
           try {
-            const profile = await fetchMe(accessToken);
+            const profile = await fetchMe(storedToken);
             setUser(profile);
+            setToken(storedToken);
             setIsLoading(false);
             return;
           } catch {
-            // fallback
+            if (storedUser) {
+              setUser(JSON.parse(storedUser));
+              setToken(storedToken);
+            }
           }
-        }
-
-        const storedUser = localStorage.getItem(LOCAL_STORAGE_USER_KEY);
-        const storedToken = localStorage.getItem(LOCAL_STORAGE_TOKEN_KEY);
-        if (storedUser) {
-          setUser(JSON.parse(storedUser));
-          setToken(storedToken || 'demo-mock-jwt-token');
         }
       } catch (err) {
         console.warn('Could not restore auth session:', err);
@@ -65,41 +61,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password = '') => {
     setIsLoading(true);
     try {
-      // 1. Try Supabase Auth if credentials exist and configured
-      try {
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (!error && data.session) {
-          const accessToken = data.session.access_token;
-          setToken(accessToken);
-          const profile = await fetchMe(accessToken).catch(() => ({
-            id: data.user.id,
-            email: data.user.email || email,
-            fullName: data.user.user_metadata?.full_name || email.split('@')[0] || 'Người dùng',
-            role: (data.user.user_metadata?.role as Role) || Role.PRODUCTION_PLANNER,
-            isActive: true,
-          }));
-          setUser(profile);
-          localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(profile));
-          localStorage.setItem(LOCAL_STORAGE_TOKEN_KEY, accessToken);
-          return;
-        }
-      } catch {
-        // Continue to local session fallback
-      }
-
-      // 2. Seamless local fallback (for testing before database connection)
-      const mockProfile: UserProfile = {
-        id: crypto.randomUUID ? crypto.randomUUID() : '00000000-0000-0000-0000-000000000001',
-        email,
-        fullName: email.split('@')[0]?.replace(/[._]/g, ' ').toUpperCase() || 'Nhân Viên Xưởng',
-        role: Role.PRODUCTION_PLANNER,
-        isActive: true,
-      };
-      const mockToken = `mock-token-${Date.now()}`;
-      setUser(mockProfile);
-      setToken(mockToken);
-      localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(mockProfile));
-      localStorage.setItem(LOCAL_STORAGE_TOKEN_KEY, mockToken);
+      const response = await loginApi(email, password);
+      setUser(response.user);
+      setToken(response.accessToken);
+      localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(response.user));
+      localStorage.setItem(LOCAL_STORAGE_TOKEN_KEY, response.accessToken);
     } finally {
       setIsLoading(false);
     }
@@ -113,63 +79,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }: RegisterData) => {
     setIsLoading(true);
     try {
-      // Try Supabase signUp if configured
-      try {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: { full_name: fullName, role },
-          },
-        });
-        if (!error && data.session) {
-          const accessToken = data.session.access_token;
-          setToken(accessToken);
-          const profile: UserProfile = {
-            id: data.user?.id || 'new-user',
-            email,
-            fullName,
-            role,
-            isActive: true,
-          };
-          setUser(profile);
-          localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(profile));
-          localStorage.setItem(LOCAL_STORAGE_TOKEN_KEY, accessToken);
-          return;
-        }
-      } catch {
-        // Fallback
-      }
-
-      // Local session creation
-      const newProfile: UserProfile = {
-        id: crypto.randomUUID ? crypto.randomUUID() : 'new-registered-user',
-        email,
+      const response = await registerApi({
         fullName,
+        email,
+        password,
         role,
-        isActive: true,
-      };
-      const mockToken = `mock-registered-token-${Date.now()}`;
-      setUser(newProfile);
-      setToken(mockToken);
-      localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(newProfile));
-      localStorage.setItem(LOCAL_STORAGE_TOKEN_KEY, mockToken);
+      });
+      setUser(response.user);
+      setToken(response.accessToken);
+      localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(response.user));
+      localStorage.setItem(LOCAL_STORAGE_TOKEN_KEY, response.accessToken);
     } finally {
       setIsLoading(false);
     }
   };
 
   const logout = async () => {
-    setIsLoading(true);
-    try {
-      await supabase.auth.signOut().catch(() => {});
-      localStorage.removeItem(LOCAL_STORAGE_USER_KEY);
-      localStorage.removeItem(LOCAL_STORAGE_TOKEN_KEY);
-      setUser(null);
-      setToken(null);
-    } finally {
-      setIsLoading(false);
-    }
+    setUser(null);
+    setToken(null);
+    localStorage.removeItem(LOCAL_STORAGE_USER_KEY);
+    localStorage.removeItem(LOCAL_STORAGE_TOKEN_KEY);
   };
 
   return (
@@ -179,10 +108,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 };
 
-export function useAuth(): AuthContextType {
+export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-}
+};

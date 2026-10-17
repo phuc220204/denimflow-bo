@@ -56,8 +56,8 @@ describe('HomePage', () => {
 
     // Assert telemetry loaded from MSW
     await waitFor(() => {
-      expect(screen.getByText(/Sẵn sàng \(200 OK\)/i)).toBeInTheDocument();
-      expect(screen.getByText(/Đã kết nối \(UP\)/i)).toBeInTheDocument();
+      expect(screen.getByText(/Đang hoạt động tốt/i)).toBeInTheDocument();
+      expect(screen.getByText(/Đã đồng bộ an toàn/i)).toBeInTheDocument();
     });
   });
 });
