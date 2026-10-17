@@ -399,3 +399,163 @@ export async function deleteWashType(id: string, token?: string | null): Promise
     throw new Error(data.message || 'Không thể xóa kiểu giặt');
   }
 }
+
+// ==========================================
+// 6. FABRIC-COLOR MATRIX (BR-04, FR-02)
+// ==========================================
+
+export interface FabricColorRuleItem {
+  id: string;
+  fabricTypeId: string;
+  colorId: string;
+  isAllowed: boolean;
+}
+
+export interface MatrixData {
+  fabrics: FabricTypeItem[];
+  colors: ColorOptionItem[];
+  rules: FabricColorRuleItem[];
+}
+
+export async function fetchMatrix(): Promise<MatrixData> {
+  const res = await fetch(`${API_BASE}/catalog/matrix`, {
+    headers: { Accept: 'application/json' },
+  });
+  if (!res.ok) throw new Error('Không thể tải ma trận vải - màu');
+  return res.json();
+}
+
+export async function toggleMatrixRuleApi(
+  dto: { fabricTypeId: string; colorId: string; isAllowed: boolean },
+  token?: string | null,
+): Promise<FabricColorRuleItem> {
+  const res = await fetch(`${API_BASE}/catalog/matrix/toggle`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(dto),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể cập nhật quy tắc ma trận');
+  return data;
+}
+
+export async function fetchAllowedColors(fabricTypeId: string): Promise<ColorOptionItem[]> {
+  const res = await fetch(`${API_BASE}/catalog/fabrics/${fabricTypeId}/allowed-colors`, {
+    headers: { Accept: 'application/json' },
+  });
+  if (!res.ok) throw new Error('Không thể tải danh sách màu hợp lệ');
+  return res.json();
+}
+
+// ==========================================
+// 7. QC PROFILES (BR-19, FR-28)
+// ==========================================
+
+export interface QcProfileItem {
+  id: string;
+  styleId: string;
+  profileType: 'FULL_PROCESS' | 'SKIP_CLEAN_WASH';
+  maxShrinkagePercent: number | string;
+  maxColorFadingLevel: number;
+  isActive: boolean;
+}
+
+export async function fetchStyleQcProfiles(styleId: string): Promise<QcProfileItem[]> {
+  const res = await fetch(`${API_BASE}/catalog/styles/${styleId}/qc-profiles`, {
+    headers: { Accept: 'application/json' },
+  });
+  if (!res.ok) throw new Error('Không thể tải cấu hình QC Profile của kiểu dáng');
+  return res.json();
+}
+
+export async function updateStyleQcProfileApi(
+  styleId: string,
+  profileType: 'FULL_PROCESS' | 'SKIP_CLEAN_WASH',
+  dto: { maxShrinkagePercent: number; maxColorFadingLevel: number; isActive?: boolean },
+  token?: string | null,
+): Promise<QcProfileItem> {
+  const res = await fetch(`${API_BASE}/catalog/styles/${styleId}/qc-profiles/${profileType}`, {
+    method: 'PUT',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(dto),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể cập nhật thông số QC Profile');
+  return data;
+}
+
+// ==========================================
+// 8. USER MANAGEMENT (T1.1, FR-01)
+// ==========================================
+
+export interface UserStaffItem {
+  id: string;
+  email: string;
+  fullName: string;
+  role: Role;
+  stationId?: string | null;
+  stationName?: string | null;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export async function fetchUsersApi(token?: string | null): Promise<UserStaffItem[]> {
+  const res = await fetch(`${API_BASE}/users`, {
+    headers: getAuthHeaders(token),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || 'Không thể tải danh sách nhân sự');
+  }
+  return res.json();
+}
+
+export async function createUserApi(
+  dto: {
+    email: string;
+    password: string;
+    fullName: string;
+    role: Role;
+    stationId?: string | null;
+  },
+  token?: string | null,
+): Promise<UserStaffItem> {
+  const res = await fetch(`${API_BASE}/users`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(dto),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tạo tài khoản nhân viên');
+  return data;
+}
+
+export async function updateUserStatusApi(
+  id: string,
+  isActive: boolean,
+  token?: string | null,
+): Promise<UserStaffItem> {
+  const res = await fetch(`${API_BASE}/users/${id}/status`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify({ isActive }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể cập nhật trạng thái tài khoản');
+  return data;
+}
+
+export async function updateUserAssignmentApi(
+  id: string,
+  dto: { role?: Role; stationId?: string | null },
+  token?: string | null,
+): Promise<UserStaffItem> {
+  const res = await fetch(`${API_BASE}/users/${id}/assignment`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(dto),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể cập nhật phân quyền và trạm làm việc');
+  return data;
+}
