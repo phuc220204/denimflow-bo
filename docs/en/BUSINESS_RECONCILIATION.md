@@ -22,15 +22,15 @@ Status values: `TODO`, `IN PROGRESS`, `DONE`, `DEFERRED` (outside MVP, deliberat
 | BR-04 | Only colors listed in the Fabric–Color Matrix for the selected fabric type may be chosen | A, D (data), W (filter) | order, catalog | S1 data / S3 | DONE |
 | BR-05 | Once CUTTING starts, fabric–color–wash is locked. Changing it needs BR-13 or cancelling the order | A | order | S3 (lock enforced from S4) | DONE |
 | BR-06 | CUTTING may not start unless fabric is fully allocated per the BOM | E (Gate) | inventory, execution | S3–S4 | DONE |
-| BR-07 | Total cut quantity per size may not exceed plan + configured tolerance | E, A | execution | S4 | TODO |
-| BR-08 | Quantity conservation: quantity entering the next step ≤ good quantity of the previous step; the difference must match recorded defects or wastage | E, A, D (row lock + CHECK) | execution | S4 | TODO |
-| BR-09 | Outsourced wash/dye: quantity received must be reconciled with quantity sent; a mismatch needs a recorded reason | A | execution | S4 | TODO |
+| BR-07 | Total cut quantity per size may not exceed plan + configured tolerance | E, A | execution | S4 | DONE |
+| BR-08 | Quantity conservation: quantity entering the next step ≤ good quantity of the previous step; the difference must match recorded defects or wastage | E, A, D (row lock + CHECK) | execution | S4 | DONE |
+| BR-09 | Outsourced wash/dye: quantity received must be reconciled with quantity sent; a mismatch needs a recorded reason | A, E | execution | S4 | DONE |
 | BR-10 | QC Fail/Rework must select a step to return to and record a reason. Beyond the max rework loops, the order goes to the Planner | E, A | quality | S5 | TODO |
 | BR-11 | Separation of duties: whoever performed a step may not approve QC of that step; the Process Engineer may not confirm completion of production steps | A | execution, quality | S4 / S5 | TODO |
 | BR-12 | Cancelling needs a reason. Before CUTTING release all allocations; from CUTTING onward record cut fabric and cost | A | order | post-MVP (FR-10) | DEFERRED |
 | BR-13 | Changing a running workflow: only unstarted steps may be inserted/skipped, mandatory steps cannot be skipped, Process Engineer approval required | E, A | workflow, execution | post-MVP (FR-19/20) | DEFERRED |
 | BR-14 | Gatekeeper: a step opens only when all predecessors are complete and their Gates pass | E | execution | S4 | DONE |
-| BR-15 | A step configured "evidence required" cannot complete without ≥ 1 attachment | E (Gate), A | execution | S4 (with FR-14, stretch) | TODO |
+| BR-15 | A step configured "evidence required" cannot complete without ≥ 1 attachment | E (Gate), A | execution | S4 | DONE |
 | BR-16 | Every state transition, workflow change and quantity entry writes an AuditLog (who, when, old, new) that cannot be edited or deleted | A (same transaction), D (append-only trigger) | audit | S0 foundation, every sprint | DONE |
 | BR-17 | An order with a custom request passes CUSTOM_REVIEW: feasibility check (reject if infeasible); if feasible, clone the nearest template into a dedicated workflow, validate (BR-01), approve (Process Engineer), replace the snapshot; sample approval mandatory before cutting | A, E | workflow, order | post-MVP (FR-27) | DEFERRED (see R-04) |
 | BR-18 | Clean wash runs by default. It may be skipped only at the customer's request to reduce cost; the Planner records reason and confirmation, the step becomes SKIPPED and an AuditLog is written; final QC then uses SKIP_CLEAN_WASH | A, E | order, execution | S3 | DONE |
@@ -110,7 +110,7 @@ MVP = 14 FRs from the Proposal. Items marked ◐ are **minimal slices** pulled i
 | FR-09 | Production Order | BOM, allocation, Material Request | MVP | ✔ | S3 T3.3–T3.4 | DONE |
 | FR-10 | Production Order | Hold, Resume, Cancel | High | — | post-MVP | DEFERRED |
 | FR-11 | Execution Engine | Instance from snapshot, open steps by Gate | MVP | ✔ | S2 T2.1, S3 T3.5, S4 T4.1 | DONE |
-| FR-12 | Execution Engine | Worklist by station, Start/Complete | MVP | ✔ | S4 T4.2 | TODO |
+| FR-12 | Execution Engine | Worklist by station, Start/Complete | MVP | ✔ | S4 T4.2 | DONE |
 | FR-13 | Execution Engine | Good/defect quantities per bundle, conservation | MVP | ✔ | S4 T4.3 | TODO |
 | FR-14 | Execution Engine | Evidence attachments | High | stretch | S4 T4.4 | TODO |
 | FR-15 | Execution Engine | Bundle generation and codes | High | ◐ at CUTTING | S4 T4.3 | TODO |

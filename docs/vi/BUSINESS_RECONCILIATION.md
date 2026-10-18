@@ -22,15 +22,15 @@ Giá trị trạng thái: `TODO`, `IN PROGRESS`, `DONE`, `DEFERRED` (ngoài MVP,
 | BR-04 | Chỉ được chọn màu nằm trong Fabric–Color Matrix của loại vải đã chọn | A, D (dữ liệu), W (lọc) | order, catalog | S1 dữ liệu / S3 | XONG |
 | BR-05 | Khi step CUTTING bắt đầu, vải–màu–wash bị khoá. Muốn đổi cần BR-13 hoặc huỷ đơn | A | order | S3 (khoá có hiệu lực từ S4) | XONG |
 | BR-06 | Không được bắt đầu CUTTING nếu vải chưa được phân bổ đủ theo BOM | E (Gate) | inventory, execution | S3–S4 | XONG |
-| BR-07 | Tổng số lượng cắt theo từng size không vượt kế hoạch + dung sai đã cấu hình | E, A | execution | S4 | TODO |
-| BR-08 | Bảo toàn số lượng: số lượng vào step sau ≤ số lượng đạt của step trước; phần chênh lệch phải khớp với lỗi hoặc hao hụt đã ghi nhận | E, A, D (row lock + CHECK) | execution | S4 | TODO |
-| BR-09 | Nhuộm/wash thuê ngoài: số lượng nhận về phải đối soát với số lượng gửi đi; lệch thì phải có lý do | A | execution | S4 | TODO |
+| BR-07 | Tổng số lượng cắt theo từng size không vượt kế hoạch + dung sai đã cấu hình | E, A | execution | S4 | XONG |
+| BR-08 | Bảo toàn số lượng: số lượng vào step sau ≤ số lượng đạt của step trước; phần chênh lệch phải khớp với lỗi hoặc hao hụt đã ghi nhận | E, A, D (row lock + CHECK) | execution | S4 | XONG |
+| BR-09 | Nhuộm/wash thuê ngoài: số lượng nhận về phải đối soát với số lượng gửi đi; lệch thì phải có lý do | A, E | execution | S4 | XONG |
 | BR-10 | QC Fail/Rework phải chọn step quay về và ghi lý do. Vượt số vòng rework tối đa thì giao cho Planner | E, A | quality | S5 | TODO |
 | BR-11 | Phân tách nhiệm vụ: người thực hiện step không được duyệt QC của step đó; Process Engineer không được xác nhận hoàn thành các step sản xuất | A | execution, quality | S4 / S5 | TODO |
 | BR-12 | Huỷ đơn cần lý do. Trước CUTTING thì giải phóng mọi allocation; từ CUTTING trở đi phải ghi nhận vải đã cắt và chi phí | A | order | sau MVP (FR-10) | DEFERRED |
 | BR-13 | Đổi workflow khi đang chạy: chỉ được chèn/bỏ qua step chưa bắt đầu, không được bỏ step bắt buộc, cần Process Engineer duyệt | E, A | workflow, execution | sau MVP (FR-19/20) | DEFERRED |
 | BR-14 | Gatekeeper: một step chỉ mở khi mọi step trước đã hoàn thành và các Gate đều đạt | E | execution | S4 | XONG |
-| BR-15 | Step cấu hình "cần minh chứng" không được hoàn thành nếu chưa có ≥ 1 file đính kèm | E (Gate), A | execution | S4 (cùng FR-14, stretch) | TODO |
+| BR-15 | Step cấu hình "cần minh chứng" không được hoàn thành nếu chưa có ≥ 1 file đính kèm | E (Gate), A | execution | S4 | XONG |
 | BR-16 | Mọi chuyển trạng thái, thay đổi workflow và lần nhập số lượng đều ghi AuditLog (ai, khi nào, giá trị cũ, giá trị mới); AuditLog không được sửa hay xoá | A (cùng transaction), D (trigger append-only) | audit | nền móng S0, mọi sprint | XONG |
 | BR-17 | Đơn có yêu cầu custom phải qua nhánh CUSTOM_REVIEW: đánh giá khả thi (từ chối nếu bất khả thi); nếu khả thi thì clone template gần nhất thành workflow riêng, kiểm tra (BR-01), Process Engineer duyệt, thay thế snapshot; bắt buộc duyệt mẫu trước khi cắt | A, E | workflow, order | sau MVP (FR-27) | DEFERRED (xem R-04) |
 | BR-18 | Giặt sạch (clean wash) chạy mặc định. Chỉ được bỏ qua khi khách yêu cầu để giảm giá; Planner ghi lý do và xác nhận của khách, step chuyển SKIPPED và ghi AuditLog; QC cuối khi đó dùng SKIP_CLEAN_WASH | A, E | order, execution | S3 | XONG |
@@ -110,7 +110,7 @@ MVP = 14 FR của Proposal. Mục đánh dấu ◐ là **phần tối thiểu** 
 | FR-09 | Production Order | BOM, phân bổ, Material Request | MVP | ✔ | S3 T3.3–T3.4 | XONG |
 | FR-10 | Production Order | Hold, Resume, Cancel | High | — | sau MVP | DEFERRED |
 | FR-11 | Execution Engine | Tạo instance từ snapshot, mở step theo Gate | MVP | ✔ | S2 T2.1, S3 T3.5, S4 T4.1 | XONG |
-| FR-12 | Execution Engine | Worklist theo trạm, Start/Complete | MVP | ✔ | S4 T4.2 | TODO |
+| FR-12 | Execution Engine | Worklist theo trạm, Start/Complete | MVP | ✔ | S4 T4.2 | XONG |
 | FR-13 | Execution Engine | Nhập số lượng đạt/lỗi theo bundle, bảo toàn số lượng | MVP | ✔ | S4 T4.3 | TODO |
 | FR-14 | Execution Engine | Đính kèm minh chứng | High | stretch | S4 T4.4 | TODO |
 | FR-15 | Execution Engine | Sinh bundle và mã bundle | High | ◐ tại CUTTING | S4 T4.3 | TODO |

@@ -25,7 +25,28 @@ import {
   type ConfirmOrderResponseDto,
   type CuttingGateResultDto,
   type RequestStatus,
+  type CompleteStepResponseDto,
+  type StartStepResponseDto,
+  type StepStatus,
+  type WorklistItemDto,
+  type BundleDto,
+  type RecordQuantityEntryDto,
+  type StepQuantityEntryDto,
+  type AttachEvidenceDto,
+  type EvidenceDto,
 } from '@denimflow/shared';
+
+export type {
+  CompleteStepResponseDto,
+  StartStepResponseDto,
+  StepStatus,
+  WorklistItemDto,
+  BundleDto,
+  RecordQuantityEntryDto,
+  StepQuantityEntryDto,
+  AttachEvidenceDto,
+  EvidenceDto,
+};
 
 export interface UserProfile {
   id: string;
@@ -1172,5 +1193,131 @@ export async function fetchCuttingGateApi(
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Không thể kiểm tra Gate cắt');
+  return data;
+}
+
+// ==========================================
+// WORKLIST / EXECUTION API CLIENT (T4.2, FR-12)
+// ==========================================
+
+export async function fetchWorklistApi(
+  token?: string | null,
+  query?: { stationType?: string; status?: StepStatus },
+): Promise<WorklistItemDto[]> {
+  const params = new URLSearchParams();
+  if (query?.stationType) params.append('stationType', query.stationType);
+  if (query?.status) params.append('status', query.status);
+
+  const qs = params.toString() ? `?${params.toString()}` : '';
+  const res = await fetch(`${API_BASE}/worklist${qs}`, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tải danh sách công việc');
+  return data;
+}
+
+export async function startStepApi(
+  stepId: string,
+  token?: string | null,
+): Promise<StartStepResponseDto> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/start`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể bắt đầu công đoạn');
+  return data;
+}
+
+export async function completeStepApi(
+  stepId: string,
+  token?: string | null,
+): Promise<CompleteStepResponseDto> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/complete`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể hoàn thành công đoạn');
+  return data;
+}
+
+export async function recordQuantityApi(
+  stepId: string,
+  dto: RecordQuantityEntryDto,
+  token?: string | null,
+): Promise<StepQuantityEntryDto> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/quantities`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(dto),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể ghi nhận sản lượng');
+  return data;
+}
+
+export async function fetchStepQuantitiesApi(
+  stepId: string,
+  token?: string | null,
+): Promise<StepQuantityEntryDto[]> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/quantities`, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tải lịch sử sản lượng');
+  return data;
+}
+
+export async function generateBundlesApi(
+  stepId: string,
+  token?: string | null,
+): Promise<BundleDto[]> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/bundles/generate`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tạo kiện hàng');
+  return data;
+}
+
+export async function fetchStepBundlesApi(
+  stepId: string,
+  token?: string | null,
+): Promise<BundleDto[]> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/bundles`, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tải danh sách kiện');
+  return data;
+}
+
+export async function attachEvidenceApi(
+  stepId: string,
+  dto: AttachEvidenceDto,
+  token?: string | null,
+): Promise<EvidenceDto> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/evidence`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(dto),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể đính kèm minh chứng');
+  return data;
+}
+
+export async function fetchStepEvidenceApi(
+  stepId: string,
+  token?: string | null,
+): Promise<EvidenceDto[]> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/evidence`, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tải danh sách minh chứng');
   return data;
 }
