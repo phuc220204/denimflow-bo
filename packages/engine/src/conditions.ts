@@ -110,7 +110,7 @@ export class AndStrategy implements ConditionStrategy<AndConditionAst> {
     if (!node.args || node.args.length === 0) {
       return true;
     }
-    return node.args.every((child) => evaluateChild(child));
+    return node.args.every((child: ConditionAst) => evaluateChild(child));
   }
 }
 
@@ -126,7 +126,7 @@ export class OrStrategy implements ConditionStrategy<OrConditionAst> {
     if (!node.args || node.args.length === 0) {
       return false;
     }
-    return node.args.some((child) => evaluateChild(child));
+    return node.args.some((child: ConditionAst) => evaluateChild(child));
   }
 }
 

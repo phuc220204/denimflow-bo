@@ -3,7 +3,8 @@
   "compilerOptions": {
     "module": "Preserve",
     "moduleResolution": "bundler",
-    "types": []
+    "types": [],
+    "customConditions": ["@denimflow/source"]
   },
   "include": ["src", "tsup.config.ts", "vitest.config.ts"]
 }
