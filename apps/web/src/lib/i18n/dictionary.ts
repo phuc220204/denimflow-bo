@@ -6,7 +6,9 @@ import {
   Role,
   StationType,
   StepStatus,
+  StepType,
   StretchType,
+  TransitionKind,
   VersionStatus,
 } from '@denimflow/shared';
 
@@ -75,6 +77,17 @@ export const i18n = {
     [StationType.FINISHING]: 'Hoàn thiện',
     [StationType.QC]: 'QC',
     [StationType.PACKING]: 'Đóng gói',
+  } as const,
+  stepType: {
+    [StepType.SELECTION]: 'Lựa chọn',
+    [StepType.MATERIAL]: 'Vật tư',
+    [StepType.PRODUCTION]: 'Sản xuất',
+    [StepType.QC]: 'Kiểm tra QC',
+    [StepType.APPROVAL]: 'Phê duyệt',
+  } as const,
+  transitionKind: {
+    [TransitionKind.NORMAL]: 'Chính thức',
+    [TransitionKind.REWORK]: 'Làm lại (Rework)',
   } as const,
   nav: {
     home: 'Trang chủ',

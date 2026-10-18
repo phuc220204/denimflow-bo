@@ -1,4 +1,18 @@
-import { type HealthResponse, healthResponseSchema, type Role } from '@denimflow/shared';
+import {
+  type AssignTemplateToStyleDto,
+  type ConditionAst,
+  type CreateStepDefinitionDto,
+  type CreateStepTransitionDto,
+  type CreateWorkflowTemplateDto,
+  type HealthResponse,
+  healthResponseSchema,
+  type Role,
+  type StationType,
+  type StepType,
+  type TransitionKind,
+  type UpdateStepDefinitionDto,
+  type VersionStatus,
+} from '@denimflow/shared';
 
 export interface UserProfile {
   id: string;
@@ -534,5 +548,266 @@ export async function updateUserAssignmentApi(
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Không thể cập nhật phân quyền và trạm làm việc');
+  return data;
+}
+
+export interface WorkflowStepItem {
+  id: string;
+  versionId: string;
+  code: string;
+  name: string;
+  stepType: StepType;
+  seq: number;
+  responsibleRole: Role;
+  stationType: StationType | null;
+  isMandatory: boolean;
+  requiresEvidence: boolean;
+  requiresQc: boolean;
+  conditionExpr: ConditionAst | null;
+  maxRework: number | null;
+  isStart: boolean;
+  isEnd: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorkflowTransitionItem {
+  id: string;
+  versionId: string;
+  fromStepId: string;
+  toStepId: string;
+  kind: TransitionKind;
+  conditionExpr: ConditionAst | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorkflowVersionDetail {
+  id: string;
+  templateId: string;
+  versionNo: number;
+  status: VersionStatus;
+  publishedAt: string | null;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+  template?: {
+    id: string;
+    name: string;
+    isActive: boolean;
+    isDedicated: boolean;
+  };
+  steps: WorkflowStepItem[];
+  transitions: WorkflowTransitionItem[];
+}
+
+export interface WorkflowVersionSummary {
+  id: string;
+  versionNo: number;
+  status: VersionStatus;
+  publishedAt: string | null;
+  createdAt: string;
+}
+
+export interface WorkflowTemplateItem {
+  id: string;
+  name: string;
+  isActive: boolean;
+  isDedicated: boolean;
+  currentVersionId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  versions: WorkflowVersionSummary[];
+  styles?: Array<{
+    id: string;
+    styleCode: string;
+    name: string;
+  }>;
+}
+
+export interface WorkflowValidationViolation {
+  code: string;
+  message: string;
+  stepIds?: string[];
+}
+
+export interface WorkflowValidationResponse {
+  valid: boolean;
+  violations: WorkflowValidationViolation[];
+}
+
+export class ApiViolationError extends Error {
+  details?: { violations?: WorkflowValidationViolation[] };
+  constructor(message: string, details?: { violations?: WorkflowValidationViolation[] }) {
+    super(message);
+    this.name = 'ApiViolationError';
+    this.details = details;
+  }
+}
+
+export async function fetchWorkflowTemplatesApi(
+  token?: string | null,
+): Promise<WorkflowTemplateItem[]> {
+  const res = await fetch(`${API_BASE}/workflow/templates`, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tải danh sách quy trình');
+  return data;
+}
+
+export async function createWorkflowTemplateApi(
+  dto: CreateWorkflowTemplateDto,
+  token?: string | null,
+): Promise<WorkflowTemplateItem> {
+  const res = await fetch(`${API_BASE}/workflow/templates`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(dto),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tạo quy trình');
+  return data;
+}
+
+export async function fetchWorkflowVersionApi(
+  versionId: string,
+  token?: string | null,
+): Promise<WorkflowVersionDetail> {
+  const res = await fetch(`${API_BASE}/workflow/versions/${versionId}`, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tải phiên bản quy trình');
+  return data;
+}
+
+export async function createWorkflowVersionApi(
+  templateId: string,
+  token?: string | null,
+): Promise<WorkflowVersionDetail> {
+  const res = await fetch(`${API_BASE}/workflow/templates/${templateId}/versions`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tạo phiên bản mới');
+  return data;
+}
+
+export async function addStepApi(
+  versionId: string,
+  dto: CreateStepDefinitionDto,
+  token?: string | null,
+): Promise<WorkflowStepItem> {
+  const res = await fetch(`${API_BASE}/workflow/versions/${versionId}/steps`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(dto),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể thêm bước quy trình');
+  return data;
+}
+
+export async function updateStepApi(
+  stepId: string,
+  dto: UpdateStepDefinitionDto,
+  token?: string | null,
+): Promise<WorkflowStepItem> {
+  const res = await fetch(`${API_BASE}/workflow/steps/${stepId}`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(dto),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể cập nhật bước quy trình');
+  return data;
+}
+
+export async function deleteStepApi(
+  stepId: string,
+  token?: string | null,
+): Promise<{ success: boolean }> {
+  const res = await fetch(`${API_BASE}/workflow/steps/${stepId}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể xoá bước quy trình');
+  return data;
+}
+
+export async function addTransitionApi(
+  versionId: string,
+  dto: CreateStepTransitionDto,
+  token?: string | null,
+): Promise<WorkflowTransitionItem> {
+  const res = await fetch(`${API_BASE}/workflow/versions/${versionId}/transitions`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(dto),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tạo chuyển tiếp');
+  return data;
+}
+
+export async function deleteTransitionApi(
+  transitionId: string,
+  token?: string | null,
+): Promise<{ success: boolean }> {
+  const res = await fetch(`${API_BASE}/workflow/transitions/${transitionId}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể xoá chuyển tiếp');
+  return data;
+}
+
+export async function validateWorkflowVersionApi(
+  versionId: string,
+  token?: string | null,
+): Promise<WorkflowValidationResponse> {
+  const res = await fetch(`${API_BASE}/workflow/versions/${versionId}/validate`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể kiểm tra quy trình');
+  return data;
+}
+
+export async function publishWorkflowVersionApi(
+  versionId: string,
+  token?: string | null,
+): Promise<{
+  success: boolean;
+  version: WorkflowVersionDetail;
+  violations?: WorkflowValidationViolation[];
+}> {
+  const res = await fetch(`${API_BASE}/workflow/versions/${versionId}/publish`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new ApiViolationError(data.message || 'Xuất bản thất bại', data.details);
+  }
+  return data;
+}
+
+export async function assignTemplateToStyleApi(
+  dto: AssignTemplateToStyleDto,
+  token?: string | null,
+): Promise<{ success: boolean }> {
+  const res = await fetch(`${API_BASE}/workflow/styles/assign-template`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(dto),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể gán mẫu cho mã hàng');
   return data;
 }

@@ -5,10 +5,9 @@ Last updated: 2026-10-18
 
 ## Phase
 
-**Sprint 1 completed** (`.agents/tasks/S1-auth-rbac-master-data.md`).
-Done: T1.1 (Admin user management + manual role/station assignment + RBAC status toggle + audit log); T1.2 (Role-based web navigation + 403 Forbidden page); T1.3 (Catalog Master Data); T1.4 (Fabric-Color Matrix); T1.5 (QC Profiles).
-Supabase: `denimflow-dev` verified with catalog, matrix, qc_profiles migrations, RLS deny-all, and seeded reference data.
-**Next:** Sprint 2 (`.agents/tasks/S2-workflow-engine-and-designer.md`) — T2.1 Engine domain model & State machine; T2.2 Condition evaluator.
+**Sprint 2 in progress** (`.agents/tasks/S2-workflow-engine-and-designer.md`).
+Done: T1.1..T1.5 (Sprint 1); T2.2 (Condition evaluator Strategy + AST); T2.3 (Template validation BR-01); T2.4 (Workflow persistence + publish API + Jean Standard seed); T2.5 (Designer UI MVP with React Flow).
+**Next:** Sprint 2 exit review / merge PRs; Sprint 3 (`.agents/tasks/S3-order-confirm-snapshot.md`).
 Team: tasks are picked in `docs/TASK_BOARD.md`; onboarding guide `docs/<lang>/GETTING_STARTED.md`.
 
 ## Decisions (settled)
@@ -41,7 +40,7 @@ Team: tasks are picked in `docs/TASK_BOARD.md`; onboarding guide `docs/<lang>/GE
 |---|---|---|
 | S0 | Scaffold + deploy pipeline (walking skeleton) | in progress (T0.2, T0.3, T0.4 part A, T0.6 done; T0.1 dev done, prod pending) |
 | S1 | Auth + RBAC + master data | done |
-| S2 | Workflow engine core + designer MVP | not started |
+| S2 | Workflow engine core + designer MVP | in progress (T2.2..T2.5 implemented) |
 | S3 | Order create / Confirm / snapshot | not started |
 | S4 | Worklist, quantities, Gates | not started |
 | S5 | QC, rework, QC Profile, dashboard, handover, polish | not started |

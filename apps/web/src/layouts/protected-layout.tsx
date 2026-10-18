@@ -21,7 +21,7 @@ import { ForbiddenPage } from '../pages/forbidden';
 
 // Permissions matrix: maps each Role to the routes they are allowed to access (PRD.md §4)
 const ROLE_ALLOWED_ROUTES: Record<string, string[]> = {
-  ADMIN: ['/', '/users', '/catalog', '/audit'],
+  ADMIN: ['/', '/users', '/catalog', '/audit', '/workflow'],
   PROCESS_ENGINEER: ['/', '/workflow', '/catalog'],
   PRODUCTION_PLANNER: ['/', '/orders', '/worklist', '/catalog'],
   WAREHOUSE_KEEPER: ['/', '/inventory', '/catalog'],
@@ -55,7 +55,7 @@ export const ProtectedLayout: React.FC = () => {
     { label: i18n.nav.home, href: '/', icon: Home, disabled: false },
     { label: 'Phân quyền & Nhân sự', href: '/users', icon: Users, disabled: false },
     { label: i18n.nav.orders, href: '/orders', icon: ClipboardList, disabled: true },
-    { label: i18n.nav.workflow, href: '/workflow', icon: GitFork, disabled: true },
+    { label: i18n.nav.workflow, href: '/workflow', icon: GitFork, disabled: false },
     { label: i18n.nav.worklist, href: '/worklist', icon: Factory, disabled: true },
     { label: i18n.nav.qc, href: '/qc', icon: ShieldCheck, disabled: true },
     { label: i18n.nav.inventory, href: '/inventory', icon: Package, disabled: true },
@@ -145,7 +145,9 @@ export const ProtectedLayout: React.FC = () => {
                 ? 'Bàn làm việc'
                 : location.pathname === '/catalog'
                   ? 'Danh mục xưởng may'
-                  : location.pathname}
+                  : location.pathname === '/workflow'
+                    ? 'Thiết kế quy trình'
+                    : location.pathname}
             </span>
           </div>
 
