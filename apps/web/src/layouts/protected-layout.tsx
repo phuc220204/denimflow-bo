@@ -21,13 +21,13 @@ import { ForbiddenPage } from '../pages/forbidden';
 
 // Permissions matrix: maps each Role to the routes they are allowed to access (PRD.md §4)
 const ROLE_ALLOWED_ROUTES: Record<string, string[]> = {
-  ADMIN: ['/', '/users', '/catalog', '/audit', '/workflow', '/orders'],
+  ADMIN: ['/', '/users', '/catalog', '/audit', '/workflow', '/orders', '/inventory'],
   PROCESS_ENGINEER: ['/', '/workflow', '/catalog'],
-  PRODUCTION_PLANNER: ['/', '/orders', '/worklist', '/catalog'],
+  PRODUCTION_PLANNER: ['/', '/orders', '/worklist', '/catalog', '/inventory'],
   WAREHOUSE_KEEPER: ['/', '/inventory', '/catalog'],
   STATION_OPERATOR: ['/', '/worklist'],
   QC_INSPECTOR: ['/', '/qc', '/worklist', '/catalog'],
-  MANAGER: ['/', '/orders', '/audit', '/catalog'],
+  MANAGER: ['/', '/orders', '/audit', '/catalog', '/inventory'],
 };
 
 export const ProtectedLayout: React.FC = () => {
@@ -58,7 +58,7 @@ export const ProtectedLayout: React.FC = () => {
     { label: i18n.nav.workflow, href: '/workflow', icon: GitFork, disabled: false },
     { label: i18n.nav.worklist, href: '/worklist', icon: Factory, disabled: true },
     { label: i18n.nav.qc, href: '/qc', icon: ShieldCheck, disabled: true },
-    { label: i18n.nav.inventory, href: '/inventory', icon: Package, disabled: true },
+    { label: i18n.nav.inventory, href: '/inventory', icon: Package, disabled: false },
     { label: i18n.nav.catalog, href: '/catalog', icon: FileSpreadsheet, disabled: false },
     { label: i18n.nav.audit, href: '/audit', icon: History, disabled: true },
   ];

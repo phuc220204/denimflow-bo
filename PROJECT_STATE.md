@@ -6,8 +6,8 @@ Last updated: 2026-10-18
 ## Phase
 
 **Sprint 3 in progress** (`.agents/tasks/S3-order-confirm-snapshot.md`).
-Done: Sprint 1 (T1.1..T1.5); Sprint 2 (T2.1..T2.5); T3.1 (Order draft and size lines); T3.2 (Fabric & color selection with BR-04, BR-05); T3.3 (BOM calculation Strategy).
-**Next:** T3.4 Allocation & Material Request (`feat/inventory-allocation`), T3.5 Confirm order snapshot (`feat/order-confirm`).
+Done: Sprint 1 (T1.1..T1.5); Sprint 2 (T2.1..T2.5); T3.1 (Order draft and size lines); T3.2 (Fabric & color selection with BR-04, BR-05); T3.3 (BOM calculation Strategy); T3.4 (Allocation and Material Request with BR-06).
+**Next:** T3.5 Confirm order snapshot (`feat/order-confirm`).
 Team: tasks are picked in `docs/TASK_BOARD.md`; onboarding guide `docs/<lang>/GETTING_STARTED.md`.
 
 ## Decisions (settled)
@@ -41,7 +41,7 @@ Team: tasks are picked in `docs/TASK_BOARD.md`; onboarding guide `docs/<lang>/GE
 | S0 | Scaffold + deploy pipeline (walking skeleton) | in progress (T0.2, T0.3, T0.4 part A, T0.6 done; T0.1 dev done, prod pending) |
 | S1 | Auth + RBAC + master data | done |
 | S2 | Workflow engine core + designer MVP | done |
-| S3 | Order create / Confirm / snapshot | in progress (T3.1, T3.2, T3.3 done) |
+| S3 | Order create / Confirm / snapshot | in progress (T3.1..T3.4 done) |
 | S4 | Worklist, quantities, Gates | not started |
 | S5 | QC, rework, QC Profile, dashboard, handover, polish | not started |
 

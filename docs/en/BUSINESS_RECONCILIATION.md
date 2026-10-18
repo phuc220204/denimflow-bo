@@ -21,7 +21,7 @@ Status values: `TODO`, `IN PROGRESS`, `DONE`, `DEFERRED` (outside MVP, deliberat
 | BR-03 | At Confirm, snapshot the PUBLISHED version of the Style; a Style without a PUBLISHED template cannot be confirmed | A, E | order | S3 | TODO |
 | BR-04 | Only colors listed in the Fabric–Color Matrix for the selected fabric type may be chosen | A, D (data), W (filter) | order, catalog | S1 data / S3 | DONE |
 | BR-05 | Once CUTTING starts, fabric–color–wash is locked. Changing it needs BR-13 or cancelling the order | A | order | S3 (lock enforced from S4) | DONE |
-| BR-06 | CUTTING may not start unless fabric is fully allocated per the BOM | E (Gate) | inventory, execution | S3–S4 | TODO |
+| BR-06 | CUTTING may not start unless fabric is fully allocated per the BOM | E (Gate) | inventory, execution | S3–S4 | DONE |
 | BR-07 | Total cut quantity per size may not exceed plan + configured tolerance | E, A | execution | S4 | TODO |
 | BR-08 | Quantity conservation: quantity entering the next step ≤ good quantity of the previous step; the difference must match recorded defects or wastage | E, A, D (row lock + CHECK) | execution | S4 | TODO |
 | BR-09 | Outsourced wash/dye: quantity received must be reconciled with quantity sent; a mismatch needs a recorded reason | A | execution | S4 | TODO |

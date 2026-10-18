@@ -20,6 +20,9 @@ import {
   type UpdateProductionOrderDto,
   type UpdateStepDefinitionDto,
   type VersionStatus,
+  type AllocateFabricDto,
+  type CuttingGateResultDto,
+  type RequestStatus,
 } from '@denimflow/shared';
 
 export interface UserProfile {
@@ -989,5 +992,151 @@ export async function fetchBomLinesApi(
   if (!res.ok) {
     throw new Error(data.message || 'Không thể tải danh sách định mức BOM');
   }
+  return data;
+}
+
+// ==========================================
+// 10. INVENTORY & ALLOCATION (T3.4, FR-09, BR-06)
+// ==========================================
+
+export interface FabricLotItem {
+  id: string;
+  fabricTypeId: string;
+  colorId: string;
+  lotNo: string;
+  availableMeters: number;
+  shrinkagePercent?: number | null;
+  fabricType?: { id: string; code: string; name: string };
+  colorOption?: { id: string; code: string; name: string };
+}
+
+export interface MaterialRequestItem {
+  id: string;
+  orderId: string;
+  bomLineId: string;
+  missingQty: number;
+  status: RequestStatus;
+  requestedBy: string;
+  createdAt: string;
+  requester?: { id: string; fullName: string; email: string };
+  order?: { id: string; orderNumber: string; status: OrderStatus };
+  bomLine?: BomLineItem;
+}
+
+export interface OrderAllocationItem {
+  order: {
+    id: string;
+    orderNumber: string;
+    status: OrderStatus;
+    dueDate?: string | null;
+    customerRef?: string | null;
+    style?: StyleItem;
+    fabricType?: FabricTypeItem;
+    color?: ColorOptionItem;
+  };
+  fabricBomLine: {
+    id: string;
+    requiredQty: number;
+    allocatedQty: number;
+    missingQty: number;
+    unit: string;
+    allocations: Array<{
+      id: string;
+      allocatedQty: number;
+      lotNo?: string;
+      createdAt: string;
+    }>;
+    requests: Array<{
+      id: string;
+      missingQty: number;
+      status: RequestStatus;
+      createdAt: string;
+    }>;
+  } | null;
+  cuttingGate: {
+    passed: boolean;
+    ruleId?: string;
+    reason?: string;
+    requiredQty?: number;
+    allocatedQty?: number;
+    missingQty?: number;
+  };
+}
+
+export interface AllocateFabricResponse {
+  allocation: {
+    id: string;
+    bomLineId: string;
+    fabricLotId: string;
+    allocatedQty: number;
+    fabricLot?: { lotNo: string };
+  };
+  remainingMissingQty: number;
+  isFullyAllocated: boolean;
+}
+
+export async function fetchFabricLotsApi(
+  token?: string | null,
+  filters?: { fabricTypeId?: string; colorId?: string },
+): Promise<FabricLotItem[]> {
+  const query = new URLSearchParams();
+  if (filters?.fabricTypeId) query.set('fabricTypeId', filters.fabricTypeId);
+  if (filters?.colorId) query.set('colorId', filters.colorId);
+
+  const res = await fetch(`${API_BASE}/inventory/fabric-lots?${query.toString()}`, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tải danh sách cuộn vải');
+  return data;
+}
+
+export async function fetchMaterialRequestsApi(
+  token?: string | null,
+  orderId?: string,
+): Promise<MaterialRequestItem[]> {
+  const query = orderId ? `?orderId=${encodeURIComponent(orderId)}` : '';
+  const res = await fetch(`${API_BASE}/inventory/requests${query}`, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tải danh sách yêu cầu cấp vật tư');
+  return data;
+}
+
+export async function fetchOrderAllocationsApi(
+  token?: string | null,
+): Promise<OrderAllocationItem[]> {
+  const res = await fetch(`${API_BASE}/inventory/allocations/orders`, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tải danh sách đơn hàng cần phân bổ vải');
+  return data;
+}
+
+export async function allocateFabricApi(
+  dto: AllocateFabricDto,
+  token?: string | null,
+): Promise<AllocateFabricResponse> {
+  const res = await fetch(`${API_BASE}/inventory/allocate`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(dto),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể phân bổ vải từ cuộn');
+  return data;
+}
+
+export async function fetchCuttingGateApi(
+  orderId: string,
+  token?: string | null,
+): Promise<CuttingGateResultDto> {
+  const res = await fetch(`${API_BASE}/inventory/cutting-gate/${orderId}`, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể kiểm tra Gate cắt');
   return data;
 }

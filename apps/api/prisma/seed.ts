@@ -445,6 +445,75 @@ async function main() {
   }
 
   console.log(`Seeded standard BOM norms for Style ${demoStyle.styleCode}.`);
+
+  // 10. Seed demo Fabric Lots (T3.4, FR-09, BR-06)
+  const demoFabricType = await prisma.fabricType.upsert({
+    where: { code: 'DENIM-12-RIGID' },
+    update: {},
+    create: {
+      code: 'DENIM-12-RIGID',
+      name: 'Vải Denim 12oz Cổ Điển',
+      composition: '100% Cotton',
+      stretchType: 'RIGID',
+      weightGsm: 400,
+    },
+  });
+
+  const demoColorIndigo = await prisma.colorOption.upsert({
+    where: { code: 'INDIGO-DARK' },
+    update: {},
+    create: {
+      code: 'INDIGO-DARK',
+      name: 'Xanh Chàm Đậm',
+      colorFamily: 'Blue',
+    },
+  });
+
+  await prisma.fabricColorRule.upsert({
+    where: {
+      fabricTypeId_colorId: {
+        fabricTypeId: demoFabricType.id,
+        colorId: demoColorIndigo.id,
+      },
+    },
+    update: { isAllowed: true },
+    create: {
+      fabricTypeId: demoFabricType.id,
+      colorId: demoColorIndigo.id,
+      isAllowed: true,
+    },
+  });
+
+  const lotsData = [
+    {
+      lotNo: 'LOT-DN12-IND-01',
+      availableMeters: 1500,
+      shrinkagePercent: 2.5,
+    },
+    {
+      lotNo: 'LOT-DN12-IND-02',
+      availableMeters: 300,
+      shrinkagePercent: 2.8,
+    },
+  ];
+
+  for (const lot of lotsData) {
+    await prisma.fabricLot.upsert({
+      where: { lotNo: lot.lotNo },
+      update: {
+        availableMeters: lot.availableMeters,
+        shrinkagePercent: lot.shrinkagePercent,
+      },
+      create: {
+        lotNo: lot.lotNo,
+        fabricTypeId: demoFabricType.id,
+        colorId: demoColorIndigo.id,
+        availableMeters: lot.availableMeters,
+        shrinkagePercent: lot.shrinkagePercent,
+      },
+    });
+  }
+  console.log('Seeded demo Fabric Lots for DENIM-12-RIGID / INDIGO-DARK.');
 }
 
 main()

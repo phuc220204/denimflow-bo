@@ -21,7 +21,7 @@ Giá trị trạng thái: `TODO`, `IN PROGRESS`, `DONE`, `DEFERRED` (ngoài MVP,
 | BR-03 | Khi Confirm, snapshot version PUBLISHED của Style; Style chưa có template PUBLISHED thì không Confirm được | A, E | order | S3 | TODO |
 | BR-04 | Chỉ được chọn màu nằm trong Fabric–Color Matrix của loại vải đã chọn | A, D (dữ liệu), W (lọc) | order, catalog | S1 dữ liệu / S3 | XONG |
 | BR-05 | Khi step CUTTING bắt đầu, vải–màu–wash bị khoá. Muốn đổi cần BR-13 hoặc huỷ đơn | A | order | S3 (khoá có hiệu lực từ S4) | XONG |
-| BR-06 | Không được bắt đầu CUTTING nếu vải chưa được phân bổ đủ theo BOM | E (Gate) | inventory, execution | S3–S4 | TODO |
+| BR-06 | Không được bắt đầu CUTTING nếu vải chưa được phân bổ đủ theo BOM | E (Gate) | inventory, execution | S3–S4 | XONG |
 | BR-07 | Tổng số lượng cắt theo từng size không vượt kế hoạch + dung sai đã cấu hình | E, A | execution | S4 | TODO |
 | BR-08 | Bảo toàn số lượng: số lượng vào step sau ≤ số lượng đạt của step trước; phần chênh lệch phải khớp với lỗi hoặc hao hụt đã ghi nhận | E, A, D (row lock + CHECK) | execution | S4 | TODO |
 | BR-09 | Nhuộm/wash thuê ngoài: số lượng nhận về phải đối soát với số lượng gửi đi; lệch thì phải có lý do | A | execution | S4 | TODO |

@@ -31,8 +31,8 @@ Branch: `feat/inventory-allocation`
 FR/BR: FR-09, BR-06
 Do: `fabric_lots`, `material_allocations`, `material_requests`; Warehouse Keeper allocates from lots (≤ available, row lock); shortage creates a Material Request; screens for the Keeper.
 Acceptance:
-- [ ] Over-allocation rejected; two concurrent allocations never exceed stock.
-- [ ] CUTTING Gate blocks until the fabric BOM line is fully allocated (BR-06).
+- [x] Over-allocation rejected; two concurrent allocations never exceed stock.
+- [x] CUTTING Gate blocks until the fabric BOM line is fully allocated (BR-06).
 
 ### T3.5 Confirm order (atomic snapshot)   [agent]
 Branch: `feat/order-confirm`

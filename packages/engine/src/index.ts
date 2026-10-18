@@ -4,3 +4,4 @@ export const ENGINE_NAME = '@denimflow/engine';
 export * from './conditions.js';
 export * from './template-validation.js';
 export * from './bom.js';
+export * from './gates.js';

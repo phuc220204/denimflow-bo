@@ -5,3 +5,4 @@ export * from './user.js';
 export * from './conditions.js';
 export * from './workflow.js';
 export * from './order.js';
+export * from './inventory.js';
