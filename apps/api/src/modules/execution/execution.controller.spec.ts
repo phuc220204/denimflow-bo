@@ -9,6 +9,10 @@ describe('ExecutionController', () => {
     getWorklist: ReturnType<typeof vi.fn>;
     startStep: ReturnType<typeof vi.fn>;
     completeStep: ReturnType<typeof vi.fn>;
+    recordQuantity: ReturnType<typeof vi.fn>;
+    generateBundles: ReturnType<typeof vi.fn>;
+    getBundles: ReturnType<typeof vi.fn>;
+    getQuantityEntries: ReturnType<typeof vi.fn>;
   };
   let authService: {
     getMe: ReturnType<typeof vi.fn>;
@@ -27,6 +31,10 @@ describe('ExecutionController', () => {
       getWorklist: vi.fn(),
       startStep: vi.fn(),
       completeStep: vi.fn(),
+      recordQuantity: vi.fn(),
+      generateBundles: vi.fn(),
+      getBundles: vi.fn(),
+      getQuantityEntries: vi.fn(),
     };
     authService = {
       getMe: vi.fn(),
@@ -90,5 +98,52 @@ describe('ExecutionController', () => {
       operatorUser.role,
     );
     expect(result).toEqual(mockResponse);
+  });
+
+  it('recordQuantity calls executionService.recordQuantity with valid input', async () => {
+    authService.getMe.mockResolvedValue(operatorUser);
+    const mockEntry = {
+      id: 'entry-1',
+      stepInstanceId: 'step-1',
+      bundleId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+      size: '30',
+      qtyGood: 50,
+      qtyDefect: 0,
+      enteredBy: operatorUser.id,
+      enteredAt: new Date().toISOString(),
+    };
+    executionService.recordQuantity.mockResolvedValue(mockEntry);
+
+    const body = {
+      bundleId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+      size: '30',
+      qtyGood: 50,
+      qtyDefect: 0,
+    };
+    const result = await controller.recordQuantity('step-1', body, 'Bearer token');
+
+    expect(authService.getMe).toHaveBeenCalledWith('Bearer token');
+    expect(executionService.recordQuantity).toHaveBeenCalledWith(
+      'step-1',
+      body,
+      operatorUser.id,
+      operatorUser.role,
+    );
+    expect(result).toEqual(mockEntry);
+  });
+
+  it('generateBundles and getBundles call executionService', async () => {
+    authService.getMe.mockResolvedValue(operatorUser);
+    executionService.generateBundles.mockResolvedValue([]);
+    executionService.getBundles.mockResolvedValue([]);
+    executionService.getQuantityEntries.mockResolvedValue([]);
+
+    await controller.generateBundles('step-1', 'Bearer token');
+    await controller.getBundles('step-1', 'Bearer token');
+    await controller.getQuantities('step-1', 'Bearer token');
+
+    expect(executionService.generateBundles).toHaveBeenCalledWith('step-1', operatorUser.id);
+    expect(executionService.getBundles).toHaveBeenCalledWith('step-1');
+    expect(executionService.getQuantityEntries).toHaveBeenCalledWith('step-1');
   });
 });

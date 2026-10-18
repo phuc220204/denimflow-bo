@@ -28,6 +28,17 @@ describe('ExecutionRepository', () => {
     auditLog: {
       create: ReturnType<typeof vi.fn>;
     };
+    stepQuantityEntry: {
+      findMany: ReturnType<typeof vi.fn>;
+      create: ReturnType<typeof vi.fn>;
+    };
+    bundle: {
+      findMany: ReturnType<typeof vi.fn>;
+      findUnique: ReturnType<typeof vi.fn>;
+      create: ReturnType<typeof vi.fn>;
+      update: ReturnType<typeof vi.fn>;
+    };
+    $executeRaw: ReturnType<typeof vi.fn>;
     $transaction: ReturnType<typeof vi.fn>;
   };
 
@@ -70,6 +81,17 @@ describe('ExecutionRepository', () => {
       auditLog: {
         create: vi.fn(),
       },
+      stepQuantityEntry: {
+        findMany: vi.fn(),
+        create: vi.fn(),
+      },
+      bundle: {
+        findMany: vi.fn(),
+        findUnique: vi.fn(),
+        create: vi.fn(),
+        update: vi.fn(),
+      },
+      $executeRaw: vi.fn().mockResolvedValue(1),
       $transaction: vi.fn().mockImplementation(async (cb) => cb(prisma)),
     };
 
@@ -441,6 +463,303 @@ describe('ExecutionRepository', () => {
           }),
         }),
       );
+    });
+  });
+
+  describe('recordQuantity (FR-13, BR-07, BR-08, BR-09, BR-11, BR-16)', () => {
+    const mockStepSew = {
+      id: 'step-sew-1',
+      status: 'IN_PROGRESS',
+      stepDefinition: {
+        id: 'sd-sew',
+        code: 'SEWING',
+        name: 'Sewing',
+        stepType: 'PRODUCTION',
+        seq: 20,
+        stationType: 'SEWING',
+      },
+      instance: {
+        id: 'inst-1',
+        order: {
+          id: 'ord-1',
+          orderNumber: 'PO-2026-001',
+          sizeLines: [{ size: '30', plannedQty: 100 }],
+        },
+        stepInstances: [
+          {
+            id: 'step-cut-1',
+            status: 'DONE',
+            qtyGood: 100,
+            stepDefinition: { id: 'sd-cut', code: 'CUTTING', seq: 10 },
+          },
+          {
+            id: 'step-sew-1',
+            status: 'IN_PROGRESS',
+            stepDefinition: { id: 'sd-sew', code: 'SEWING', seq: 20 },
+          },
+        ],
+      },
+    };
+
+    it('BR-11: rejects Process Engineer attempting to enter production quantities', async () => {
+      prisma.stepInstance.findUnique.mockResolvedValue(mockStepSew);
+
+      await expect(
+        repository.recordQuantity(
+          'step-sew-1',
+          { size: '30', qtyGood: 50, qtyDefect: 0 },
+          'user-pe-1',
+          'PROCESS_ENGINEER',
+        ),
+      ).rejects.toThrow(BusinessRuleViolation);
+    });
+
+    it('BR-07: CUTTING rejects entry exceeding planned quantity + tolerance', async () => {
+      const mockStepCut = {
+        id: 'step-cut-1',
+        status: 'IN_PROGRESS',
+        stepDefinition: {
+          id: 'sd-cut',
+          code: 'CUTTING',
+          name: 'Cutting',
+          stepType: 'PRODUCTION',
+          seq: 10,
+          stationType: 'CUTTING',
+        },
+        instance: {
+          id: 'inst-1',
+          order: {
+            id: 'ord-1',
+            orderNumber: 'PO-2026-001',
+            sizeLines: [{ size: '30', plannedQty: 100 }],
+          },
+          stepInstances: [
+            {
+              id: 'step-cut-1',
+              status: 'IN_PROGRESS',
+              stepDefinition: { id: 'sd-cut', code: 'CUTTING', seq: 10 },
+            },
+          ],
+        },
+      };
+
+      prisma.stepInstance.findUnique.mockResolvedValue(mockStepCut);
+      prisma.stepQuantityEntry.findMany.mockResolvedValue([]);
+
+      // 100 plan + 5% tolerance = 105 max allowed. 106 must reject.
+      await expect(
+        repository.recordQuantity(
+          'step-cut-1',
+          { size: '30', qtyGood: 106, qtyDefect: 0 },
+          cuttingOperator.id,
+          'STATION_OPERATOR',
+        ),
+      ).rejects.toThrow(BusinessRuleViolation);
+    });
+
+    it('BR-08: rejects entry exceeding previous step good quantity', async () => {
+      prisma.stepInstance.findUnique.mockResolvedValue(mockStepSew);
+      prisma.stepQuantityEntry.findMany.mockResolvedValue([]);
+
+      // Previous step has qtyGood = 100. Entry of 105 must reject.
+      await expect(
+        repository.recordQuantity(
+          'step-sew-1',
+          { size: '30', qtyGood: 105, qtyDefect: 0 },
+          cuttingOperator.id,
+          'STATION_OPERATOR',
+        ),
+      ).rejects.toThrow(BusinessRuleViolation);
+    });
+
+    it('BR-08 Concurrency test: two entries jointly exceeding previous good quantity are rejected on second entry', async () => {
+      prisma.stepInstance.findUnique.mockResolvedValue(mockStepSew);
+      // First transaction already recorded 60 pieces
+      prisma.stepQuantityEntry.findMany.mockResolvedValue([
+        { id: 'entry-1', size: '30', qtyGood: 60, qtyDefect: 0 },
+      ]);
+
+      // Previous good was 100. Attempting to record another 45 would total 105 > 100.
+      await expect(
+        repository.recordQuantity(
+          'step-sew-1',
+          { size: '30', qtyGood: 45, qtyDefect: 0 },
+          cuttingOperator.id,
+          'STATION_OPERATOR',
+        ),
+      ).rejects.toThrow(BusinessRuleViolation);
+    });
+
+    it('BR-09: outsourced step rejects quantity mismatch without reason and succeeds with reason', async () => {
+      const mockStepWash = {
+        id: 'step-wash-1',
+        status: 'IN_PROGRESS',
+        stepDefinition: {
+          id: 'sd-wash',
+          code: 'OUTSOURCED_WASH',
+          name: 'Outsourced Wash',
+          stepType: 'PRODUCTION',
+          seq: 30,
+          stationType: 'WASHING',
+        },
+        instance: {
+          id: 'inst-1',
+          order: {
+            id: 'ord-1',
+            orderNumber: 'PO-2026-001',
+            sizeLines: [{ size: '30', plannedQty: 100 }],
+          },
+          stepInstances: [
+            {
+              id: 'step-sew-1',
+              status: 'DONE',
+              qtyGood: 100,
+              stepDefinition: { id: 'sd-sew', code: 'SEWING', seq: 20 },
+            },
+            {
+              id: 'step-wash-1',
+              status: 'IN_PROGRESS',
+              stepDefinition: {
+                id: 'sd-wash',
+                code: 'OUTSOURCED_WASH',
+                seq: 30,
+                stationType: 'WASH',
+              },
+            },
+          ],
+        },
+      };
+
+      prisma.stepInstance.findUnique.mockResolvedValue(mockStepWash);
+      prisma.stepQuantityEntry.findMany.mockResolvedValue([]);
+
+      // Mismatch: sent 100, received 95, no reason -> Throws BR-09
+      await expect(
+        repository.recordQuantity(
+          'step-wash-1',
+          { size: '30', qtyGood: 95, qtyDefect: 0, qtySent: 100, qtyReceived: 95 },
+          cuttingOperator.id,
+          'STATION_OPERATOR',
+        ),
+      ).rejects.toThrow(BusinessRuleViolation);
+
+      // Mismatch with reason -> Succeeds
+      prisma.stepQuantityEntry.create.mockResolvedValue({
+        id: 'entry-wash-1',
+        stepInstanceId: 'step-wash-1',
+        size: '30',
+        qtyGood: 95,
+        qtyDefect: 0,
+        qtySent: 100,
+        qtyReceived: 95,
+        mismatchReason: '5 units damaged during transport',
+        note: null,
+        enteredBy: cuttingOperator.id,
+        enteredAt: new Date(),
+      });
+
+      const res = await repository.recordQuantity(
+        'step-wash-1',
+        {
+          size: '30',
+          qtyGood: 95,
+          qtyDefect: 0,
+          qtySent: 100,
+          qtyReceived: 95,
+          mismatchReason: '5 units damaged during transport',
+        },
+        cuttingOperator.id,
+        'STATION_OPERATOR',
+      );
+
+      expect(res.qtyGood).toBe(95);
+      expect(res.mismatchReason).toBe('5 units damaged during transport');
+    });
+
+    it('executes pessimistic lock and records audit log on successful quantity entry', async () => {
+      prisma.stepInstance.findUnique.mockResolvedValue(mockStepSew);
+      prisma.stepQuantityEntry.findMany.mockResolvedValue([]);
+      prisma.stepQuantityEntry.create.mockResolvedValue({
+        id: 'entry-valid-1',
+        stepInstanceId: 'step-sew-1',
+        size: '30',
+        qtyGood: 50,
+        qtyDefect: 2,
+        qtySent: null,
+        qtyReceived: null,
+        mismatchReason: null,
+        note: null,
+        enteredBy: cuttingOperator.id,
+        enteredAt: new Date(),
+      });
+
+      const res = await repository.recordQuantity(
+        'step-sew-1',
+        { size: '30', qtyGood: 50, qtyDefect: 2 },
+        cuttingOperator.id,
+        'STATION_OPERATOR',
+      );
+
+      // Verify pessimistic lock query executed
+      expect(prisma.$executeRaw).toHaveBeenCalled();
+
+      // Verify step instance aggregates updated
+      expect(prisma.stepInstance.update).toHaveBeenCalledWith({
+        where: { id: 'step-sew-1' },
+        data: {
+          qtyIn: 100,
+          qtyGood: 50,
+          qtyDefect: 2,
+        },
+      });
+
+      // Verify AuditLog written
+      expect(prisma.auditLog.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            action: 'RECORD_QUANTITY',
+            entityType: 'StepQuantityEntry',
+          }),
+        }),
+      );
+
+      expect(res.qtyGood).toBe(50);
+      expect(res.qtyDefect).toBe(2);
+    });
+  });
+
+  describe('generateBundles (FR-15)', () => {
+    it('generates standard bundles with bundle code PO-...-B001', async () => {
+      const mockStepCut = {
+        id: 'step-cut-1',
+        stepDefinition: { code: 'CUTTING' },
+        instance: {
+          order: {
+            id: 'ord-1',
+            orderNumber: 'PO-2026-001',
+            sizeLines: [{ size: '30', plannedQty: 100 }],
+            bundles: [],
+          },
+        },
+      };
+
+      prisma.stepInstance.findUnique.mockResolvedValue(mockStepCut);
+      prisma.bundle.create.mockImplementation(({ data }) =>
+        Promise.resolve({
+          id: 'bundle-' + data.bundleCode,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          ...data,
+        }),
+      );
+
+      const bundles = await repository.generateBundles('step-cut-1', cuttingOperator.id);
+
+      expect(bundles).toHaveLength(2); // 100 units / 50 per bundle = 2 bundles
+      expect(bundles[0]!.bundleCode).toBe('PO-2026-001-B001');
+      expect(bundles[0]!.qty).toBe(50);
+      expect(bundles[1]!.bundleCode).toBe('PO-2026-001-B002');
+      expect(bundles[1]!.qty).toBe(50);
     });
   });
 });

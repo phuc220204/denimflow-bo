@@ -51,3 +51,44 @@ export const completeStepResponseSchema = z.object({
   newlySkippedStepCodes: z.array(z.string()),
 });
 export type CompleteStepResponseDto = z.infer<typeof completeStepResponseSchema>;
+
+// T4.3 Quantity & Bundle schemas
+export const recordQuantityEntrySchema = z.object({
+  bundleId: z.string().uuid().optional(),
+  size: z.string().optional(),
+  qtyGood: z.number().int().min(0),
+  qtyDefect: z.number().int().min(0).default(0),
+  qtySent: z.number().int().min(0).optional(),
+  qtyReceived: z.number().int().min(0).optional(),
+  mismatchReason: z.string().optional(),
+  note: z.string().optional(),
+});
+export type RecordQuantityEntryDto = z.infer<typeof recordQuantityEntrySchema>;
+
+export const stepQuantityEntrySchema = z.object({
+  id: z.string().uuid(),
+  stepInstanceId: z.string().uuid(),
+  bundleId: z.string().uuid().nullable().optional(),
+  size: z.string().nullable().optional(),
+  qtyGood: z.number().int(),
+  qtyDefect: z.number().int(),
+  qtySent: z.number().int().nullable().optional(),
+  qtyReceived: z.number().int().nullable().optional(),
+  mismatchReason: z.string().nullable().optional(),
+  note: z.string().nullable().optional(),
+  enteredBy: z.string().uuid(),
+  enteredAt: z.string(),
+});
+export type StepQuantityEntryDto = z.infer<typeof stepQuantityEntrySchema>;
+
+export const bundleSchema = z.object({
+  id: z.string().uuid(),
+  orderId: z.string().uuid(),
+  bundleCode: z.string(),
+  size: z.string(),
+  qty: z.number().int(),
+  currentStepInstanceId: z.string().uuid().nullable().optional(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type BundleDto = z.infer<typeof bundleSchema>;

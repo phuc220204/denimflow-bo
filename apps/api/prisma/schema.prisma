@@ -596,6 +596,9 @@ model StepQuantityEntry {
   size           String?
   qtyGood        Int           @default(0) @map("qty_good")
   qtyDefect      Int           @default(0) @map("qty_defect")
+  qtySent        Int?          @map("qty_sent")
+  qtyReceived    Int?          @map("qty_received")
+  mismatchReason String?       @map("mismatch_reason")
   note           String?
   enteredBy      String        @map("entered_by") @db.Uuid
   enteredAt      DateTime      @default(now()) @map("entered_at") @db.Timestamptz

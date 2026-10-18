@@ -6,15 +6,20 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type {
+  BundleDto,
   CompleteStepResponseDto,
+  RecordQuantityEntryDto,
   StartStepResponseDto,
+  StepQuantityEntryDto,
   StepStatus,
   WorklistItemDto,
   WorklistQueryDto,
 } from '@denimflow/shared';
 import {
   evaluateStepReadiness,
+  generateBundlesForCutting,
   type StepInstanceSnapshot,
+  validateQuantityEntry,
   type WorkflowInstanceSnapshot,
 } from '@denimflow/engine';
 import { BusinessRuleViolation } from '../../common/errors/business-rule-violation.js';
@@ -444,5 +449,319 @@ export class ExecutionRepository {
         newlySkippedStepCodes,
       };
     });
+  }
+
+  async recordQuantity(
+    stepId: string,
+    input: RecordQuantityEntryDto,
+    actorId: string,
+    actorRole: string,
+  ): Promise<StepQuantityEntryDto> {
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Fetch step instance to identify workflow instance and order
+      const step = await tx.stepInstance.findUnique({
+        where: { id: stepId },
+        include: {
+          stepDefinition: true,
+          instance: {
+            include: {
+              order: {
+                include: { sizeLines: true },
+              },
+              stepInstances: {
+                include: { stepDefinition: true },
+              },
+            },
+          },
+        },
+      });
+
+      if (!step) {
+        throw new NotFoundException(`StepInstance with ID ${stepId} not found`);
+      }
+
+      // BR-11: Process Engineer may not enter production quantities
+      if (actorRole === 'PROCESS_ENGINEER' && step.stepDefinition.stepType === 'PRODUCTION') {
+        throw new BusinessRuleViolation(
+          'BR-11',
+          'BR-11: Process Engineer may not enter production quantities',
+        );
+      }
+
+      // Identify previous step in workflow sequence
+      const previousSteps = step.instance.stepInstances
+        .filter((s) => s.stepDefinition.seq < step.stepDefinition.seq && s.status !== 'SKIPPED')
+        .sort((a, b) => b.stepDefinition.seq - a.stepDefinition.seq);
+      const previousStep = previousSteps.length > 0 ? previousSteps[0] : null;
+
+      // Pessimistic Locking: Lock current step and previous step in ascending ID order (DATABASE_DESIGN.md §7.2)
+      const idsToLock = [step.id, previousStep?.id]
+        .filter((id): id is string => Boolean(id))
+        .sort();
+      for (const id of idsToLock) {
+        await tx.$executeRaw`SELECT id FROM "step_instances" WHERE id = ${id}::uuid FOR UPDATE`;
+      }
+
+      // Existing entries for this step
+      const existingEntries = await tx.stepQuantityEntry.findMany({
+        where: { stepInstanceId: stepId },
+      });
+
+      const currentStepTotalGoodSoFar = existingEntries.reduce((sum, e) => sum + e.qtyGood, 0);
+
+      const isCutting = step.stepDefinition.code === 'CUTTING';
+      let targetSize = input.size;
+
+      if (!targetSize && input.bundleId) {
+        const bundle = await tx.bundle.findUnique({ where: { id: input.bundleId } });
+        if (bundle) {
+          targetSize = bundle.size;
+        }
+      }
+
+      let plannedQtyForSize: number | undefined;
+      let existingCutQtyForSize: number | undefined;
+
+      if (isCutting && targetSize) {
+        const sizeLine = step.instance.order.sizeLines.find((sl) => sl.size === targetSize);
+        plannedQtyForSize = sizeLine?.plannedQty ?? 0;
+        existingCutQtyForSize = existingEntries
+          .filter((e) => e.size === targetSize)
+          .reduce((sum, e) => sum + e.qtyGood + e.qtyDefect, 0);
+      }
+
+      const isOutsourced =
+        step.stepDefinition.stationType === 'DYEING' ||
+        step.stepDefinition.stationType === 'WASH' ||
+        input.qtySent !== undefined;
+
+      // Validate using pure engine rules (BR-07, BR-08, BR-09)
+      const validation = validateQuantityEntry({
+        stepCode: step.stepDefinition.code,
+        isCutting,
+        plannedQtyForSize,
+        cutTolerancePercent: 5,
+        existingCutQtyForSize,
+        entryQtyGood: input.qtyGood,
+        entryQtyDefect: input.qtyDefect ?? 0,
+        previousStepGoodQty: previousStep?.qtyGood ?? undefined,
+        currentStepTotalGoodSoFar,
+        isOutsourced,
+        qtySent: input.qtySent,
+        qtyReceived: input.qtyReceived,
+        mismatchReason: input.mismatchReason,
+      });
+
+      if (!validation.valid) {
+        throw new BusinessRuleViolation(
+          validation.ruleId ?? 'BR-08',
+          validation.reason ?? 'Quantity validation failed',
+        );
+      }
+
+      // Insert quantity entry
+      const entry = await tx.stepQuantityEntry.create({
+        data: {
+          stepInstanceId: stepId,
+          bundleId: input.bundleId,
+          size: targetSize,
+          qtyGood: input.qtyGood,
+          qtyDefect: input.qtyDefect ?? 0,
+          qtySent: input.qtySent,
+          qtyReceived: input.qtyReceived,
+          mismatchReason: input.mismatchReason,
+          note: input.note,
+          enteredBy: actorId,
+        },
+      });
+
+      // Update aggregates on step_instances
+      const totalGood = currentStepTotalGoodSoFar + input.qtyGood;
+      const totalDefect =
+        existingEntries.reduce((sum, e) => sum + e.qtyDefect, 0) + (input.qtyDefect ?? 0);
+      const qtyIn = isCutting ? totalGood + totalDefect : (previousStep?.qtyGood ?? totalGood);
+
+      await tx.stepInstance.update({
+        where: { id: stepId },
+        data: {
+          qtyIn,
+          qtyGood: totalGood,
+          qtyDefect: totalDefect,
+        },
+      });
+
+      // Update bundle current step if bundle provided
+      if (input.bundleId) {
+        await tx.bundle.update({
+          where: { id: input.bundleId },
+          data: { currentStepInstanceId: stepId },
+        });
+      }
+
+      // Audit log (BR-16)
+      await tx.auditLog.create({
+        data: {
+          entityType: 'StepQuantityEntry',
+          entityId: entry.id,
+          action: 'RECORD_QUANTITY',
+          actorId,
+          newValue: {
+            stepInstanceId: stepId,
+            bundleId: input.bundleId,
+            size: targetSize,
+            qtyGood: input.qtyGood,
+            qtyDefect: input.qtyDefect ?? 0,
+            stepTotalGood: totalGood,
+            stepTotalDefect: totalDefect,
+          },
+        },
+      });
+
+      return {
+        id: entry.id,
+        stepInstanceId: entry.stepInstanceId,
+        bundleId: entry.bundleId,
+        size: entry.size,
+        qtyGood: entry.qtyGood,
+        qtyDefect: entry.qtyDefect,
+        qtySent: entry.qtySent,
+        qtyReceived: entry.qtyReceived,
+        mismatchReason: entry.mismatchReason,
+        note: entry.note,
+        enteredBy: entry.enteredBy,
+        enteredAt: entry.enteredAt.toISOString(),
+      };
+    });
+  }
+
+  async generateBundles(stepId: string, actorId: string): Promise<BundleDto[]> {
+    return this.prisma.$transaction(async (tx) => {
+      const step = await tx.stepInstance.findUnique({
+        where: { id: stepId },
+        include: {
+          stepDefinition: true,
+          instance: {
+            include: {
+              order: {
+                include: {
+                  sizeLines: true,
+                  bundles: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!step) {
+        throw new NotFoundException(`StepInstance with ID ${stepId} not found`);
+      }
+
+      const order = step.instance.order;
+      if (order.bundles.length > 0) {
+        return order.bundles.map((b) => ({
+          id: b.id,
+          orderId: b.orderId,
+          bundleCode: b.bundleCode,
+          size: b.size,
+          qty: b.qty,
+          currentStepInstanceId: b.currentStepInstanceId,
+          createdAt: b.createdAt.toISOString(),
+          updatedAt: b.updatedAt.toISOString(),
+        }));
+      }
+
+      const generated = generateBundlesForCutting(
+        order.orderNumber,
+        order.sizeLines.map((sl) => ({ size: sl.size, plannedQty: sl.plannedQty })),
+      );
+
+      const createdBundles: BundleDto[] = [];
+      for (const b of generated) {
+        const created = await tx.bundle.create({
+          data: {
+            orderId: order.id,
+            bundleCode: b.bundleCode,
+            size: b.size,
+            qty: b.qty,
+            currentStepInstanceId: stepId,
+          },
+        });
+        createdBundles.push({
+          id: created.id,
+          orderId: created.orderId,
+          bundleCode: created.bundleCode,
+          size: created.size,
+          qty: created.qty,
+          currentStepInstanceId: created.currentStepInstanceId,
+          createdAt: created.createdAt.toISOString(),
+          updatedAt: created.updatedAt.toISOString(),
+        });
+      }
+
+      await tx.auditLog.create({
+        data: {
+          entityType: 'ProductionOrder',
+          entityId: order.id,
+          action: 'GENERATE_BUNDLES',
+          actorId,
+          newValue: { bundleCount: createdBundles.length },
+        },
+      });
+
+      return createdBundles;
+    });
+  }
+
+  async getBundles(stepId: string): Promise<BundleDto[]> {
+    const step = await this.prisma.stepInstance.findUnique({
+      where: { id: stepId },
+      include: {
+        instance: {
+          include: {
+            order: {
+              include: { bundles: { orderBy: { bundleCode: 'asc' } } },
+            },
+          },
+        },
+      },
+    });
+
+    if (!step) {
+      throw new NotFoundException(`StepInstance with ID ${stepId} not found`);
+    }
+
+    return step.instance.order.bundles.map((b) => ({
+      id: b.id,
+      orderId: b.orderId,
+      bundleCode: b.bundleCode,
+      size: b.size,
+      qty: b.qty,
+      currentStepInstanceId: b.currentStepInstanceId,
+      createdAt: b.createdAt.toISOString(),
+      updatedAt: b.updatedAt.toISOString(),
+    }));
+  }
+
+  async getQuantityEntries(stepId: string): Promise<StepQuantityEntryDto[]> {
+    const entries = await this.prisma.stepQuantityEntry.findMany({
+      where: { stepInstanceId: stepId },
+      orderBy: { enteredAt: 'desc' },
+    });
+
+    return entries.map((e) => ({
+      id: e.id,
+      stepInstanceId: e.stepInstanceId,
+      bundleId: e.bundleId,
+      size: e.size,
+      qtyGood: e.qtyGood,
+      qtyDefect: e.qtyDefect,
+      qtySent: e.qtySent,
+      qtyReceived: e.qtyReceived,
+      mismatchReason: e.mismatchReason,
+      note: e.note,
+      enteredBy: e.enteredBy,
+      enteredAt: e.enteredAt.toISOString(),
+    }));
   }
 }

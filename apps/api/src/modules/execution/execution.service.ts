@@ -1,7 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type {
+  BundleDto,
   CompleteStepResponseDto,
+  RecordQuantityEntryDto,
   StartStepResponseDto,
+  StepQuantityEntryDto,
   WorklistItemDto,
   WorklistQueryDto,
 } from '@denimflow/shared';
@@ -31,5 +34,26 @@ export class ExecutionService {
     actorRole: string,
   ): Promise<CompleteStepResponseDto> {
     return this.executionRepository.completeStep(stepId, actorId, actorRole);
+  }
+
+  async recordQuantity(
+    stepId: string,
+    input: RecordQuantityEntryDto,
+    actorId: string,
+    actorRole: string,
+  ): Promise<StepQuantityEntryDto> {
+    return this.executionRepository.recordQuantity(stepId, input, actorId, actorRole);
+  }
+
+  async generateBundles(stepId: string, actorId: string): Promise<BundleDto[]> {
+    return this.executionRepository.generateBundles(stepId, actorId);
+  }
+
+  async getBundles(stepId: string): Promise<BundleDto[]> {
+    return this.executionRepository.getBundles(stepId);
+  }
+
+  async getQuantityEntries(stepId: string): Promise<StepQuantityEntryDto[]> {
+    return this.executionRepository.getQuantityEntries(stepId);
   }
 }

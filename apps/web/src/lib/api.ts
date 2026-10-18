@@ -29,9 +29,20 @@ import {
   type StartStepResponseDto,
   type StepStatus,
   type WorklistItemDto,
+  type BundleDto,
+  type RecordQuantityEntryDto,
+  type StepQuantityEntryDto,
 } from '@denimflow/shared';
 
-export type { CompleteStepResponseDto, StartStepResponseDto, StepStatus, WorklistItemDto };
+export type {
+  CompleteStepResponseDto,
+  StartStepResponseDto,
+  StepStatus,
+  WorklistItemDto,
+  BundleDto,
+  RecordQuantityEntryDto,
+  StepQuantityEntryDto,
+};
 
 export interface UserProfile {
   id: string;
@@ -1225,5 +1236,57 @@ export async function completeStepApi(
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Không thể hoàn thành công đoạn');
+  return data;
+}
+
+export async function recordQuantityApi(
+  stepId: string,
+  dto: RecordQuantityEntryDto,
+  token?: string | null,
+): Promise<StepQuantityEntryDto> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/quantities`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(dto),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể ghi nhận sản lượng');
+  return data;
+}
+
+export async function fetchStepQuantitiesApi(
+  stepId: string,
+  token?: string | null,
+): Promise<StepQuantityEntryDto[]> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/quantities`, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tải lịch sử sản lượng');
+  return data;
+}
+
+export async function generateBundlesApi(
+  stepId: string,
+  token?: string | null,
+): Promise<BundleDto[]> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/bundles/generate`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tạo kiện hàng');
+  return data;
+}
+
+export async function fetchStepBundlesApi(
+  stepId: string,
+  token?: string | null,
+): Promise<BundleDto[]> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/bundles`, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tải danh sách kiện');
   return data;
 }

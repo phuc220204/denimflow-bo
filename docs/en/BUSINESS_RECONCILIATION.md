@@ -22,9 +22,9 @@ Status values: `TODO`, `IN PROGRESS`, `DONE`, `DEFERRED` (outside MVP, deliberat
 | BR-04 | Only colors listed in the Fabric–Color Matrix for the selected fabric type may be chosen | A, D (data), W (filter) | order, catalog | S1 data / S3 | DONE |
 | BR-05 | Once CUTTING starts, fabric–color–wash is locked. Changing it needs BR-13 or cancelling the order | A | order | S3 (lock enforced from S4) | DONE |
 | BR-06 | CUTTING may not start unless fabric is fully allocated per the BOM | E (Gate) | inventory, execution | S3–S4 | DONE |
-| BR-07 | Total cut quantity per size may not exceed plan + configured tolerance | E, A | execution | S4 | TODO |
-| BR-08 | Quantity conservation: quantity entering the next step ≤ good quantity of the previous step; the difference must match recorded defects or wastage | E, A, D (row lock + CHECK) | execution | S4 | TODO |
-| BR-09 | Outsourced wash/dye: quantity received must be reconciled with quantity sent; a mismatch needs a recorded reason | A | execution | S4 | TODO |
+| BR-07 | Total cut quantity per size may not exceed plan + configured tolerance | E, A | execution | S4 | DONE |
+| BR-08 | Quantity conservation: quantity entering the next step ≤ good quantity of the previous step; the difference must match recorded defects or wastage | E, A, D (row lock + CHECK) | execution | S4 | DONE |
+| BR-09 | Outsourced wash/dye: quantity received must be reconciled with quantity sent; a mismatch needs a recorded reason | A, E | execution | S4 | DONE |
 | BR-10 | QC Fail/Rework must select a step to return to and record a reason. Beyond the max rework loops, the order goes to the Planner | E, A | quality | S5 | TODO |
 | BR-11 | Separation of duties: whoever performed a step may not approve QC of that step; the Process Engineer may not confirm completion of production steps | A | execution, quality | S4 / S5 | TODO |
 | BR-12 | Cancelling needs a reason. Before CUTTING release all allocations; from CUTTING onward record cut fabric and cost | A | order | post-MVP (FR-10) | DEFERRED |

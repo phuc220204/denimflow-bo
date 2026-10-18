@@ -1,5 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertCircle, CheckCircle2, Clock, Filter, Play, RefreshCw } from 'lucide-react';
+import {
+  AlertCircle,
+  Boxes,
+  CheckCircle2,
+  ClipboardList,
+  Clock,
+  Filter,
+  Play,
+  PlusCircle,
+  RefreshCw,
+  X,
+} from 'lucide-react';
 import React, { useState } from 'react';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
@@ -10,9 +21,15 @@ import {
   CardHeader,
   CardTitle,
 } from '../../components/ui/card';
-import { completeStepApi, fetchWorklistApi, startStepApi } from '../../lib/api';
+import {
+  completeStepApi,
+  fetchWorklistApi,
+  generateBundlesApi,
+  recordQuantityApi,
+  startStepApi,
+} from '../../lib/api';
 import { useAuth } from '../../lib/auth-context';
-import type { StepStatus, WorklistItemDto } from '@denimflow/shared';
+import type { RecordQuantityEntryDto, StepStatus, WorklistItemDto } from '@denimflow/shared';
 
 const STATUS_CONFIG: Record<
   string,
@@ -32,6 +49,16 @@ export const WorklistPage: React.FC = () => {
   const [stationFilter, setStationFilter] = useState<string>('ALL');
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+
+  // Quantity entry modal state
+  const [selectedStep, setSelectedStep] = useState<WorklistItemDto | null>(null);
+  const [qtySize, setQtySize] = useState<string>('30');
+  const [qtyGood, setQtyGood] = useState<number>(0);
+  const [qtyDefect, setQtyDefect] = useState<number>(0);
+  const [qtySent, setQtySent] = useState<number | undefined>(undefined);
+  const [qtyReceived, setQtyReceived] = useState<number | undefined>(undefined);
+  const [mismatchReason, setMismatchReason] = useState<string>('');
+  const [qtyNote, setQtyNote] = useState<string>('');
 
   const {
     data: worklist = [],
@@ -81,6 +108,32 @@ export const WorklistPage: React.FC = () => {
     },
   });
 
+  const recordQuantityMutation = useMutation({
+    mutationFn: ({ stepId, dto }: { stepId: string; dto: RecordQuantityEntryDto }) =>
+      recordQuantityApi(stepId, dto, token),
+    onSuccess: () => {
+      setActionSuccess('Đã ghi nhận sản lượng thành công (BR-08)!');
+      setActionError(null);
+      setSelectedStep(null);
+      void queryClient.invalidateQueries({ queryKey: ['worklist'] });
+    },
+    onError: (err: Error) => {
+      setActionError(err.message || 'Không thể ghi nhận sản lượng');
+    },
+  });
+
+  const generateBundlesMutation = useMutation({
+    mutationFn: (stepId: string) => generateBundlesApi(stepId, token),
+    onSuccess: (bundles) => {
+      setActionSuccess(`Đã tạo thành công ${bundles.length} kiện hàng theo quy chuẩn (FR-15)!`);
+      setActionError(null);
+      void queryClient.invalidateQueries({ queryKey: ['worklist'] });
+    },
+    onError: (err: Error) => {
+      setActionError(err.message || 'Không thể tạo kiện hàng');
+    },
+  });
+
   const handleStart = (stepId: string) => {
     setActionError(null);
     setActionSuccess(null);
@@ -93,6 +146,33 @@ export const WorklistPage: React.FC = () => {
     completeMutation.mutate(stepId);
   };
 
+  const openQuantityModal = (step: WorklistItemDto) => {
+    setSelectedStep(step);
+    setQtyGood(0);
+    setQtyDefect(0);
+    setQtySent(undefined);
+    setQtyReceived(undefined);
+    setMismatchReason('');
+    setQtyNote('');
+  };
+
+  const submitQuantity = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedStep) return;
+
+    const dto: RecordQuantityEntryDto = {
+      size: qtySize,
+      qtyGood: Number(qtyGood),
+      qtyDefect: Number(qtyDefect),
+      qtySent: qtySent !== undefined ? Number(qtySent) : undefined,
+      qtyReceived: qtyReceived !== undefined ? Number(qtyReceived) : undefined,
+      mismatchReason: mismatchReason || undefined,
+      note: qtyNote || undefined,
+    };
+
+    recordQuantityMutation.mutate({ stepId: selectedStep.id, dto });
+  };
+
   const isOperator = user?.role === 'STATION_OPERATOR';
 
   return (
@@ -102,8 +182,8 @@ export const WorklistPage: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-text">Danh sách công việc trạm</h1>
           <p className="text-sm text-text-muted mt-1">
-            Quản lý các công đoạn sản xuất, bắt đầu thao tác và ghi nhận hoàn thành theo quy trình
-            (FR-12).
+            Quản lý công đoạn sản xuất, ghi nhận sản lượng bảo toàn và hoàn thành quy trình (FR-12,
+            FR-13).
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -204,7 +284,12 @@ export const WorklistPage: React.FC = () => {
               tone: 'outline' as const,
             };
 
-            const isPendingAction = startMutation.isPending || completeMutation.isPending;
+            const isPendingAction =
+              startMutation.isPending ||
+              completeMutation.isPending ||
+              generateBundlesMutation.isPending;
+
+            const isCutting = item.stepCode === 'CUTTING';
 
             return (
               <Card
@@ -235,8 +320,26 @@ export const WorklistPage: React.FC = () => {
                       <span className="font-semibold text-text">{item.styleCode}</span>
                     </div>
                     <div>
-                      <span className="block text-text-muted">Tổng số lượng:</span>
+                      <span className="block text-text-muted">Kế hoạch:</span>
                       <span className="font-semibold text-text">{item.totalPlannedQty} cái</span>
+                    </div>
+                  </div>
+
+                  {/* Quantity metrics (FR-13, BR-08) */}
+                  <div className="grid grid-cols-3 gap-1.5 p-2 bg-slate-50 border border-slate-200 rounded text-center">
+                    <div>
+                      <span className="block text-[11px] text-slate-500">Đầu vào</span>
+                      <span className="font-bold text-slate-800">
+                        {item.qtyIn !== null && item.qtyIn !== undefined ? item.qtyIn : '—'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="block text-[11px] text-emerald-600">Đạt</span>
+                      <span className="font-bold text-emerald-700">{item.qtyGood ?? 0}</span>
+                    </div>
+                    <div>
+                      <span className="block text-[11px] text-rose-600">Lỗi/Hỏng</span>
+                      <span className="font-bold text-rose-700">{item.qtyDefect ?? 0}</span>
                     </div>
                   </div>
 
@@ -260,7 +363,20 @@ export const WorklistPage: React.FC = () => {
                   )}
 
                   {/* Actions */}
-                  <div className="pt-2">
+                  <div className="pt-2 space-y-2">
+                    {isCutting && (item.status === 'READY' || item.status === 'IN_PROGRESS') && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full flex items-center justify-center gap-1.5 text-indigo-700 border-indigo-200 hover:bg-indigo-50"
+                        disabled={isPendingAction}
+                        onClick={() => generateBundlesMutation.mutate(item.id)}
+                      >
+                        <Boxes className="h-3.5 w-3.5" />
+                        Tạo kiện hàng cắt (FR-15)
+                      </Button>
+                    )}
+
                     {(item.status === 'READY' || item.status === 'REWORK') && (
                       <Button
                         className="w-full flex items-center justify-center gap-2"
@@ -274,16 +390,29 @@ export const WorklistPage: React.FC = () => {
                     )}
 
                     {item.status === 'IN_PROGRESS' && (
-                      <Button
-                        variant="primary"
-                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-2"
-                        size="sm"
-                        disabled={isPendingAction}
-                        onClick={() => handleComplete(item.id)}
-                      >
-                        <CheckCircle2 className="h-4 w-4" />
-                        Hoàn thành công đoạn
-                      </Button>
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full flex items-center justify-center gap-1.5 text-blue-700 border-blue-200 hover:bg-blue-50"
+                          disabled={isPendingAction}
+                          onClick={() => openQuantityModal(item)}
+                        >
+                          <PlusCircle className="h-3.5 w-3.5" />
+                          Nhập sản lượng (FR-13)
+                        </Button>
+
+                        <Button
+                          variant="primary"
+                          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-2"
+                          size="sm"
+                          disabled={isPendingAction}
+                          onClick={() => handleComplete(item.id)}
+                        >
+                          <CheckCircle2 className="h-4 w-4" />
+                          Hoàn thành công đoạn
+                        </Button>
+                      </>
                     )}
 
                     {item.status === 'WAITING_QC' && (
@@ -296,6 +425,159 @@ export const WorklistPage: React.FC = () => {
               </Card>
             );
           })}
+        </div>
+      )}
+
+      {/* Quantity Entry Modal (FR-13, BR-07, BR-08, BR-09) */}
+      {selectedStep && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-background border border-border rounded-xl max-w-md w-full p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2">
+                <ClipboardList className="h-5 w-5 text-primary" />
+                <h3 className="font-semibold text-lg text-text">
+                  Ghi nhận sản lượng ({selectedStep.stepCode})
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedStep(null)}
+                className="text-text-muted hover:text-text"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={submitQuantity} className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-medium text-text-muted mb-1">
+                  Kích cỡ (Size)
+                </label>
+                <select
+                  value={qtySize}
+                  onChange={(e) => setQtySize(e.target.value)}
+                  className="w-full border border-border rounded-lg px-3 py-1.5 text-sm bg-background"
+                >
+                  <option value="28">Size 28</option>
+                  <option value="29">Size 29</option>
+                  <option value="30">Size 30</option>
+                  <option value="31">Size 31</option>
+                  <option value="32">Size 32</option>
+                  <option value="34">Size 34</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-emerald-700 mb-1">
+                    Số lượng đạt (qtyGood) *
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    required
+                    value={qtyGood}
+                    onChange={(e) => setQtyGood(Number(e.target.value))}
+                    className="w-full border border-border rounded-lg px-3 py-1.5 text-sm bg-background"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-rose-700 mb-1">
+                    Số lượng lỗi (qtyDefect)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={qtyDefect}
+                    onChange={(e) => setQtyDefect(Number(e.target.value))}
+                    className="w-full border border-border rounded-lg px-3 py-1.5 text-sm bg-background"
+                  />
+                </div>
+              </div>
+
+              {/* Outsourced reconciliation (BR-09) */}
+              {(selectedStep.stationType === 'DYEING' || selectedStep.stationType === 'WASH') && (
+                <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-lg space-y-2.5">
+                  <span className="text-xs font-semibold text-amber-900 block">
+                    Đối soát gia công ngoài (BR-09)
+                  </span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[11px] text-amber-800 mb-0.5">
+                        SL gửi đi (Sent)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={qtySent ?? ''}
+                        onChange={(e) =>
+                          setQtySent(e.target.value ? Number(e.target.value) : undefined)
+                        }
+                        className="w-full border border-amber-300 rounded px-2.5 py-1 text-xs bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] text-amber-800 mb-0.5">
+                        SL nhận về (Received)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={qtyReceived ?? ''}
+                        onChange={(e) =>
+                          setQtyReceived(e.target.value ? Number(e.target.value) : undefined)
+                        }
+                        className="w-full border border-amber-300 rounded px-2.5 py-1 text-xs bg-white"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-amber-800 mb-0.5">
+                      Lý do chênh lệch (Bắt buộc nếu gửi ≠ nhận)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="VD: Hao hụt nhiệt 3 cái..."
+                      value={mismatchReason}
+                      onChange={(e) => setMismatchReason(e.target.value)}
+                      className="w-full border border-amber-300 rounded px-2.5 py-1 text-xs bg-white"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-medium text-text-muted mb-1">Ghi chú</label>
+                <input
+                  type="text"
+                  placeholder="Ghi chú thêm nếu có..."
+                  value={qtyNote}
+                  onChange={(e) => setQtyNote(e.target.value)}
+                  className="w-full border border-border rounded-lg px-3 py-1.5 text-sm bg-background"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedStep(null)}
+                  disabled={recordQuantityMutation.isPending}
+                >
+                  Hủy bỏ
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="sm"
+                  disabled={recordQuantityMutation.isPending}
+                >
+                  {recordQuantityMutation.isPending ? 'Đang lưu...' : 'Xác nhận ghi nhận'}
+                </Button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

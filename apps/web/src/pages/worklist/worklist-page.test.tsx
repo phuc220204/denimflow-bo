@@ -177,4 +177,71 @@ describe('WorklistPage (T4.2, FR-12)', () => {
       expect(screen.getByText('Hiện không có công việc nào')).toBeDefined();
     });
   });
+
+  it('T4.3: opens quantity modal and submits quantity entry successfully (FR-13, BR-08)', async () => {
+    vi.spyOn(api, 'fetchWorklistApi').mockResolvedValue(mockWorklistItems);
+    const recordQtySpy = vi.spyOn(api, 'recordQuantityApi').mockResolvedValue({
+      id: 'entry-1',
+      stepInstanceId: 'step-sew-1',
+      bundleId: null,
+      size: '30',
+      qtyGood: 50,
+      qtyDefect: 0,
+      qtySent: null,
+      qtyReceived: null,
+      mismatchReason: null,
+      note: null,
+      enteredBy: mockOperator.id,
+      enteredAt: new Date().toISOString(),
+    });
+
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText('Nhập sản lượng (FR-13)')).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByText('Nhập sản lượng (FR-13)'));
+
+    expect(screen.getByText('Ghi nhận sản lượng (SEWING)')).toBeDefined();
+
+    fireEvent.click(screen.getByText('Xác nhận ghi nhận'));
+
+    await waitFor(() => {
+      expect(recordQtySpy).toHaveBeenCalledWith(
+        'step-sew-1',
+        expect.objectContaining({ size: '30', qtyGood: 0 }),
+        'operator-token',
+      );
+    });
+  });
+
+  it('T4.3: triggers bundle generation for cutting step (FR-15)', async () => {
+    vi.spyOn(api, 'fetchWorklistApi').mockResolvedValue(mockWorklistItems);
+    const bundleSpy = vi.spyOn(api, 'generateBundlesApi').mockResolvedValue([
+      {
+        id: 'b-1',
+        orderId: 'order-1',
+        bundleCode: 'PO-20261018-001-B001',
+        size: '30',
+        qty: 50,
+        currentStepInstanceId: 'step-cut-1',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ]);
+
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText('Tạo kiện hàng cắt (FR-15)')).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByText('Tạo kiện hàng cắt (FR-15)'));
+
+    await waitFor(() => {
+      expect(bundleSpy).toHaveBeenCalledWith('step-cut-1', 'operator-token');
+      expect(screen.getByText(/Đã tạo thành công 1 kiện hàng/)).toBeDefined();
+    });
+  });
 });
