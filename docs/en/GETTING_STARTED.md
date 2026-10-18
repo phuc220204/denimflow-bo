@@ -2,18 +2,19 @@
 
 From a fresh clone to running the checks and the API on your machine. For the full reference (environment variables, deploy, CI) see [`DEVELOPMENT_SETUP.md`](DEVELOPMENT_SETUP.md); for branches, commits and pull requests see [`Tutorial_denimflow-bo.md`](../../Tutorial_denimflow-bo.md); to pick a task see [`docs/TASK_BOARD.md`](../TASK_BOARD.md).
 
-Last checked: 2026-10-17, on Windows 11 with Git Bash, against `main` after #8.
+Last checked: 2026-10-18, on Windows 11 with Git Bash, against `main` after #28 plus the seed fix.
 
 ## 1. What exists today
 
 | Part | Status |
 |---|---|
 | Monorepo root (pnpm workspace, TypeScript strict, ESLint, Prettier, Husky) | Done (#3) |
-| `packages/shared` (enums, Zod schemas) and `packages/engine` | Skeletons (#4) |
-| `apps/api` (NestJS 12 ESM, Prisma 7, `GET /health`, first migration) | Part A done (#6). No auth, `/me` or seed yet (T0.4 part B) |
-| `apps/web` | Not created yet (T0.5) |
-| CI (GitHub Actions, job `CI`) | Done and green (#7) |
-| Supabase projects | Not created yet (T0.1). Until then, use a local Postgres in Docker (§5) |
+| `packages/shared` and `packages/engine` (conditions, BR-01 validation, gates, BOM) | Merged via #26 (not yet reviewed) |
+| `apps/api`: auth (Supabase), users, catalog, workflow, orders, inventory | Merged via #26; security hotfix #28 (login required, roles, 422 on bad input) |
+| `apps/web`: login, role menus, catalog, users, workflow designer, orders | Merged via #26 |
+| CI (GitHub Actions, job `CI`, required before merge) | Done and green |
+| Supabase | `denimflow-dev` exists and is migrated; `denimflow-prod` not yet (T0.1) |
+| Seed (`pnpm db:seed`): catalog, 7 demo accounts, "Jean Standard" template, BOM, fabric lots | Working (see §6) |
 
 ## 2. Install the tools
 
@@ -52,9 +53,9 @@ pnpm --filter @denimflow/api db:test:down    # stop it when done (the container 
 
 All five must pass before you open a pull request. `pnpm format` fixes formatting for you.
 
-## 5. Run the API on your machine (before Supabase exists)
+## 5. Run the API on a local database (no Supabase)
 
-Use a second database in the same Docker container as a temporary dev database.
+Use a second database in the same Docker container. Good for API work and `/health`; **logging in needs Supabase** (§6), because there is no local login. For UI work without Supabase set `VITE_ENABLE_MSW=true` in `apps/web/.env`.
 
 ```bash
 pnpm --filter @denimflow/api db:test:up
@@ -85,7 +86,18 @@ Notes:
 
 ## 6. After the Supabase projects exist (T0.1)
 
-Replace the local values in `apps/api/.env` with the **dev** project's values as described in [`DEVELOPMENT_SETUP.md`](DEVELOPMENT_SETUP.md) §4 and §5, then run `pnpm --filter @denimflow/api db:migrate:dev`. Never put production connection strings in a local `.env`.
+Ask the owner for the **dev** values of `apps/api/.env` (sent privately), or fill them as described in [`DEVELOPMENT_SETUP.md`](DEVELOPMENT_SETUP.md) §4 and §5. Never put production connection strings in a local `.env`.
+
+```bash
+pnpm --filter @denimflow/api db:migrate:deploy   # apply committed migrations
+pnpm --filter @denimflow/api db:seed             # owner/maintainer only: creates or updates the demo Auth accounts
+pnpm --filter @denimflow/api dev                 # API on :3000
+pnpm --filter @denimflow/api smoke:roles         # in another terminal: logs in as each role and checks permissions
+```
+
+- `db:seed` is idempotent (safe to run again). It needs `SEED_DEFAULT_PASSWORD` (at least 12 characters) and resets the demo accounts to that password.
+- Demo accounts: `admin@`, `pe@`, `planner@`, `warehouse@`, `operator@`, `qc@`, `manager@` + `denimflow.internal`. The password is the dev `SEED_DEFAULT_PASSWORD`; ask the owner privately.
+- `smoke:roles` prints only HTTP status codes and writes no data. Expect `ALL CHECKS PASSED`.
 
 ## 7. Daily workflow
 

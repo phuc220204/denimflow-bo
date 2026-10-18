@@ -2,18 +2,19 @@
 
 Từ lúc clone repo đến khi chạy được bộ kiểm tra và API trên máy. Tài liệu đầy đủ (biến môi trường, deploy, CI) xem [`DEVELOPMENT_SETUP.md`](DEVELOPMENT_SETUP.md); quy trình nhánh, commit, pull request xem [`Tutorial_denimflow-bo.md`](../../Tutorial_denimflow-bo.md); chọn task xem [`docs/TASK_BOARD.md`](../TASK_BOARD.md).
 
-Kiểm tra lần cuối: 2026-10-17, trên Windows 11 với Git Bash, với `main` sau PR #8.
+Kiểm tra lần cuối: 2026-10-18, trên Windows 11 với Git Bash, với `main` sau PR #28 và bản sửa seed.
 
 ## 1. Hiện đã có gì
 
 | Phần | Trạng thái |
 |---|---|
 | Monorepo root (pnpm workspace, TypeScript strict, ESLint, Prettier, Husky) | Xong (#3) |
-| `packages/shared` (enum, Zod schema) và `packages/engine` | Mới có khung (#4) |
-| `apps/api` (NestJS 12 ESM, Prisma 7, `GET /health`, migration đầu tiên) | Xong phần A (#6). Chưa có auth, `/me`, seed (T0.4 phần B) |
-| `apps/web` | Chưa tạo (T0.5) |
-| CI (GitHub Actions, job `CI`) | Xong, đang xanh (#7) |
-| Project Supabase | Chưa tạo (T0.1). Trong lúc chờ, dùng Postgres local trong Docker (§5) |
+| `packages/shared` và `packages/engine` (điều kiện, kiểm tra BR-01, gate, BOM) | Đã merge qua #26 (chưa review) |
+| `apps/api`: auth (Supabase), user, catalog, workflow, đơn hàng, kho | Đã merge qua #26; hotfix bảo mật #28 (bắt buộc đăng nhập, phân quyền, dữ liệu sai trả 422) |
+| `apps/web`: đăng nhập, menu theo role, catalog, user, thiết kế workflow, đơn hàng | Đã merge qua #26 |
+| CI (GitHub Actions, job `CI`, bắt buộc trước khi merge) | Xong, đang xanh |
+| Supabase | `denimflow-dev` đã có và đã migrate; `denimflow-prod` chưa (T0.1) |
+| Seed (`pnpm db:seed`): catalog, 7 tài khoản demo, template "Jean Standard", BOM, lô vải | Chạy được (xem §6) |
 
 ## 2. Cài công cụ
 
@@ -52,9 +53,9 @@ pnpm --filter @denimflow/api db:test:down    # tắt khi xong (container bị xo
 
 Cả năm lệnh phải pass trước khi mở pull request. `pnpm format` tự sửa định dạng.
 
-## 5. Chạy API trên máy (khi chưa có Supabase)
+## 5. Chạy API với database local (không có Supabase)
 
-Dùng một database thứ hai trong cùng container Docker làm database dev tạm thời.
+Dùng một database thứ hai trong cùng container Docker. Hợp để làm API và gọi `/health`; **đăng nhập thì cần Supabase** (§6), vì không còn đăng nhập local. Làm UI khi chưa có Supabase thì đặt `VITE_ENABLE_MSW=true` trong `apps/web/.env`.
 
 ```bash
 pnpm --filter @denimflow/api db:test:up
@@ -85,7 +86,18 @@ Lưu ý:
 
 ## 6. Sau khi có project Supabase (T0.1)
 
-Thay giá trị local trong `apps/api/.env` bằng giá trị của project **dev** theo [`DEVELOPMENT_SETUP.md`](DEVELOPMENT_SETUP.md) §4 và §5, rồi chạy `pnpm --filter @denimflow/api db:migrate:dev`. Không bao giờ đặt connection string của production trong `.env` local.
+Xin owner giá trị **dev** của `apps/api/.env` (gửi riêng), hoặc tự điền theo [`DEVELOPMENT_SETUP.md`](DEVELOPMENT_SETUP.md) §4 và §5. Không bao giờ đặt connection string của production trong `.env` local.
+
+```bash
+pnpm --filter @denimflow/api db:migrate:deploy   # áp các migration đã commit
+pnpm --filter @denimflow/api db:seed             # chỉ owner/người phụ trách: tạo hoặc cập nhật tài khoản demo
+pnpm --filter @denimflow/api dev                 # API ở :3000
+pnpm --filter @denimflow/api smoke:roles         # ở terminal khác: đăng nhập từng role và kiểm tra quyền
+```
+
+- `db:seed` idempotent (chạy lại an toàn). Cần `SEED_DEFAULT_PASSWORD` (ít nhất 12 ký tự) và sẽ đặt lại mật khẩu các tài khoản demo về giá trị đó.
+- Tài khoản demo: `admin@`, `pe@`, `planner@`, `warehouse@`, `operator@`, `qc@`, `manager@` + `denimflow.internal`. Mật khẩu là `SEED_DEFAULT_PASSWORD` của dev; xin owner gửi riêng.
+- `smoke:roles` chỉ in mã HTTP, không ghi dữ liệu. Kết quả mong đợi: `ALL CHECKS PASSED`.
 
 ## 7. Quy trình hằng ngày
 

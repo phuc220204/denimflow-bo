@@ -219,13 +219,16 @@ Lock the inspected step row (and the rework target); check BR-11 (inspector ≠ 
 - Storage: one **private** bucket for evidence and acknowledgements; object path `orders/{orderId}/{kind}/{uuid}.{ext}`; signed URLs with a short expiry; the API validates type and size before issuing an upload URL.
 - Connection strings: pooled `DATABASE_URL` (transaction mode, `pgbouncer=true`-style parameter as required by the Prisma version) for runtime; `DIRECT_URL` (direct or session pooler) for migrations.
 
-## 9. Seed data (`prisma/seed.ts`, idempotent, fake data only)
+## 9. Seed data (`apps/api/src/seed/`, idempotent, fake data only)
 
-- 7 users (one per role) with emails like `admin@denimflow.test`; initial password read from `SEED_DEFAULT_PASSWORD` (never committed).
-- Stations: one per type (DYEING marked `is_outsourced`).
-- Catalog: Style `JN-SLIM-01`; FabricType `DN-12-RIGID`; colors Indigo, Black, Grey; matrix: Indigo and Black allowed, Grey not; wash types (e.g. `STONE_WASH`, `ENZYME_WASH`, `DISTRESSED`); one `fabric_lots` row with ample meters; `bom_norms` for sizes 28–34.
-- `qc_profiles` (demo placeholders, R-14): FULL_PROCESS shrinkage ≤ 3.0 %, fading ≤ 1; SKIP_CLEAN_WASH shrinkage ≤ 5.0 %, fading ≤ 2.
-- Template "Jean Standard": 14 steps and transitions per `BUSINESS_RECONCILIATION.md` §3, version 1 PUBLISHED, assigned to `JN-SLIM-01`.
+Run with `pnpm --filter @denimflow/api db:seed` (builds, then runs `dist/seed/index.js`; also wired to `prisma db seed`). Every row is upserted by its business code, so running it twice leaves the same data.
+
+- 7 users (one per role) with emails `admin@`, `pe@`, `planner@`, `warehouse@`, `operator@`, `qc@`, `manager@` + `denimflow.internal`; password from `SEED_DEFAULT_PASSWORD` (≥ 12 chars, never committed, never logged). With Supabase configured the Auth accounts are created, or reset to that password if they exist; without Supabase only `profiles` are written.
+- Stations: one per type (`CUT-01` … `PCK-01`); `EMB-01`, `DYE-01`, `WSH-01` marked `is_outsourced`.
+- Catalog: styles `JN-SLIM-01`, `JN-REG-02`, `JN-BAGGY-03`; fabric types `DN-12-RIGID`, `DN-10-STRETCH`, `DN-14-HEAVY`; colors `CLR-INDIGO`, `CLR-BLACK`, `CLR-GREY`, `CLR-LIGHTBLUE`; matrix (e.g. `DN-12-RIGID`: Indigo, Black, Light blue allowed, Grey not); wash types `WSH-STONE`, `WSH-ACID`, `WSH-BLEACH`, `WSH-RAW`.
+- `qc_profiles` (demo placeholders, R-14) for every style: FULL_PROCESS shrinkage ≤ 3.0 %, fading ≤ 1; SKIP_CLEAN_WASH shrinkage ≤ 5.0 %, fading ≤ 2.
+- Template "Jean Standard": 14 steps and transitions per `BUSINESS_RECONCILIATION.md` §3 (3 REWORK transitions from FINAL_QC), created as DRAFT, checked with the engine's BR-01 validator, then PUBLISHED in one transaction, and assigned to `JN-SLIM-01`.
+- `bom_norms` for `JN-SLIM-01` (fabric for sizes 28–34 and 36, plus trims) and two `fabric_lots` of `DN-12-RIGID` / `CLR-INDIGO`.
 
 ## 10. Deviations from the Proposal data model
 

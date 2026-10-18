@@ -219,13 +219,16 @@ Khoá dòng step được kiểm (và step đích rework); kiểm tra BR-11 (ins
 - Storage: một bucket **private** cho minh chứng và giấy xác nhận; object path `orders/{orderId}/{kind}/{uuid}.{ext}`; signed URL hết hạn ngắn; API kiểm tra loại file và dung lượng trước khi cấp URL upload.
 - Connection string: `DATABASE_URL` dạng pooled (transaction mode, tham số kiểu `pgbouncer=true` tuỳ phiên bản Prisma) cho runtime; `DIRECT_URL` (direct hoặc session pooler) cho migration.
 
-## 9. Seed data (`prisma/seed.ts`, idempotent, chỉ dữ liệu giả)
+## 9. Seed data (`apps/api/src/seed/`, idempotent, chỉ dữ liệu giả)
 
-- 7 user (mỗi role một người) với email dạng `admin@denimflow.test`; mật khẩu ban đầu đọc từ `SEED_DEFAULT_PASSWORD` (không bao giờ commit).
-- Station: mỗi loại một trạm (DYEING đánh dấu `is_outsourced`).
-- Catalog: Style `JN-SLIM-01`; FabricType `DN-12-RIGID`; màu Indigo, Black, Grey; matrix: Indigo và Black được phép, Grey không; các loại wash (ví dụ `STONE_WASH`, `ENZYME_WASH`, `DISTRESSED`); một dòng `fabric_lots` với nhiều mét vải; `bom_norms` cho size 28–34.
-- `qc_profiles` (placeholder để demo, R-14): FULL_PROCESS co rút ≤ 3,0 %, phai màu ≤ 1; SKIP_CLEAN_WASH co rút ≤ 5,0 %, phai màu ≤ 2.
-- Template "Jean Standard": 14 step và transition theo `BUSINESS_RECONCILIATION.md` §3, version 1 PUBLISHED, gán cho `JN-SLIM-01`.
+Chạy bằng `pnpm --filter @denimflow/api db:seed` (build rồi chạy `dist/seed/index.js`; cũng được gắn vào `prisma db seed`). Mọi dòng được upsert theo mã nghiệp vụ, nên chạy hai lần vẫn ra cùng dữ liệu.
+
+- 7 user (mỗi role một người) với email `admin@`, `pe@`, `planner@`, `warehouse@`, `operator@`, `qc@`, `manager@` + `denimflow.internal`; mật khẩu lấy từ `SEED_DEFAULT_PASSWORD` (≥ 12 ký tự, không bao giờ commit, không bao giờ log). Có cấu hình Supabase thì tạo tài khoản Auth, hoặc đặt lại mật khẩu nếu đã có; không có Supabase thì chỉ ghi `profiles`.
+- Station: mỗi loại một trạm (`CUT-01` … `PCK-01`); `EMB-01`, `DYE-01`, `WSH-01` đánh dấu `is_outsourced`.
+- Catalog: style `JN-SLIM-01`, `JN-REG-02`, `JN-BAGGY-03`; loại vải `DN-12-RIGID`, `DN-10-STRETCH`, `DN-14-HEAVY`; màu `CLR-INDIGO`, `CLR-BLACK`, `CLR-GREY`, `CLR-LIGHTBLUE`; matrix (ví dụ `DN-12-RIGID`: Indigo, Black, Light blue được phép, Grey không); kiểu giặt `WSH-STONE`, `WSH-ACID`, `WSH-BLEACH`, `WSH-RAW`.
+- `qc_profiles` (placeholder để demo, R-14) cho mọi style: FULL_PROCESS co rút ≤ 3,0 %, phai màu ≤ 1; SKIP_CLEAN_WASH co rút ≤ 5,0 %, phai màu ≤ 2.
+- Template "Jean Standard": 14 step và transition theo `BUSINESS_RECONCILIATION.md` §3 (3 transition REWORK từ FINAL_QC), tạo ở DRAFT, kiểm tra bằng validator BR-01 của engine, rồi PUBLISHED trong cùng một transaction, và gán cho `JN-SLIM-01`.
+- `bom_norms` cho `JN-SLIM-01` (vải cho size 28–34 và 36, cộng phụ liệu) và hai `fabric_lots` của `DN-12-RIGID` / `CLR-INDIGO`.
 
 ## 10. Điểm khác so với data model của Proposal
 
