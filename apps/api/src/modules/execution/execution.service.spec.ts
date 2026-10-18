@@ -202,6 +202,13 @@ describe('ExecutionService', () => {
 
       expect(result).toMatchObject({ status: 'WAITING_QC', newlyReadyStepCodes: [] });
       expect(repo.findInstanceForReadiness).not.toHaveBeenCalled();
+      // R-23: the completer is recorded for the BR-11 check at QC.
+      expect(repo.transitionStep).toHaveBeenCalledWith(
+        {},
+        'step-SEWING',
+        ['IN_PROGRESS'],
+        expect.objectContaining({ status: 'WAITING_QC', completedBy: 'user-station_operator' }),
+      );
     });
 
     it('closes the quantities (BR-08 balance, bundles) before changing the status', async () => {

@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { Prisma, StepStatus } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../infrastructure/prisma/prisma.service.js';
+import type { StepPerformers } from './step-access.js';
 
 export type Tx = Prisma.TransactionClient;
 
@@ -170,6 +171,23 @@ export class ExecutionRepository {
 
   async setStepQuantities(tx: Tx, stepId: string, totals: StepQuantities): Promise<void> {
     await tx.stepInstance.update({ where: { id: stepId }, data: totals });
+  }
+
+  // Everyone who worked a step, for the BR-11 check at QC (R-23).
+  async findStepPerformers(tx: Tx, stepId: string): Promise<StepPerformers | null> {
+    const step = await tx.stepInstance.findUnique({
+      where: { id: stepId },
+      select: { performedBy: true, completedBy: true },
+    });
+    if (!step) {
+      return null;
+    }
+    const enterers = await tx.stepQuantityEntry.findMany({
+      where: { stepInstanceId: stepId },
+      distinct: ['enteredBy'],
+      select: { enteredBy: true },
+    });
+    return { ...step, quantityEnteredBy: enterers.map((entry) => entry.enteredBy) };
   }
 
   findBundles(orderId: string, tx: Tx | PrismaService = this.prisma) {

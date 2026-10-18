@@ -147,6 +147,7 @@ model Profile {
   recordedAcknowledgements CustomerAcknowledgement[]
   assignedStepInstances    StepInstance[]            @relation("AssignedStepInstances")
   performedStepInstances   StepInstance[]            @relation("PerformedStepInstances")
+  completedStepInstances   StepInstance[]            @relation("CompletedStepInstances")
   quantityEntries          StepQuantityEntry[]
 
   @@map("profiles")
@@ -547,6 +548,8 @@ model StepInstance {
   status           StepStatus       @default(PENDING)
   assignedTo       String?          @map("assigned_to") @db.Uuid
   performedBy      String?          @map("performed_by") @db.Uuid
+  // BR-11: who finished the step (R-23)
+  completedBy      String?          @map("completed_by") @db.Uuid
   startedAt        DateTime?        @map("started_at") @db.Timestamptz
   completedAt      DateTime?        @map("completed_at") @db.Timestamptz
   qtyIn            Int?             @map("qty_in")
@@ -560,6 +563,7 @@ model StepInstance {
   stepDefinition   StepDefinition   @relation(fields: [stepDefinitionId], references: [id])
   assignee         Profile?         @relation("AssignedStepInstances", fields: [assignedTo], references: [id])
   performer        Profile?         @relation("PerformedStepInstances", fields: [performedBy], references: [id])
+  completer        Profile?         @relation("CompletedStepInstances", fields: [completedBy], references: [id], onDelete: Restrict)
   quantityEntries  StepQuantityEntry[]
 
   @@unique([instanceId, stepDefinitionId])

@@ -124,14 +124,20 @@ describe('Execution: worklist, start and complete (T4.2)', () => {
     expect(await statusOf('EFFECT_WASH')).toBe('PENDING');
     // BR-14: EMBROIDERY was skipped at Confirm, but SEWING still waits for CUTTING.
     expect(await statusOf('SEWING')).toBe('PENDING');
+    // BR-11 / R-23: who finished the step is recorded.
+    const done = await prisma.stepInstance.findUniqueOrThrow({
+      where: { id: stepIds.FABRIC_COLOR_SELECT },
+    });
+    expect(done.completedBy).toBe(users['Bearer planner-token']!.id);
   });
 
-  it('rejects a role that does not own the step (403)', async () => {
-    // Process Engineer: BR-11, blocked before reaching the service.
-    await request(app.getHttpServer())
+  it('rejects a role that does not own the step', async () => {
+    // BR-11: the Process Engineer gets the business rule, not a generic 403.
+    const pe = await request(app.getHttpServer())
       .post(`/steps/${stepIds.CUTTING}/start`)
       .set('Authorization', 'Bearer pe-token')
-      .expect(403);
+      .expect(409);
+    expect(pe.body.brId).toBe('BR-11');
     // Operator on a planner step.
     await request(app.getHttpServer())
       .post(`/steps/${stepIds.BOM_ALLOCATE}/start`)
