@@ -53,7 +53,7 @@ Do:
 - SPA fallback: all routes serve `index.html` (Cloudflare setting, see `DEVELOPMENT_SETUP.md` §7).
 - `apps/web/.env.example`: fake values only, every web (`VITE_*`) variable of `DEVELOPMENT_SETUP.md` §4; no server secrets.
 Acceptance:
-- [ ] Log in with a seeded user locally; Home shows name, role and API health.
+- [x] Log in with a seeded user locally; Home shows name, role and API health.
 
 ### T0.6 CI   [owner: agent]
 Branch: `ci/pipeline`

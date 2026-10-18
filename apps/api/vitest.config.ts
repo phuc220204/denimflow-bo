@@ -13,6 +13,9 @@ export default defineConfig({
       '@denimflow/shared': fileURLToPath(
         new URL('../../packages/shared/src/index.ts', import.meta.url),
       ),
+      '@denimflow/engine': fileURLToPath(
+        new URL('../../packages/engine/src/index.ts', import.meta.url),
+      ),
     },
   },
   test: {

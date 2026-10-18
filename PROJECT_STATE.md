@@ -1,15 +1,14 @@
 # PROJECT_STATE
 
 Short, current-state file. Keep it under ~5 KB: move history to `docs/adr/` or the PR log.
-Last updated: 2026-10-17
+Last updated: 2026-10-18
 
 ## Phase
 
-**Sprint 0 in progress** (`.agents/tasks/S0-scaffold-and-pipeline.md`).
-Done: T0.2 monorepo root (#3), T0.3 `@denimflow/shared` + `@denimflow/engine` skeletons with dual ESM/CJS build (#4), T0.4 part A (NestJS 12 ESM app, Prisma 7, `/health`, first migration; #6), T0.6 CI + keep-alive (#7; CI green on `main`, including the API tests on a Postgres service container).
-Supabase: `denimflow-dev` created and verified (migration applied, RLS on, `/health` up through the transaction pooler); T0.4 part A acceptance on dev met.
-**Waiting on owner:** `denimflow-prod` (rest of T0.1, needed for T0.7); share dev `.env` values with the team privately; T0.8 (require the `CI` status check in `protect-main`, CODEOWNERS).
-**Next:** T0.4 part B (auth, `/me`, seed; tests do not need Supabase), T0.5 web skeleton.
+**Sprint 3 completed** (`.agents/tasks/S3-order-confirm-snapshot.md`).
+**Sprint 4 in progress** (`.agents/tasks/S4-execution-gates-quantities.md`).
+Done: Sprint 1 (T1.1..T1.5); Sprint 2 (T2.1..T2.5); Sprint 3 (T3.1..T3.5); Sprint 4 T4.1 (Gate chain Chain of Responsibility).
+**Next:** T4.2 Worklist, Start and Complete.
 Team: tasks are picked in `docs/TASK_BOARD.md`; onboarding guide `docs/<lang>/GETTING_STARTED.md`.
 
 ## Decisions (settled)
@@ -41,10 +40,10 @@ Team: tasks are picked in `docs/TASK_BOARD.md`; onboarding guide `docs/<lang>/GE
 | Sprint | Goal | Status |
 |---|---|---|
 | S0 | Scaffold + deploy pipeline (walking skeleton) | in progress (T0.2, T0.3, T0.4 part A, T0.6 done; T0.1 dev done, prod pending) |
-| S1 | Auth + RBAC + master data | not started |
-| S2 | Workflow engine core + designer MVP | not started |
-| S3 | Order create / Confirm / snapshot | not started |
-| S4 | Worklist, quantities, Gates | not started |
+| S1 | Auth + RBAC + master data | done |
+| S2 | Workflow engine core + designer MVP | done |
+| S3 | Order create / Confirm / snapshot | done |
+| S4 | Worklist, quantities, Gates | in progress |
 | S5 | QC, rework, QC Profile, dashboard, handover, polish | not started |
 
 ## Known risks
