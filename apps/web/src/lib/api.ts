@@ -35,6 +35,10 @@ import {
   type AttachEvidenceDto,
   type EvidenceDto,
   type ApproveQcDto,
+  type EvaluateQcInspectionInputDto,
+  type QcEvaluationOutputDto,
+  type RecordQcInspectionDto,
+  type QcInspectionResponseDto,
 } from '@denimflow/shared';
 
 export type {
@@ -1335,5 +1339,47 @@ export async function approveQcApi(
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Không thể duyệt QC');
+  return data;
+}
+
+// 7. Quality Inspection (Sprint 5, FR-16, BR-11, BR-19)
+export async function evaluateQcInspectionApi(
+  stepInstanceId: string,
+  dto: EvaluateQcInspectionInputDto,
+  token?: string | null,
+): Promise<QcEvaluationOutputDto> {
+  const res = await fetch(`${API_BASE}/quality/evaluate/${stepInstanceId}`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(dto),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể đánh giá kiểm tra QC');
+  return data;
+}
+
+export async function recordQcInspectionApi(
+  dto: RecordQcInspectionDto,
+  token?: string | null,
+): Promise<QcInspectionResponseDto> {
+  const res = await fetch(`${API_BASE}/quality/inspections`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(dto),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể lưu biên bản kiểm tra QC');
+  return data;
+}
+
+export async function fetchStepInspectionsApi(
+  stepInstanceId: string,
+  token?: string | null,
+): Promise<QcInspectionResponseDto[]> {
+  const res = await fetch(`${API_BASE}/quality/inspections/${stepInstanceId}`, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tải lịch sử kiểm tra QC');
   return data;
 }

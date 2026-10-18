@@ -10,6 +10,8 @@ import {
   Play,
   PlusCircle,
   RefreshCw,
+  Scale,
+  ShieldCheck,
   X,
 } from 'lucide-react';
 import React, { useState } from 'react';
@@ -26,14 +28,18 @@ import {
   approveQcApi,
   attachEvidenceApi,
   completeStepApi,
+  evaluateQcInspectionApi,
   fetchWorklistApi,
   generateBundlesApi,
+  recordQcInspectionApi,
   recordQuantityApi,
   startStepApi,
 } from '../../lib/api';
 import { useAuth } from '../../lib/auth-context';
 import type {
   AttachEvidenceDto,
+  QcEvaluationOutputDto,
+  QcResult,
   RecordQuantityEntryDto,
   StepStatus,
   WorklistItemDto,
@@ -74,6 +80,19 @@ export const WorklistPage: React.FC = () => {
   );
   const [evidenceFilePath, setEvidenceFilePath] = useState<string>('');
   const [evidenceNote, setEvidenceNote] = useState<string>('');
+
+  // QC Inspection modal state (T5.1, FR-16, BR-19)
+  const [selectedStepForQc, setSelectedStepForQc] = useState<WorklistItemDto | null>(null);
+  const [qcSampleSize, setQcSampleSize] = useState<number>(50);
+  const [qcShrinkage, setQcShrinkage] = useState<string>('2.5');
+  const [qcFading, setQcFading] = useState<number>(1);
+  const [qcDefectType, setQcDefectType] = useState<string>('BROKEN_STITCH');
+  const [qcDefectQty, setQcDefectQty] = useState<number>(0);
+  const [qcResult, setQcResult] = useState<QcResult>('PASS');
+  const [qcReason, setQcReason] = useState<string>('');
+  const [qcNotes, setQcNotes] = useState<string>('');
+  const [evaluationResult, setEvaluationResult] = useState<QcEvaluationOutputDto | null>(null);
+  const [isEvaluating, setIsEvaluating] = useState<boolean>(false);
 
   const {
     data: worklist = [],
@@ -175,6 +194,28 @@ export const WorklistPage: React.FC = () => {
     },
   });
 
+  const recordQcMutation = useMutation({
+    mutationFn: (dto: {
+      stepInstanceId: string;
+      sampleSize: number;
+      measuredShrinkagePercent?: number;
+      measuredColorFadingLevel?: number;
+      result: QcResult;
+      reason?: string;
+      notes?: string;
+      defects?: Array<{ defectType: string; qty: number }>;
+    }) => recordQcInspectionApi(dto, token),
+    onSuccess: (data) => {
+      setActionSuccess(`Đã ghi nhận kiểm tra QC [${data.result}] thành công (FR-16, BR-19)!`);
+      setActionError(null);
+      setSelectedStepForQc(null);
+      void queryClient.invalidateQueries({ queryKey: ['worklist'] });
+    },
+    onError: (err: Error) => {
+      setActionError(err.message || 'Không thể lưu biên bản kiểm tra QC');
+    },
+  });
+
   const handleStart = (stepId: string) => {
     setActionError(null);
     setActionSuccess(null);
@@ -191,6 +232,57 @@ export const WorklistPage: React.FC = () => {
     setActionError(null);
     setActionSuccess(null);
     approveQcMutation.mutate(stepId);
+  };
+
+  const openQcModal = (step: WorklistItemDto) => {
+    setSelectedStepForQc(step);
+    setQcSampleSize(Math.min(step.qtyGood || step.totalPlannedQty || 50, 100));
+    setQcShrinkage('2.5');
+    setQcFading(1);
+    setQcDefectType('BROKEN_STITCH');
+    setQcDefectQty(0);
+    setQcResult('PASS');
+    setQcReason('');
+    setQcNotes('');
+    setEvaluationResult(null);
+  };
+
+  const handleEvaluateQc = async () => {
+    if (!selectedStepForQc) return;
+    try {
+      setIsEvaluating(true);
+      const output = await evaluateQcInspectionApi(
+        selectedStepForQc.id,
+        {
+          sampleSize: qcSampleSize,
+          measuredShrinkagePercent: qcShrinkage ? parseFloat(qcShrinkage) : undefined,
+          measuredColorFadingLevel: qcFading,
+          defects: qcDefectQty > 0 ? [{ defectType: qcDefectType, qty: qcDefectQty }] : [],
+        },
+        token,
+      );
+      setEvaluationResult(output);
+      setQcResult(output.proposedResult);
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err.message : 'Lỗi đánh giá tiêu chuẩn QC');
+    } finally {
+      setIsEvaluating(false);
+    }
+  };
+
+  const submitQcInspection = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedStepForQc) return;
+    recordQcMutation.mutate({
+      stepInstanceId: selectedStepForQc.id,
+      sampleSize: qcSampleSize,
+      measuredShrinkagePercent: qcShrinkage ? parseFloat(qcShrinkage) : undefined,
+      measuredColorFadingLevel: qcFading,
+      result: qcResult,
+      reason: qcReason || undefined,
+      notes: qcNotes || undefined,
+      defects: qcDefectQty > 0 ? [{ defectType: qcDefectType, qty: qcDefectQty }] : [],
+    });
   };
 
   const openEvidenceModal = (step: WorklistItemDto) => {
@@ -350,6 +442,7 @@ export const WorklistPage: React.FC = () => {
               startMutation.isPending ||
               completeMutation.isPending ||
               approveQcMutation.isPending ||
+              recordQcMutation.isPending ||
               generateBundlesMutation.isPending;
 
             const isCutting = item.stepCode === 'CUTTING';
@@ -494,19 +587,31 @@ export const WorklistPage: React.FC = () => {
                     {item.status === 'WAITING_QC' && (
                       <div className="space-y-2">
                         <div className="text-center py-1 text-xs text-purple-700 font-medium">
-                          Đang chờ QC Inspector phê duyệt
+                          Đang chờ QC Inspector kiểm định
                         </div>
                         {(user?.role === 'QC_INSPECTOR' || user?.role === 'ADMIN') && (
-                          <Button
-                            variant="primary"
-                            className="w-full bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center gap-2"
-                            size="sm"
-                            disabled={isPendingAction}
-                            onClick={() => handleApproveQc(item.id)}
-                          >
-                            <CheckCircle2 className="h-4 w-4" />
-                            Phê duyệt QC (BR-11)
-                          </Button>
+                          <div className="flex flex-col gap-1.5">
+                            <Button
+                              variant="primary"
+                              className="w-full bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center gap-2"
+                              size="sm"
+                              disabled={isPendingAction}
+                              onClick={() => openQcModal(item)}
+                            >
+                              <ShieldCheck className="h-4 w-4" />
+                              Kiểm định QC theo Profile (FR-16)
+                            </Button>
+                            <Button
+                              variant="outline"
+                              className="w-full text-purple-700 border-purple-200 hover:bg-purple-50 flex items-center justify-center gap-2"
+                              size="sm"
+                              disabled={isPendingAction}
+                              onClick={() => handleApproveQc(item.id)}
+                            >
+                              <CheckCircle2 className="h-4 w-4" />
+                              Phê duyệt QC (BR-11)
+                            </Button>
+                          </div>
                         )}
                       </div>
                     )}
@@ -739,6 +844,249 @@ export const WorklistPage: React.FC = () => {
                   disabled={attachEvidenceMutation.isPending}
                 >
                   {attachEvidenceMutation.isPending ? 'Đang lưu...' : 'Lưu minh chứng'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* QC Inspection Modal (T5.1, FR-16, BR-11, BR-19) */}
+      {selectedStepForQc && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-background border border-border rounded-xl max-w-lg w-full p-6 shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="h-5 w-5 text-purple-600" />
+                <div>
+                  <h3 className="font-semibold text-lg text-text">
+                    Kiểm định QC ({selectedStepForQc.stepCode})
+                  </h3>
+                  <p className="text-xs text-text-muted">
+                    Đơn hàng: {selectedStepForQc.orderNumber} · Style: {selectedStepForQc.styleCode}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedStepForQc(null)}
+                className="text-text-muted hover:text-text p-1 rounded"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={submitQcInspection} className="space-y-4">
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-text-muted mb-1">
+                    Cỡ mẫu kiểm tra *
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    required
+                    value={qcSampleSize}
+                    onChange={(e) => setQcSampleSize(parseInt(e.target.value) || 1)}
+                    className="w-full border border-border rounded-lg px-3 py-1.5 text-sm bg-background"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-text-muted mb-1">
+                    Độ co giãn đo được (%)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min={0}
+                    max={100}
+                    value={qcShrinkage}
+                    onChange={(e) => setQcShrinkage(e.target.value)}
+                    className="w-full border border-border rounded-lg px-3 py-1.5 text-sm bg-background"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-text-muted mb-1">
+                    Độ phai màu (cấp 0-5)
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={5}
+                    value={qcFading}
+                    onChange={(e) => setQcFading(parseInt(e.target.value) || 0)}
+                    className="w-full border border-border rounded-lg px-3 py-1.5 text-sm bg-background"
+                  />
+                </div>
+              </div>
+
+              {/* Defect section (FR-18) */}
+              <div className="p-3 bg-muted/40 rounded-lg space-y-2 border border-border/60">
+                <span className="block text-xs font-semibold text-text">
+                  Ghi nhận khuyết tật / lỗi (FR-18)
+                </span>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[11px] text-text-muted mb-0.5">
+                      Loại khuyết tật
+                    </label>
+                    <select
+                      value={qcDefectType}
+                      onChange={(e) => setQcDefectType(e.target.value)}
+                      className="w-full border border-border rounded px-2 py-1 text-xs bg-background"
+                    >
+                      <option value="BROKEN_STITCH">Đứt chỉ / Nhảy mũi</option>
+                      <option value="OIL_STAIN">Vết ố / Vết dầu</option>
+                      <option value="SHADING">Lệch màu vải</option>
+                      <option value="MEASUREMENT_OUT">Lệch thông số kích thước</option>
+                      <option value="FABRIC_TEAR">Rách / Xước vải</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-text-muted mb-0.5">Số lượng lỗi</label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={qcDefectQty}
+                      onChange={(e) => setQcDefectQty(parseInt(e.target.value) || 0)}
+                      className="w-full border border-border rounded px-2 py-1 text-xs bg-background"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Engine evaluation trigger button */}
+              <div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full flex items-center justify-center gap-1.5 text-purple-700 border-purple-300 hover:bg-purple-50"
+                  disabled={isEvaluating}
+                  onClick={handleEvaluateQc}
+                >
+                  <Scale className="h-4 w-4" />
+                  {isEvaluating
+                    ? 'Đang phân tích...'
+                    : 'Đánh giá tự động theo QC Profile (Strategy BR-19)'}
+                </Button>
+              </div>
+
+              {/* Evaluation recommendation banner */}
+              {evaluationResult && (
+                <div
+                  className={`p-3 rounded-lg border text-xs space-y-1 ${
+                    evaluationResult.passed
+                      ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
+                      : evaluationResult.proposedResult === 'REWORK'
+                        ? 'bg-amber-50 border-amber-300 text-amber-800'
+                        : 'bg-rose-50 border-rose-300 text-rose-800'
+                  }`}
+                >
+                  <div className="flex items-center justify-between font-semibold text-sm">
+                    <span>Đề xuất của hệ thống:</span>
+                    <Badge
+                      tone={
+                        evaluationResult.passed
+                          ? 'success'
+                          : evaluationResult.proposedResult === 'REWORK'
+                            ? 'warning'
+                            : 'danger'
+                      }
+                    >
+                      {evaluationResult.proposedResult}
+                    </Badge>
+                  </div>
+                  {evaluationResult.reasons.length > 0 && (
+                    <ul className="list-disc pl-4 space-y-0.5 mt-1">
+                      {evaluationResult.reasons.map((r, idx) => (
+                        <li key={idx}>{r}</li>
+                      ))}
+                    </ul>
+                  )}
+                  {evaluationResult.passed && (
+                    <p>Các chỉ số độ co, phai màu và tỷ lệ lỗi đều nằm trong ngưỡng tiêu chuẩn.</p>
+                  )}
+                </div>
+              )}
+
+              {/* Inspector final decision */}
+              <div className="space-y-2 pt-2 border-t border-border">
+                <label className="block text-xs font-semibold text-text">
+                  Kết luận của QC Inspector *
+                </label>
+                <div className="flex gap-4">
+                  {(['PASS', 'REWORK', 'REJECT'] as const).map((res) => (
+                    <label
+                      key={res}
+                      className="flex items-center gap-1.5 text-xs font-medium cursor-pointer"
+                    >
+                      <input
+                        type="radio"
+                        name="qcResult"
+                        value={res}
+                        checked={qcResult === res}
+                        onChange={() => setQcResult(res)}
+                        className="text-primary"
+                      />
+                      <span>
+                        {res === 'PASS'
+                          ? 'ĐẠT (PASS)'
+                          : res === 'REWORK'
+                            ? 'LÀM LẠI (REWORK)'
+                            : 'TỪ CHỐI (REJECT)'}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {qcResult !== 'PASS' && (
+                <div>
+                  <label className="block text-xs font-medium text-text-muted mb-1">
+                    Lý do không đạt *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Nêu rõ lý do cần làm lại hoặc từ chối..."
+                    value={qcReason}
+                    onChange={(e) => setQcReason(e.target.value)}
+                    className="w-full border border-border rounded-lg px-3 py-1.5 text-sm bg-background"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-medium text-text-muted mb-1">
+                  Ghi chú thêm
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="Ghi chú kết quả kiểm tra..."
+                  value={qcNotes}
+                  onChange={(e) => setQcNotes(e.target.value)}
+                  className="w-full border border-border rounded-lg px-3 py-1.5 text-sm bg-background"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedStepForQc(null)}
+                  disabled={recordQcMutation.isPending}
+                >
+                  Hủy bỏ
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="sm"
+                  disabled={recordQcMutation.isPending}
+                >
+                  {recordQcMutation.isPending ? 'Đang lưu...' : 'Xác nhận kết quả QC'}
                 </Button>
               </div>
             </form>

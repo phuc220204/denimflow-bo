@@ -43,8 +43,8 @@ Team: tasks are picked in `docs/TASK_BOARD.md`; onboarding guide `docs/<lang>/GE
 | S1 | Auth + RBAC + master data | done |
 | S2 | Workflow engine core + designer MVP | done |
 | S3 | Order create / Confirm / snapshot | done |
-| S4 | Worklist, quantities, Gates | in progress |
-| S5 | QC, rework, QC Profile, dashboard, handover, polish | not started |
+| S4 | Worklist, quantities, Gates | done |
+| S5 | QC, rework, QC Profile, dashboard, handover, polish | in progress |
 
 ## Known risks
 
