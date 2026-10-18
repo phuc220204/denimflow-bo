@@ -2,6 +2,10 @@ import { execSync } from 'node:child_process';
 
 // Applies all migrations to the test database once before the test run.
 export default function setup(): void {
+  if (process.env.SKIP_DB_SETUP === 'true') {
+    return;
+  }
+
   const url =
     process.env.TEST_DATABASE_URL ??
     'postgresql://postgres:postgres@localhost:54329/denimflow_test';

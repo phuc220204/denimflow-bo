@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { HealthResponse } from '@denimflow/shared';
 import { PrismaService } from '../../infrastructure/prisma/prisma.service.js';
 
@@ -6,7 +6,7 @@ import { PrismaService } from '../../infrastructure/prisma/prisma.service.js';
 export class HealthService {
   private readonly logger = new Logger(HealthService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async check(): Promise<HealthResponse> {
     try {
