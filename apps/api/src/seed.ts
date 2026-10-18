@@ -40,7 +40,13 @@ if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
   });
 }
 
-const DEFAULT_PASSWORD = process.env.SEED_DEFAULT_PASSWORD || 'DenimFlow@2026!';
+// The demo accounts' password comes only from the environment: the repository is public, so a
+// committed fallback would give everyone the ADMIN login (rule 04, DATABASE_DESIGN §9).
+const DEFAULT_PASSWORD = process.env.SEED_DEFAULT_PASSWORD ?? '';
+if (supabase && DEFAULT_PASSWORD.length < 12) {
+  console.error('SEED_DEFAULT_PASSWORD (at least 12 characters) is required to create Auth users.');
+  process.exit(1);
+}
 
 async function main() {
   console.log('--- Bắt đầu khởi tạo dữ liệu mẫu DenimFlow BO (Sprint 1) ---');
@@ -432,7 +438,9 @@ async function main() {
     });
   }
   console.log(
-    `[T1.1] Đã khởi tạo 7 tài khoản demo đại diện 7 vai trò (mật khẩu mặc định: ${DEFAULT_PASSWORD}).`,
+    supabase
+      ? '[T1.1] Đã khởi tạo 7 tài khoản demo (mật khẩu lấy từ SEED_DEFAULT_PASSWORD).'
+      : '[T1.1] Đã khởi tạo 7 profile demo (chưa cấu hình Supabase nên không tạo tài khoản Auth).',
   );
 
   console.log('--- Hoàn tất khởi tạo toàn bộ dữ liệu mẫu Sprint 1! ---');
