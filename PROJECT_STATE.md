@@ -6,11 +6,11 @@ Last updated: 2026-10-18
 ## Phase
 
 **Sprint 4 completed** (PRs #26, #27, #29, #30, #31).
-**Sprint 5 in progress**: T5.1–T5.6 completed (PRs #32, #33, #34, #37, #38, #39).
-- RLS enabled on all tables, 7 demo roles log in and pass permission checks.
-- AuditLog viewer (T5.6, FR-25) and WIP dashboard (T5.5, FR-21) implemented.
-**Next:** T5.7 E2E demo scenario and polish (`.agents/tasks/S5-qc-rework-dashboard.md`).
-Team: tasks are tracked in `docs/TASK_BOARD.md`; onboarding guide `docs/<lang>/GETTING_STARTED.md`.
+**Sprint 5 completed** (PRs #32, #33, #34, #37, #38, #39, #40).
+- All 14 MVP Functional Requirements and 19 Business Rules implemented and tested.
+- Full E2E demo scenario (`PRD.md` §6) covered with web walkthrough test suite (`apps/web/src/pages/demo-scenario.test.tsx`) and API integration test (`apps/api/test/demo-scenario.spec.ts`).
+- Demo Day tooling ready: `pnpm --filter @denimflow/api demo:reseed` (pristine database reset) and `pnpm --filter @denimflow/api demo:walkthrough` (automated live rehearsal).
+- Render free tier: ping `/health` 1-2 minutes before live presentation to wake up the API from cold sleep.
 
 ## Decisions (settled)
 
@@ -45,7 +45,7 @@ Team: tasks are tracked in `docs/TASK_BOARD.md`; onboarding guide `docs/<lang>/G
 | S2 | Workflow engine core + designer MVP | done (PRs #26, #35) |
 | S3 | Order create / Confirm / snapshot | done (PR #26) |
 | S4 | Worklist, quantities, Gates | done (PRs #26, #27, #29, #30, #31) |
-| S5 | QC, rework, QC Profile, dashboard, handover, polish | in progress (T5.1–T5.6 in PRs #32–#34, #37–#39; next: T5.7) |
+| S5 | QC, rework, QC Profile, dashboard, handover, polish | done (PRs #32–#34, #37–#40) |
 
 ## Known risks
 

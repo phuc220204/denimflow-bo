@@ -99,7 +99,7 @@ Cập nhật 2026-10-18: Sprint 1–3 và T4.1 đã vào `main` qua #26 (gộp, 
 | [T5.4](../.agents/tasks/S5-qc-rework-dashboard.md) | Đóng gói và bàn giao | FR-26 | T5.1 | MVP | Tran Hoang Phuc | ✅ Xong | #37 |
 | [T5.5](../.agents/tasks/S5-qc-rework-dashboard.md) | Dashboard WIP | FR-21 | T3.5 | MVP | Tran Hoang Phuc | ✅ Xong | #38 |
 | [T5.6](../.agents/tasks/S5-qc-rework-dashboard.md) | Xem AuditLog | FR-25 | T0.4A | Tuỳ chọn | Tran Hoang Phuc | ✅ Xong | #39 |
-| [T5.7](../.agents/tasks/S5-qc-rework-dashboard.md) | E2E kịch bản demo và hoàn thiện | — | tất cả, T0.7 | MVP ☁️ | | ⏳ | |
+| [T5.7](../.agents/tasks/S5-qc-rework-dashboard.md) | E2E kịch bản demo và hoàn thiện | — | tất cả, T0.7 | MVP ☁️ | Tran Hoang Phuc | ✅ Xong | #40 |
 
 ## Sơ đồ phụ thuộc
 

@@ -17,7 +17,9 @@
     "db:test:down": "docker stop denimflow-test-db",
     "db:seed": "pnpm --filter \"@denimflow/api...\" build && node --env-file-if-exists=.env dist/seed/index.js",
     "postinstall": "prisma generate",
-    "smoke:roles": "node --env-file-if-exists=.env scripts/role-smoke-test.mjs"
+    "smoke:roles": "node --env-file-if-exists=.env scripts/role-smoke-test.mjs",
+    "demo:reseed": "pnpm --filter \"@denimflow/api...\" build && node --env-file-if-exists=.env scripts/demo-reseed.mjs && pnpm db:seed",
+    "demo:walkthrough": "node --env-file-if-exists=.env scripts/demo-walkthrough.mjs"
   },
   "dependencies": {
     "@denimflow/engine": "workspace:*",

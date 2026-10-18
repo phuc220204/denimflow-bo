@@ -53,5 +53,5 @@ Acceptance:
 Branch: `test/e2e-demo`
 Do: Playwright test for the demo scenario against a seeded database; fix UX rough edges; reseed script for demo day; performance sanity on the free tiers; update `PROJECT_STATE.md`; re-check free-tier limits on provider pages.
 Acceptance:
-- [ ] Demo scenario passes in CI and on the deployed system.
-- [ ] Owner has rehearsed the "wake up the API" step before the demo.
+- [x] Demo scenario passes in CI and on the deployed system.
+- [x] Owner has rehearsed the "wake up the API" step before the demo.
