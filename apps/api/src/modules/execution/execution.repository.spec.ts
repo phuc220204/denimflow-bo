@@ -18,6 +18,8 @@ describe('ExecutionRepository', () => {
     };
     evidence: {
       count: ReturnType<typeof vi.fn>;
+      create: ReturnType<typeof vi.fn>;
+      findMany: ReturnType<typeof vi.fn>;
     };
     productionOrder: {
       update: ReturnType<typeof vi.fn>;
@@ -71,6 +73,8 @@ describe('ExecutionRepository', () => {
       },
       evidence: {
         count: vi.fn(),
+        create: vi.fn(),
+        findMany: vi.fn(),
       },
       productionOrder: {
         update: vi.fn(),
@@ -760,6 +764,72 @@ describe('ExecutionRepository', () => {
       expect(bundles[0]!.qty).toBe(50);
       expect(bundles[1]!.bundleCode).toBe('PO-2026-001-B002');
       expect(bundles[1]!.qty).toBe(50);
+    });
+  });
+
+  describe('attachEvidence and getEvidence (FR-14, BR-15, BR-16)', () => {
+    it('successfully attaches evidence and creates AuditLog', async () => {
+      prisma.stepInstance.findUnique.mockResolvedValue({
+        id: 'step-fin-1',
+        stepDefinition: { code: 'FINISHING', requiresEvidence: true },
+      });
+
+      const mockEvidence = {
+        id: 'ev-1',
+        stepInstanceId: 'step-fin-1',
+        filePath: 'orders/ord-1/evidence/finish-front.jpg',
+        note: 'Finishing front inspection pass',
+        uploadedBy: cuttingOperator.id,
+        uploadedAt: new Date(),
+      };
+      prisma.evidence.create.mockResolvedValue(mockEvidence);
+
+      const res = await repository.attachEvidence(
+        'step-fin-1',
+        {
+          filePath: 'orders/ord-1/evidence/finish-front.jpg',
+          note: 'Finishing front inspection pass',
+        },
+        cuttingOperator.id,
+      );
+
+      expect(prisma.evidence.create).toHaveBeenCalledWith({
+        data: {
+          stepInstanceId: 'step-fin-1',
+          filePath: 'orders/ord-1/evidence/finish-front.jpg',
+          note: 'Finishing front inspection pass',
+          uploadedBy: cuttingOperator.id,
+        },
+      });
+
+      expect(prisma.auditLog.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            action: 'ATTACH_EVIDENCE',
+            entityType: 'Evidence',
+          }),
+        }),
+      );
+
+      expect(res.id).toBe('ev-1');
+      expect(res.filePath).toBe('orders/ord-1/evidence/finish-front.jpg');
+    });
+
+    it('getEvidence returns all evidence rows for a step instance', async () => {
+      prisma.evidence.findMany.mockResolvedValue([
+        {
+          id: 'ev-1',
+          stepInstanceId: 'step-fin-1',
+          filePath: 'orders/ord-1/evidence/finish-front.jpg',
+          note: 'Front photo',
+          uploadedBy: cuttingOperator.id,
+          uploadedAt: new Date(),
+        },
+      ]);
+
+      const list = await repository.getEvidence('step-fin-1');
+      expect(list).toHaveLength(1);
+      expect(list[0]!.filePath).toBe('orders/ord-1/evidence/finish-front.jpg');
     });
   });
 });

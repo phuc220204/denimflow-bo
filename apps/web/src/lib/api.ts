@@ -32,6 +32,8 @@ import {
   type BundleDto,
   type RecordQuantityEntryDto,
   type StepQuantityEntryDto,
+  type AttachEvidenceDto,
+  type EvidenceDto,
 } from '@denimflow/shared';
 
 export type {
@@ -42,6 +44,8 @@ export type {
   BundleDto,
   RecordQuantityEntryDto,
   StepQuantityEntryDto,
+  AttachEvidenceDto,
+  EvidenceDto,
 };
 
 export interface UserProfile {
@@ -1288,5 +1292,32 @@ export async function fetchStepBundlesApi(
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Không thể tải danh sách kiện');
+  return data;
+}
+
+export async function attachEvidenceApi(
+  stepId: string,
+  dto: AttachEvidenceDto,
+  token?: string | null,
+): Promise<EvidenceDto> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/evidence`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(dto),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể đính kèm minh chứng');
+  return data;
+}
+
+export async function fetchStepEvidenceApi(
+  stepId: string,
+  token?: string | null,
+): Promise<EvidenceDto[]> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/evidence`, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tải danh sách minh chứng');
   return data;
 }

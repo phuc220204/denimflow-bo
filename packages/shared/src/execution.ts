@@ -92,3 +92,20 @@ export const bundleSchema = z.object({
   updatedAt: z.string(),
 });
 export type BundleDto = z.infer<typeof bundleSchema>;
+
+// T4.4 Evidence schemas (FR-14, BR-15)
+export const attachEvidenceSchema = z.object({
+  filePath: z.string().min(1, 'Đường dẫn file không được để trống'),
+  note: z.string().optional(),
+});
+export type AttachEvidenceDto = z.infer<typeof attachEvidenceSchema>;
+
+export const evidenceSchema = z.object({
+  id: z.string().uuid(),
+  stepInstanceId: z.string().uuid(),
+  filePath: z.string(),
+  note: z.string().nullable().optional(),
+  uploadedBy: z.string().uuid(),
+  uploadedAt: z.string(),
+});
+export type EvidenceDto = z.infer<typeof evidenceSchema>;

@@ -1,5 +1,9 @@
 import { Body, Controller, Get, Headers, Inject, Param, Post, Query } from '@nestjs/common';
-import { recordQuantityEntrySchema, worklistQuerySchema } from '@denimflow/shared';
+import {
+  attachEvidenceSchema,
+  recordQuantityEntrySchema,
+  worklistQuerySchema,
+} from '@denimflow/shared';
 import { AuthService } from '../auth/auth.service.js';
 import { ExecutionService } from './execution.service.js';
 
@@ -56,5 +60,22 @@ export class ExecutionController {
   async getBundles(@Param('id') id: string, @Headers('authorization') authHeader?: string) {
     await this.authService.getMe(authHeader);
     return this.executionService.getBundles(id);
+  }
+
+  @Post('steps/:id/evidence')
+  async attachEvidence(
+    @Param('id') id: string,
+    @Body() rawBody: unknown,
+    @Headers('authorization') authHeader?: string,
+  ) {
+    const user = await this.authService.getMe(authHeader);
+    const body = attachEvidenceSchema.parse(rawBody);
+    return this.executionService.attachEvidence(id, body, user.id);
+  }
+
+  @Get('steps/:id/evidence')
+  async getEvidence(@Param('id') id: string, @Headers('authorization') authHeader?: string) {
+    await this.authService.getMe(authHeader);
+    return this.executionService.getEvidence(id);
   }
 }

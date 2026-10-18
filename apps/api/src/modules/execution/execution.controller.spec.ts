@@ -13,6 +13,8 @@ describe('ExecutionController', () => {
     generateBundles: ReturnType<typeof vi.fn>;
     getBundles: ReturnType<typeof vi.fn>;
     getQuantityEntries: ReturnType<typeof vi.fn>;
+    attachEvidence: ReturnType<typeof vi.fn>;
+    getEvidence: ReturnType<typeof vi.fn>;
   };
   let authService: {
     getMe: ReturnType<typeof vi.fn>;
@@ -35,6 +37,8 @@ describe('ExecutionController', () => {
       generateBundles: vi.fn(),
       getBundles: vi.fn(),
       getQuantityEntries: vi.fn(),
+      attachEvidence: vi.fn(),
+      getEvidence: vi.fn(),
     };
     authService = {
       getMe: vi.fn(),
@@ -145,5 +149,36 @@ describe('ExecutionController', () => {
     expect(executionService.generateBundles).toHaveBeenCalledWith('step-1', operatorUser.id);
     expect(executionService.getBundles).toHaveBeenCalledWith('step-1');
     expect(executionService.getQuantityEntries).toHaveBeenCalledWith('step-1');
+  });
+
+  it('attachEvidence and getEvidence call executionService', async () => {
+    authService.getMe.mockResolvedValue(operatorUser);
+    const mockEvidence = {
+      id: 'ev-1',
+      stepInstanceId: 'step-1',
+      filePath: 'test.jpg',
+      note: 'test note',
+      uploadedBy: operatorUser.id,
+      uploadedAt: new Date().toISOString(),
+    };
+    executionService.attachEvidence.mockResolvedValue(mockEvidence);
+    executionService.getEvidence.mockResolvedValue([mockEvidence]);
+
+    const res = await controller.attachEvidence(
+      'step-1',
+      { filePath: 'test.jpg', note: 'test note' },
+      'Bearer token',
+    );
+    const list = await controller.getEvidence('step-1', 'Bearer token');
+
+    expect(authService.getMe).toHaveBeenCalledWith('Bearer token');
+    expect(executionService.attachEvidence).toHaveBeenCalledWith(
+      'step-1',
+      { filePath: 'test.jpg', note: 'test note' },
+      operatorUser.id,
+    );
+    expect(res).toEqual(mockEvidence);
+    expect(executionService.getEvidence).toHaveBeenCalledWith('step-1');
+    expect(list).toEqual([mockEvidence]);
   });
 });

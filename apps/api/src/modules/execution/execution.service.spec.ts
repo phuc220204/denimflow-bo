@@ -12,6 +12,8 @@ describe('ExecutionService', () => {
     generateBundles: ReturnType<typeof vi.fn>;
     getBundles: ReturnType<typeof vi.fn>;
     getQuantityEntries: ReturnType<typeof vi.fn>;
+    attachEvidence: ReturnType<typeof vi.fn>;
+    getEvidence: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(() => {
@@ -23,6 +25,8 @@ describe('ExecutionService', () => {
       generateBundles: vi.fn(),
       getBundles: vi.fn(),
       getQuantityEntries: vi.fn(),
+      attachEvidence: vi.fn(),
+      getEvidence: vi.fn(),
     };
     service = new ExecutionService(repository as unknown as ExecutionRepository);
   });
@@ -116,5 +120,34 @@ describe('ExecutionService', () => {
     await service.getQuantityEntries('step-1');
     expect(repository.getBundles).toHaveBeenCalledWith('step-1');
     expect(repository.getQuantityEntries).toHaveBeenCalledWith('step-1');
+  });
+
+  it('delegates attachEvidence and getEvidence to repository', async () => {
+    const mockEvidence = {
+      id: 'ev-1',
+      stepInstanceId: 'step-1',
+      filePath: 'orders/1/evidence.png',
+      note: 'Evidence note',
+      uploadedBy: 'user-1',
+      uploadedAt: '2026-10-18T20:00:00.000Z',
+    };
+    repository.attachEvidence.mockResolvedValue(mockEvidence);
+    repository.getEvidence.mockResolvedValue([mockEvidence]);
+
+    const res = await service.attachEvidence(
+      'step-1',
+      { filePath: 'orders/1/evidence.png', note: 'Evidence note' },
+      'user-1',
+    );
+    const list = await service.getEvidence('step-1');
+
+    expect(repository.attachEvidence).toHaveBeenCalledWith(
+      'step-1',
+      { filePath: 'orders/1/evidence.png', note: 'Evidence note' },
+      'user-1',
+    );
+    expect(res).toEqual(mockEvidence);
+    expect(repository.getEvidence).toHaveBeenCalledWith('step-1');
+    expect(list).toEqual([mockEvidence]);
   });
 });

@@ -30,7 +30,7 @@ Giá trị trạng thái: `TODO`, `IN PROGRESS`, `DONE`, `DEFERRED` (ngoài MVP,
 | BR-12 | Huỷ đơn cần lý do. Trước CUTTING thì giải phóng mọi allocation; từ CUTTING trở đi phải ghi nhận vải đã cắt và chi phí | A | order | sau MVP (FR-10) | DEFERRED |
 | BR-13 | Đổi workflow khi đang chạy: chỉ được chèn/bỏ qua step chưa bắt đầu, không được bỏ step bắt buộc, cần Process Engineer duyệt | E, A | workflow, execution | sau MVP (FR-19/20) | DEFERRED |
 | BR-14 | Gatekeeper: một step chỉ mở khi mọi step trước đã hoàn thành và các Gate đều đạt | E | execution | S4 | XONG |
-| BR-15 | Step cấu hình "cần minh chứng" không được hoàn thành nếu chưa có ≥ 1 file đính kèm | E (Gate), A | execution | S4 (cùng FR-14, stretch) | TODO |
+| BR-15 | Step cấu hình "cần minh chứng" không được hoàn thành nếu chưa có ≥ 1 file đính kèm | E (Gate), A | execution | S4 | XONG |
 | BR-16 | Mọi chuyển trạng thái, thay đổi workflow và lần nhập số lượng đều ghi AuditLog (ai, khi nào, giá trị cũ, giá trị mới); AuditLog không được sửa hay xoá | A (cùng transaction), D (trigger append-only) | audit | nền móng S0, mọi sprint | XONG |
 | BR-17 | Đơn có yêu cầu custom phải qua nhánh CUSTOM_REVIEW: đánh giá khả thi (từ chối nếu bất khả thi); nếu khả thi thì clone template gần nhất thành workflow riêng, kiểm tra (BR-01), Process Engineer duyệt, thay thế snapshot; bắt buộc duyệt mẫu trước khi cắt | A, E | workflow, order | sau MVP (FR-27) | DEFERRED (xem R-04) |
 | BR-18 | Giặt sạch (clean wash) chạy mặc định. Chỉ được bỏ qua khi khách yêu cầu để giảm giá; Planner ghi lý do và xác nhận của khách, step chuyển SKIPPED và ghi AuditLog; QC cuối khi đó dùng SKIP_CLEAN_WASH | A, E | order, execution | S3 | XONG |

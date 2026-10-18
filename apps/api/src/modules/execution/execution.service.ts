@@ -1,7 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type {
+  AttachEvidenceDto,
   BundleDto,
   CompleteStepResponseDto,
+  EvidenceDto,
   RecordQuantityEntryDto,
   StartStepResponseDto,
   StepQuantityEntryDto,
@@ -55,5 +57,17 @@ export class ExecutionService {
 
   async getQuantityEntries(stepId: string): Promise<StepQuantityEntryDto[]> {
     return this.executionRepository.getQuantityEntries(stepId);
+  }
+
+  async attachEvidence(
+    stepId: string,
+    input: AttachEvidenceDto,
+    actorId: string,
+  ): Promise<EvidenceDto> {
+    return this.executionRepository.attachEvidence(stepId, input, actorId);
+  }
+
+  async getEvidence(stepId: string): Promise<EvidenceDto[]> {
+    return this.executionRepository.getEvidence(stepId);
   }
 }

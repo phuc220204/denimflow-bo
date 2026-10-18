@@ -6,8 +6,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type {
+  AttachEvidenceDto,
   BundleDto,
   CompleteStepResponseDto,
+  EvidenceDto,
   RecordQuantityEntryDto,
   StartStepResponseDto,
   StepQuantityEntryDto,
@@ -762,6 +764,70 @@ export class ExecutionRepository {
       note: e.note,
       enteredBy: e.enteredBy,
       enteredAt: e.enteredAt.toISOString(),
+    }));
+  }
+
+  async attachEvidence(
+    stepId: string,
+    input: AttachEvidenceDto,
+    actorId: string,
+  ): Promise<EvidenceDto> {
+    return this.prisma.$transaction(async (tx) => {
+      const step = await tx.stepInstance.findUnique({
+        where: { id: stepId },
+      });
+
+      if (!step) {
+        throw new NotFoundException(`StepInstance with ID ${stepId} not found`);
+      }
+
+      const evidence = await tx.evidence.create({
+        data: {
+          stepInstanceId: stepId,
+          filePath: input.filePath,
+          note: input.note,
+          uploadedBy: actorId,
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          entityType: 'Evidence',
+          entityId: evidence.id,
+          action: 'ATTACH_EVIDENCE',
+          actorId,
+          newValue: {
+            stepInstanceId: stepId,
+            filePath: input.filePath,
+            note: input.note,
+          },
+        },
+      });
+
+      return {
+        id: evidence.id,
+        stepInstanceId: evidence.stepInstanceId,
+        filePath: evidence.filePath,
+        note: evidence.note,
+        uploadedBy: evidence.uploadedBy,
+        uploadedAt: evidence.uploadedAt.toISOString(),
+      };
+    });
+  }
+
+  async getEvidence(stepId: string): Promise<EvidenceDto[]> {
+    const records = await this.prisma.evidence.findMany({
+      where: { stepInstanceId: stepId },
+      orderBy: { uploadedAt: 'desc' },
+    });
+
+    return records.map((e) => ({
+      id: e.id,
+      stepInstanceId: e.stepInstanceId,
+      filePath: e.filePath,
+      note: e.note,
+      uploadedBy: e.uploadedBy,
+      uploadedAt: e.uploadedAt.toISOString(),
     }));
   }
 }

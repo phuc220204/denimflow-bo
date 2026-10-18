@@ -26,14 +26,14 @@ Acceptance:
 - [x] **Concurrency test:** two parallel entries cannot jointly exceed the allowed quantity.
 - [x] Differences between steps must be explained by recorded defects/wastage.
 
-### T4.4 Evidence (FR-14, only if time)   [agent]
+### T4.4 Evidence (FR-14, only if time)   [Tran Hoang Phuc / agent]
 Branch: `feat/execution-evidence`
 FR/BR: FR-14, BR-15
 Do: upload through signed URL to the private bucket, client-side image compression, attach to `evidence`; Gate blocks completion of steps with `requiresEvidence` and no attachment. Seed `requiresEvidence = true` for FINISHING once this ships.
 Acceptance:
-- [ ] Step with `requiresEvidence` cannot complete without ≥ 1 attachment.
+- [x] Step with `requiresEvidence` cannot complete without ≥ 1 attachment.
 
-### T4.5 Separation of duties   [agent]
+### T4.5 Separation of duties   [Tran Hoang Phuc / agent]
 Branch: `feat/execution-separation-of-duties`
 FR/BR: BR-11
 Do: record who performed each step; block QC approval by the same person; block Process Engineer from completing production steps.

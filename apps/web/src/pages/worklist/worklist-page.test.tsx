@@ -244,4 +244,48 @@ describe('WorklistPage (T4.2, FR-12)', () => {
       expect(screen.getByText(/Đã tạo thành công 1 kiện hàng/)).toBeDefined();
     });
   });
+
+  it('T4.4: opens evidence modal and attaches evidence successfully (FR-14, BR-15)', async () => {
+    const itemsWithEvidence: api.WorklistItemDto[] = [
+      {
+        ...mockWorklistItems[1]!,
+        id: 'step-fin-1',
+        stepCode: 'FINISHING',
+        stepName: 'Hoàn thiện',
+        requiresEvidence: true,
+      },
+    ];
+
+    vi.spyOn(api, 'fetchWorklistApi').mockResolvedValue(itemsWithEvidence);
+    const attachSpy = vi.spyOn(api, 'attachEvidenceApi').mockResolvedValue({
+      id: 'ev-1',
+      stepInstanceId: 'step-fin-1',
+      filePath: 'orders/order-1/evidence/finishing-proof.jpg',
+      note: 'Finish check',
+      uploadedBy: mockOperator.id,
+      uploadedAt: new Date().toISOString(),
+    });
+
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText('Đính kèm minh chứng (BR-15)')).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByText('Đính kèm minh chứng (BR-15)'));
+
+    expect(screen.getByText('Đính kèm minh chứng (FINISHING)')).toBeDefined();
+
+    fireEvent.click(screen.getByText('Lưu minh chứng'));
+
+    await waitFor(() => {
+      expect(attachSpy).toHaveBeenCalledWith(
+        'step-fin-1',
+        expect.objectContaining({
+          filePath: 'orders/order-1/evidence/finishing-proof.jpg',
+        }),
+        'operator-token',
+      );
+    });
+  });
 });

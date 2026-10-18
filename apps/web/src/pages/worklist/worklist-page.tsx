@@ -6,6 +6,7 @@ import {
   ClipboardList,
   Clock,
   Filter,
+  Paperclip,
   Play,
   PlusCircle,
   RefreshCw,
@@ -22,6 +23,7 @@ import {
   CardTitle,
 } from '../../components/ui/card';
 import {
+  attachEvidenceApi,
   completeStepApi,
   fetchWorklistApi,
   generateBundlesApi,
@@ -29,7 +31,12 @@ import {
   startStepApi,
 } from '../../lib/api';
 import { useAuth } from '../../lib/auth-context';
-import type { RecordQuantityEntryDto, StepStatus, WorklistItemDto } from '@denimflow/shared';
+import type {
+  AttachEvidenceDto,
+  RecordQuantityEntryDto,
+  StepStatus,
+  WorklistItemDto,
+} from '@denimflow/shared';
 
 const STATUS_CONFIG: Record<
   string,
@@ -59,6 +66,13 @@ export const WorklistPage: React.FC = () => {
   const [qtyReceived, setQtyReceived] = useState<number | undefined>(undefined);
   const [mismatchReason, setMismatchReason] = useState<string>('');
   const [qtyNote, setQtyNote] = useState<string>('');
+
+  // Evidence attachment modal state (T4.4, BR-15)
+  const [selectedStepForEvidence, setSelectedStepForEvidence] = useState<WorklistItemDto | null>(
+    null,
+  );
+  const [evidenceFilePath, setEvidenceFilePath] = useState<string>('');
+  const [evidenceNote, setEvidenceNote] = useState<string>('');
 
   const {
     data: worklist = [],
@@ -134,6 +148,20 @@ export const WorklistPage: React.FC = () => {
     },
   });
 
+  const attachEvidenceMutation = useMutation({
+    mutationFn: ({ stepId, dto }: { stepId: string; dto: AttachEvidenceDto }) =>
+      attachEvidenceApi(stepId, dto, token),
+    onSuccess: () => {
+      setActionSuccess('Đã đính kèm minh chứng thành công (BR-15)!');
+      setActionError(null);
+      setSelectedStepForEvidence(null);
+      void queryClient.invalidateQueries({ queryKey: ['worklist'] });
+    },
+    onError: (err: Error) => {
+      setActionError(err.message || 'Không thể đính kèm minh chứng');
+    },
+  });
+
   const handleStart = (stepId: string) => {
     setActionError(null);
     setActionSuccess(null);
@@ -144,6 +172,21 @@ export const WorklistPage: React.FC = () => {
     setActionError(null);
     setActionSuccess(null);
     completeMutation.mutate(stepId);
+  };
+
+  const openEvidenceModal = (step: WorklistItemDto) => {
+    setSelectedStepForEvidence(step);
+    setEvidenceFilePath(`orders/${step.orderId}/evidence/${step.stepCode.toLowerCase()}-proof.jpg`);
+    setEvidenceNote('');
+  };
+
+  const submitEvidence = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedStepForEvidence) return;
+    attachEvidenceMutation.mutate({
+      stepId: selectedStepForEvidence.id,
+      dto: { filePath: evidenceFilePath, note: evidenceNote || undefined },
+    });
   };
 
   const openQuantityModal = (step: WorklistItemDto) => {
@@ -402,6 +445,19 @@ export const WorklistPage: React.FC = () => {
                           Nhập sản lượng (FR-13)
                         </Button>
 
+                        {item.requiresEvidence && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full flex items-center justify-center gap-1.5 text-amber-700 border-amber-300 hover:bg-amber-50"
+                            disabled={isPendingAction}
+                            onClick={() => openEvidenceModal(item)}
+                          >
+                            <Paperclip className="h-3.5 w-3.5" />
+                            Đính kèm minh chứng (BR-15)
+                          </Button>
+                        )}
+
                         <Button
                           variant="primary"
                           className="w-full bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-2"
@@ -574,6 +630,81 @@ export const WorklistPage: React.FC = () => {
                   disabled={recordQuantityMutation.isPending}
                 >
                   {recordQuantityMutation.isPending ? 'Đang lưu...' : 'Xác nhận ghi nhận'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Evidence Attachment Modal (FR-14, BR-15) */}
+      {selectedStepForEvidence && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-background border border-border rounded-xl max-w-md w-full p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2">
+                <Paperclip className="h-5 w-5 text-amber-600" />
+                <h3 className="font-semibold text-lg text-text">
+                  Đính kèm minh chứng ({selectedStepForEvidence.stepCode})
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedStepForEvidence(null)}
+                className="text-text-muted hover:text-text"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={submitEvidence} className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-medium text-text-muted mb-1">
+                  Đường dẫn tệp / ảnh minh chứng (filePath) *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="orders/.../evidence/proof.jpg"
+                  value={evidenceFilePath}
+                  onChange={(e) => setEvidenceFilePath(e.target.value)}
+                  className="w-full border border-border rounded-lg px-3 py-1.5 text-sm bg-background font-mono text-xs"
+                />
+                <span className="text-[11px] text-text-muted mt-0.5 block">
+                  Lưu trữ trong Supabase Private Storage Bucket (BR-15).
+                </span>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-text-muted mb-1">
+                  Ghi chú minh chứng
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="Ghi chú về hình ảnh hoặc kết quả kiểm tra..."
+                  value={evidenceNote}
+                  onChange={(e) => setEvidenceNote(e.target.value)}
+                  className="w-full border border-border rounded-lg px-3 py-1.5 text-sm bg-background"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedStepForEvidence(null)}
+                  disabled={attachEvidenceMutation.isPending}
+                >
+                  Hủy bỏ
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="sm"
+                  disabled={attachEvidenceMutation.isPending}
+                >
+                  {attachEvidenceMutation.isPending ? 'Đang lưu...' : 'Lưu minh chứng'}
                 </Button>
               </div>
             </form>
