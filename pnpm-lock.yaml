@@ -199,6 +199,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@denimflow/engine':
+        specifier: workspace:*
+        version: link:../../packages/engine
       '@denimflow/shared':
         specifier: workspace:*
         version: link:../../packages/shared

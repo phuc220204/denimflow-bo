@@ -22,15 +22,46 @@ enum Role {
   MANAGER
 }
 
+enum VersionStatus {
+  DRAFT
+  PUBLISHED
+  RETIRED
+}
+
+enum StepType {
+  SELECTION
+  MATERIAL
+  PRODUCTION
+  QC
+  APPROVAL
+}
+
+enum StationType {
+  CUTTING
+  SEWING
+  EMBROIDERY
+  DYEING
+  WASH
+  FINISHING
+  QC
+  PACKING
+}
+
+enum TransitionKind {
+  NORMAL
+  REWORK
+}
+
 // id equals auth.users.id in Supabase. station_id is added in Sprint 1 with `stations`.
 model Profile {
-  id        String   @id @db.Uuid
-  fullName  String   @map("full_name")
-  email     String   @unique
-  role      Role
-  isActive  Boolean  @default(true) @map("is_active")
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  id              String            @id @db.Uuid
+  fullName        String            @map("full_name")
+  email           String            @unique
+  role            Role
+  isActive        Boolean           @default(true) @map("is_active")
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime          @updatedAt @map("updated_at") @db.Timestamptz
+  createdVersions WorkflowVersion[]
 
   @@map("profiles")
 }
@@ -50,4 +81,95 @@ model AuditLog {
   @@index([entityType, entityId, createdAt])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+model WorkflowTemplate {
+  id               String            @id @default(uuid()) @db.Uuid
+  name             String
+  isActive         Boolean           @default(true) @map("is_active")
+  isDedicated      Boolean           @default(false) @map("is_dedicated")
+  orderId          String?           @map("order_id") @db.Uuid
+  currentVersionId String?           @map("current_version_id") @db.Uuid
+  createdAt        DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime          @updatedAt @map("updated_at") @db.Timestamptz
+  versions         WorkflowVersion[]
+  styles           Style[]
+
+  @@map("workflow_templates")
+}
+
+model WorkflowVersion {
+  id          String           @id @default(uuid()) @db.Uuid
+  templateId  String           @map("template_id") @db.Uuid
+  versionNo   Int              @map("version_no")
+  status      VersionStatus    @default(DRAFT)
+  publishedAt DateTime?        @map("published_at") @db.Timestamptz
+  createdBy   String?          @map("created_by") @db.Uuid
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime         @updatedAt @map("updated_at") @db.Timestamptz
+  template    WorkflowTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  creator     Profile?         @relation(fields: [createdBy], references: [id])
+  steps       StepDefinition[]
+  transitions StepTransition[]
+
+  @@unique([templateId, versionNo])
+  @@map("workflow_versions")
+}
+
+model StepDefinition {
+  id               String           @id @default(uuid()) @db.Uuid
+  versionId        String           @map("version_id") @db.Uuid
+  code             String
+  name             String
+  stepType         StepType         @map("step_type")
+  seq              Int
+  responsibleRole  Role             @map("responsible_role")
+  stationType      StationType?     @map("station_type")
+  isMandatory      Boolean          @default(true) @map("is_mandatory")
+  requiresEvidence Boolean          @default(false) @map("requires_evidence")
+  requiresQc       Boolean          @default(false) @map("requires_qc")
+  conditionExpr    Json?            @map("condition_expr")
+  maxRework        Int?             @map("max_rework") @db.SmallInt
+  isStart          Boolean          @default(false) @map("is_start")
+  isEnd            Boolean          @default(false) @map("is_end")
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime         @updatedAt @map("updated_at") @db.Timestamptz
+  version          WorkflowVersion  @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  fromTransitions  StepTransition[] @relation("FromStep")
+  toTransitions    StepTransition[] @relation("ToStep")
+
+  @@unique([versionId, code])
+  @@map("step_definitions")
+}
+
+model StepTransition {
+  id            String          @id @default(uuid()) @db.Uuid
+  versionId     String          @map("version_id") @db.Uuid
+  fromStepId    String          @map("from_step_id") @db.Uuid
+  toStepId      String          @map("to_step_id") @db.Uuid
+  conditionExpr Json?           @map("condition_expr")
+  kind          TransitionKind  @default(NORMAL)
+  createdAt     DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime        @updatedAt @map("updated_at") @db.Timestamptz
+  version       WorkflowVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  fromStep      StepDefinition  @relation("FromStep", fields: [fromStepId], references: [id], onDelete: Cascade)
+  toStep        StepDefinition  @relation("ToStep", fields: [toStepId], references: [id], onDelete: Cascade)
+
+  @@unique([versionId, fromStepId, toStepId, kind])
+  @@map("step_transitions")
+}
+
+model Style {
+  id                String            @id @default(uuid()) @db.Uuid
+  styleCode         String            @unique @map("style_code")
+  name              String
+  fitType           String?           @map("fit_type")
+  defaultTemplateId String?           @map("default_template_id") @db.Uuid
+  hasEmbroidery     Boolean           @default(false) @map("has_embroidery")
+  isActive          Boolean           @default(true) @map("is_active")
+  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime          @updatedAt @map("updated_at") @db.Timestamptz
+  defaultTemplate   WorkflowTemplate? @relation(fields: [defaultTemplateId], references: [id])
+
+  @@map("styles")
 }

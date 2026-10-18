@@ -4,6 +4,7 @@ export class BusinessRuleViolation extends Error {
   constructor(
     readonly brId: string,
     message: string,
+    readonly details?: unknown,
   ) {
     super(message);
     this.name = 'BusinessRuleViolation';
