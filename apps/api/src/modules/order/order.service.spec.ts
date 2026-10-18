@@ -15,6 +15,7 @@ describe('OrderService', () => {
     findOrderById: ReturnType<typeof vi.fn>;
     createDraftOrder: ReturnType<typeof vi.fn>;
     updateDraftOrder: ReturnType<typeof vi.fn>;
+    selectFabricColor: ReturnType<typeof vi.fn>;
   };
 
   const actorId = '11111111-1111-4111-8111-111111111111';
@@ -26,6 +27,7 @@ describe('OrderService', () => {
       findOrderById: vi.fn(),
       createDraftOrder: vi.fn(),
       updateDraftOrder: vi.fn(),
+      selectFabricColor: vi.fn(),
     };
     service = new OrderService(repository as unknown as OrderRepository);
   });
@@ -115,6 +117,20 @@ describe('OrderService', () => {
       const res = await service.listOrders({ status: OrderStatus.DRAFT });
       expect(res).toHaveLength(1);
       expect(repository.listOrders).toHaveBeenCalledWith({ status: OrderStatus.DRAFT });
+    });
+  });
+
+  describe('selectFabricColor', () => {
+    it('delegates to repository.selectFabricColor', async () => {
+      const dto = {
+        fabricTypeId: '11111111-1111-4111-8111-111111111111',
+        colorId: '22222222-2222-4222-8222-222222222222',
+      };
+      repository.selectFabricColor.mockResolvedValue({ id: 'order-1', ...dto });
+
+      const res = await service.selectFabricColor('order-1', dto, actorId);
+      expect(res).toEqual(expect.objectContaining({ id: 'order-1' }));
+      expect(repository.selectFabricColor).toHaveBeenCalledWith('order-1', dto, actorId);
     });
   });
 });

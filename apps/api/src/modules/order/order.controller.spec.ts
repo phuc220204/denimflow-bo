@@ -11,6 +11,7 @@ describe('OrderController', () => {
     getOrderById: ReturnType<typeof vi.fn>;
     createDraftOrder: ReturnType<typeof vi.fn>;
     updateDraftOrder: ReturnType<typeof vi.fn>;
+    selectFabricColor: ReturnType<typeof vi.fn>;
   };
   let authService: {
     getMe: ReturnType<typeof vi.fn>;
@@ -38,6 +39,7 @@ describe('OrderController', () => {
       getOrderById: vi.fn(),
       createDraftOrder: vi.fn(),
       updateDraftOrder: vi.fn(),
+      selectFabricColor: vi.fn(),
     };
     authService = {
       getMe: vi.fn(),
@@ -102,6 +104,40 @@ describe('OrderController', () => {
 
       const res = await controller.getOrderById('po-1', 'Bearer token');
       expect(res).toEqual({ id: 'po-1' });
+    });
+  });
+
+  describe('selectFabricColor', () => {
+    it('allows planner to select fabric and color', async () => {
+      authService.getMe.mockResolvedValue(plannerUser);
+      orderService.selectFabricColor.mockResolvedValue({
+        id: 'po-1',
+        fabricTypeId: '11111111-1111-4111-8111-111111111111',
+        colorId: '22222222-2222-4222-8222-222222222222',
+      });
+
+      const body = {
+        fabricTypeId: '11111111-1111-4111-8111-111111111111',
+        colorId: '22222222-2222-4222-8222-222222222222',
+      };
+
+      const res = await controller.selectFabricColor('po-1', body, 'Bearer token');
+      expect(res).toEqual(expect.objectContaining({ id: 'po-1' }));
+      expect(orderService.selectFabricColor).toHaveBeenCalledWith('po-1', body, plannerUser.id);
+    });
+
+    it('rejects operator from selecting fabric and color', async () => {
+      authService.getMe.mockResolvedValue(operatorUser);
+
+      const body = {
+        fabricTypeId: '11111111-1111-4111-8111-111111111111',
+        colorId: '22222222-2222-4222-8222-222222222222',
+      };
+
+      await expect(controller.selectFabricColor('po-1', body, 'Bearer token')).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(orderService.selectFabricColor).not.toHaveBeenCalled();
     });
   });
 });

@@ -1,11 +1,13 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import type { Prisma } from '../../generated/prisma/client.js';
-import { PrismaService } from '../../infrastructure/prisma/prisma.service.js';
 import type {
   CreateProductionOrderDto,
   ProductionOrderQueryDto,
+  SelectFabricColorDto,
   UpdateProductionOrderDto,
 } from '@denimflow/shared';
+import { BusinessRuleViolation } from '../../common/errors/business-rule-violation.js';
+import type { Prisma } from '../../generated/prisma/client.js';
+import { PrismaService } from '../../infrastructure/prisma/prisma.service.js';
 
 @Injectable()
 export class OrderRepository {
@@ -108,6 +110,8 @@ export class OrderRepository {
           customerRef: dto.customerRef ?? null,
           notes: dto.notes ?? null,
           washTypeId: dto.washTypeId ?? null,
+          fabricTypeId: dto.fabricTypeId ?? null,
+          colorId: dto.colorId ?? null,
           dyeRequired: dto.dyeRequired ?? false,
           dyeMode: dto.dyeMode ?? null,
           dyeSource: dto.dyeSource ?? null,
@@ -159,7 +163,16 @@ export class OrderRepository {
     return this.prisma.$transaction(async (tx) => {
       const existing = await tx.productionOrder.findUnique({
         where: { id },
-        include: { sizeLines: true },
+        include: {
+          sizeLines: true,
+          workflowInstance: {
+            include: {
+              stepInstances: {
+                include: { stepDefinition: true },
+              },
+            },
+          },
+        },
       });
 
       if (!existing) {
@@ -168,6 +181,47 @@ export class OrderRepository {
 
       if (existing.status !== 'DRAFT') {
         throw new BadRequestException('Chỉ có thể chỉnh sửa đơn hàng ở trạng thái DRAFT');
+      }
+
+      // BR-05: If cutting started, fabric, color and wash are locked
+      if (
+        dto.fabricTypeId !== undefined ||
+        dto.colorId !== undefined ||
+        dto.washTypeId !== undefined
+      ) {
+        const cuttingStep = existing.workflowInstance?.stepInstances.find(
+          (s) => s.stepDefinition.code === 'CUTTING',
+        );
+        const cuttingStarted = Boolean(
+          cuttingStep && cuttingStep.status !== 'PENDING' && cuttingStep.status !== 'READY',
+        );
+
+        if (cuttingStarted) {
+          throw new BusinessRuleViolation(
+            'BR-05',
+            'BR-05: Fabric, color and wash are locked once CUTTING has started',
+          );
+        }
+      }
+
+      // BR-04: Validate fabric-color compatibility matrix if both are specified
+      const finalFabric = dto.fabricTypeId !== undefined ? dto.fabricTypeId : existing.fabricTypeId;
+      const finalColor = dto.colorId !== undefined ? dto.colorId : existing.colorId;
+      if (finalFabric && finalColor) {
+        const rule = await tx.fabricColorRule.findUnique({
+          where: {
+            fabricTypeId_colorId: {
+              fabricTypeId: finalFabric,
+              colorId: finalColor,
+            },
+          },
+        });
+        if (!rule || !rule.isAllowed) {
+          throw new BusinessRuleViolation(
+            'BR-04',
+            'BR-04: Selected fabric and color pair is not allowed per compatibility matrix',
+          );
+        }
       }
 
       if (dto.sizeLines) {
@@ -187,6 +241,8 @@ export class OrderRepository {
         where: { id },
         data: {
           styleId: dto.styleId,
+          fabricTypeId: dto.fabricTypeId,
+          colorId: dto.colorId,
           dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
           customerRef: dto.customerRef,
           notes: dto.notes,
@@ -221,11 +277,107 @@ export class OrderRepository {
             dueDate: existing.dueDate,
             status: existing.status,
             notes: existing.notes,
+            fabricTypeId: existing.fabricTypeId,
+            colorId: existing.colorId,
           },
           newValue: {
             dueDate: updated.dueDate,
             status: updated.status,
             notes: updated.notes,
+            fabricTypeId: updated.fabricTypeId,
+            colorId: updated.colorId,
+          },
+        },
+      });
+
+      return updated;
+    });
+  }
+
+  async selectFabricColor(id: string, dto: SelectFabricColorDto, actorId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.productionOrder.findUnique({
+        where: { id },
+        include: {
+          workflowInstance: {
+            include: {
+              stepInstances: {
+                include: { stepDefinition: true },
+              },
+            },
+          },
+        },
+      });
+
+      if (!existing) {
+        throw new NotFoundException(`Order with ID ${id} not found`);
+      }
+
+      // BR-05: Once CUTTING starts, fabric–color–wash is locked
+      const cuttingStep = existing.workflowInstance?.stepInstances.find(
+        (s) => s.stepDefinition.code === 'CUTTING',
+      );
+      const cuttingStarted =
+        existing.status === 'IN_PRODUCTION' ||
+        Boolean(cuttingStep && cuttingStep.status !== 'PENDING' && cuttingStep.status !== 'READY');
+
+      if (cuttingStarted) {
+        throw new BusinessRuleViolation(
+          'BR-05',
+          'BR-05: Fabric, color and wash are locked once CUTTING has started',
+        );
+      }
+
+      // BR-04: Only colors listed in the Fabric–Color Matrix for the selected fabric type may be chosen
+      const rule = await tx.fabricColorRule.findUnique({
+        where: {
+          fabricTypeId_colorId: {
+            fabricTypeId: dto.fabricTypeId,
+            colorId: dto.colorId,
+          },
+        },
+      });
+
+      if (!rule || !rule.isAllowed) {
+        throw new BusinessRuleViolation(
+          'BR-04',
+          'BR-04: Selected fabric and color pair is not allowed per compatibility matrix',
+        );
+      }
+
+      const updated = await tx.productionOrder.update({
+        where: { id },
+        data: {
+          fabricTypeId: dto.fabricTypeId,
+          colorId: dto.colorId,
+          washTypeId: dto.washTypeId !== undefined ? dto.washTypeId : existing.washTypeId,
+          version: { increment: 1 },
+        },
+        include: {
+          style: true,
+          fabricType: true,
+          color: true,
+          washType: true,
+          sizeLines: true,
+        },
+      });
+
+      // Write AuditLog (BR-16)
+      await tx.auditLog.create({
+        data: {
+          entityType: 'ProductionOrder',
+          entityId: id,
+          action: 'SELECT_FABRIC_COLOR',
+          actorId,
+          oldValue: {
+            fabricTypeId: existing.fabricTypeId,
+            colorId: existing.colorId,
+            washTypeId: existing.washTypeId,
+          },
+          newValue: {
+            fabricTypeId: updated.fabricTypeId,
+            colorId: updated.colorId,
+            washTypeId: updated.washTypeId,
           },
         },
       });

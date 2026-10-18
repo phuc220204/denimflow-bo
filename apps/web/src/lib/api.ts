@@ -12,6 +12,7 @@ import {
   type OrderStatus,
   type ProductionOrderQueryDto,
   type Role,
+  type SelectFabricColorDto,
   type StationType,
   type StepType,
   type TransitionKind,
@@ -928,6 +929,23 @@ export async function updateOrderApi(
   const data = await res.json();
   if (!res.ok) {
     throw new Error(data.message || 'Không thể cập nhật đơn hàng');
+  }
+  return data;
+}
+
+export async function selectFabricColorApi(
+  id: string,
+  dto: SelectFabricColorDto,
+  token?: string | null,
+): Promise<ProductionOrderItem> {
+  const res = await fetch(`${API_BASE}/orders/${id}/fabric-color`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(dto),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || 'Không thể chọn chất liệu và màu sắc cho đơn hàng');
   }
   return data;
 }

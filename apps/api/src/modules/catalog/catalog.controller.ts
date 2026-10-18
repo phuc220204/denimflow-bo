@@ -241,6 +241,11 @@ export class CatalogController {
     return this.catalogService.getAllowedColors(id);
   }
 
+  @Get('fabric-types/:id/allowed-colors')
+  async getAllowedColorsAlias(@Param('id') id: string) {
+    return this.catalogService.getAllowedColors(id);
+  }
+
   // ==========================================
   // QC PROFILES (BR-19, FR-28)
   // ==========================================

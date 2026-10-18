@@ -19,8 +19,8 @@ Giá trị trạng thái: `TODO`, `IN PROGRESS`, `DONE`, `DEFERRED` (ngoài MVP,
 | BR-01 | Chỉ publish template hợp lệ: đúng một step bắt đầu, có step kết thúc, mọi step đều có đường tới step kết thúc, không có step mồ côi, mọi rework loop đều có giới hạn số lần lặp | E, A (publish), W (preview) | workflow | S2 | TODO |
 | BR-02 | Version là bất biến. Sửa template tạo version mới; template đang có đơn chạy chỉ được vô hiệu hoá, không được xoá | A, D (trigger + partial unique index) | workflow | S2 | TODO |
 | BR-03 | Khi Confirm, snapshot version PUBLISHED của Style; Style chưa có template PUBLISHED thì không Confirm được | A, E | order | S3 | TODO |
-| BR-04 | Chỉ được chọn màu nằm trong Fabric–Color Matrix của loại vải đã chọn | A, D (dữ liệu), W (lọc) | order, catalog | S1 dữ liệu / S3 | TODO |
-| BR-05 | Khi step CUTTING bắt đầu, vải–màu–wash bị khoá. Muốn đổi cần BR-13 hoặc huỷ đơn | A | order | S3 (khoá có hiệu lực từ S4) | TODO |
+| BR-04 | Chỉ được chọn màu nằm trong Fabric–Color Matrix của loại vải đã chọn | A, D (dữ liệu), W (lọc) | order, catalog | S1 dữ liệu / S3 | XONG |
+| BR-05 | Khi step CUTTING bắt đầu, vải–màu–wash bị khoá. Muốn đổi cần BR-13 hoặc huỷ đơn | A | order | S3 (khoá có hiệu lực từ S4) | XONG |
 | BR-06 | Không được bắt đầu CUTTING nếu vải chưa được phân bổ đủ theo BOM | E (Gate) | inventory, execution | S3–S4 | TODO |
 | BR-07 | Tổng số lượng cắt theo từng size không vượt kế hoạch + dung sai đã cấu hình | E, A | execution | S4 | TODO |
 | BR-08 | Bảo toàn số lượng: số lượng vào step sau ≤ số lượng đạt của step trước; phần chênh lệch phải khớp với lỗi hoặc hao hụt đã ghi nhận | E, A, D (row lock + CHECK) | execution | S4 | TODO |
@@ -106,7 +106,7 @@ MVP = 14 FR của Proposal. Mục đánh dấu ◐ là **phần tối thiểu** 
 | FR-05 | Workflow Designer | Validate, publish, gán cho Style | MVP | ✔ | S2 T2.3, T2.4 | TODO |
 | FR-06 | Workflow Designer | Lịch sử version, vô hiệu hoá | Medium | — | sau MVP | DEFERRED |
 | FR-07 | Production Order | Tạo và Confirm đơn | MVP | ✔ | S3 T3.1, T3.5 | TODO |
-| FR-08 | Production Order | Chọn vải–màu lọc theo matrix | MVP | ✔ | S3 T3.2 | TODO |
+| FR-08 | Production Order | Chọn vải–màu lọc theo matrix | MVP | ✔ | S3 T3.2 | XONG |
 | FR-09 | Production Order | BOM, phân bổ, Material Request | MVP | ✔ | S3 T3.3–T3.4 | TODO |
 | FR-10 | Production Order | Hold, Resume, Cancel | High | — | sau MVP | DEFERRED |
 | FR-11 | Execution Engine | Tạo instance từ snapshot, mở step theo Gate | MVP | ✔ | S2 T2.1, S3 T3.5, S4 T4.1 | TODO |

@@ -3,21 +3,21 @@
 Goal: a Planner creates an order, picks a valid fabric–color, gets a BOM, allocates fabric; **Confirm** creates the Workflow Instance atomically.
 Read: `BUSINESS_RECONCILIATION.md` BR-03, BR-04, BR-05, BR-06, BR-18, BR-19, §4; `DATABASE_DESIGN.md` §4.3, §7.1.
 
-### T3.1 Order draft and size lines   [agent]
+### T3.1 Order draft and size lines   [Tran Hoang Phuc / agent]
 Branch: `feat/order-draft`
 FR/BR: FR-07
 Do: tables (`production_orders`, `order_size_lines`), endpoints and screens to create/edit a DRAFT order: Style, size run, due date, notes, customer reference, flags (`washTypeId`, `dyeRequired`, `dyeMode`, `dyeSource`, `embroideryRequired`, `fabricInspectRequired`, `ppSampleRequired`, `skipCleanWash`, `isCustom`).
 Acceptance:
-- [ ] Order number is generated uniquely (format `PO-YYYY-NNNN`).
-- [ ] `ppSampleRequired` is forced true when `isCustom` (BR-17 data side).
+- [x] Order number is generated uniquely (format `PO-YYYY-NNNN`).
+- [x] `ppSampleRequired` is forced true when `isCustom` (BR-17 data side).
 
-### T3.2 Fabric and color selection   [agent]
+### T3.2 Fabric and color selection   [Tran Hoang Phuc / agent]
 Branch: `feat/order-fabric-color`
 FR/BR: FR-08, BR-04, BR-05
 Do: color dropdown filtered by `allowed-colors`; API rejects invalid pairs; lock fields once CUTTING has started.
 Acceptance:
-- [ ] Invalid pair → `BR-04` violation.
-- [ ] After CUTTING starts, change attempt → `BR-05` violation.
+- [x] Invalid pair → `BR-04` violation.
+- [x] After CUTTING starts, change attempt → `BR-05` violation.
 
 ### T3.3 BOM calculation (Strategy)   [agent]
 Branch: `feat/order-bom`

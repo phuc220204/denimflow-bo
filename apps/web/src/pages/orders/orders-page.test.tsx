@@ -70,6 +70,27 @@ const mockOrders: api.ProductionOrderItem[] = [
   },
 ];
 
+const mockFabrics = [
+  {
+    id: 'fab-1',
+    code: 'DENIM-12OZ',
+    name: 'Vải Denim 12oz',
+    stretchType: 'RIGID',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+];
+
+const mockAllowedColors = [
+  {
+    id: 'col-1',
+    code: 'INDIGO-DARK',
+    name: 'Xanh Chàm Đậm',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+];
+
 function renderWithClient(ui: React.ReactElement) {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -94,6 +115,9 @@ describe('OrdersPage', () => {
     vi.spyOn(api, 'fetchOrdersApi').mockResolvedValue(mockOrders);
     vi.spyOn(api, 'fetchStyles').mockResolvedValue(mockStyles);
     vi.spyOn(api, 'fetchWashTypes').mockResolvedValue([]);
+    vi.spyOn(api, 'fetchFabricTypes').mockResolvedValue(mockFabrics);
+    vi.spyOn(api, 'fetchAllowedColors').mockResolvedValue(mockAllowedColors);
+    vi.spyOn(api, 'selectFabricColorApi').mockResolvedValue(mockOrders[0]!);
   });
 
   it('renders orders list with order number and style', async () => {
@@ -125,5 +149,40 @@ describe('OrdersPage', () => {
     expect(customCheckbox.checked).toBe(true);
     expect(ppSampleCheckbox.checked).toBe(true);
     expect(ppSampleCheckbox.disabled).toBe(true);
+  });
+
+  it('BR-04: allows selecting fabric and loads compatible colors in fabric-color modal', async () => {
+    renderWithClient(<OrdersPage />);
+
+    const selectFcBtn = await screen.findByRole('button', { name: /Vải & Màu/i });
+    fireEvent.click(selectFcBtn);
+
+    expect(screen.getByText(/Chất liệu & Màu sắc: PO-2026-0001/i)).toBeInTheDocument();
+
+    const fabricSelect = screen.getByLabelText(/Loại vải \(Fabric Type\)/i) as HTMLSelectElement;
+    fireEvent.change(fabricSelect, { target: { value: 'fab-1' } });
+
+    expect(api.fetchAllowedColors).toHaveBeenCalledWith('fab-1');
+    expect(await screen.findByText('INDIGO-DARK - Xanh Chàm Đậm')).toBeInTheDocument();
+  });
+
+  it('BR-05: locks fabric/color editing when CUTTING has started (order IN_PRODUCTION)', async () => {
+    const cuttingOrder: api.ProductionOrderItem = {
+      ...mockOrders[0]!,
+      id: 'order-cutting',
+      orderNumber: 'PO-2026-0099',
+      status: 'IN_PRODUCTION',
+    };
+    vi.spyOn(api, 'fetchOrdersApi').mockResolvedValue([cuttingOrder]);
+
+    renderWithClient(<OrdersPage />);
+
+    const selectFcBtn = await screen.findByRole('button', { name: /Vải & Màu/i });
+    fireEvent.click(selectFcBtn);
+
+    expect(await screen.findByText(/Khóa chỉnh sửa \(BR-05\)/i)).toBeInTheDocument();
+    const fabricSelect = screen.getByLabelText(/Loại vải \(Fabric Type\)/i) as HTMLSelectElement;
+    expect(fabricSelect.disabled).toBe(true);
+    expect(screen.queryByRole('button', { name: /Lưu lựa chọn/i })).not.toBeInTheDocument();
   });
 });

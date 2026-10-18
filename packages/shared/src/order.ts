@@ -12,6 +12,8 @@ export type OrderSizeLineDto = z.infer<typeof orderSizeLineSchema>;
 export const createProductionOrderSchema = z
   .object({
     styleId: z.string().uuid('Valid Style ID is required'),
+    fabricTypeId: z.string().uuid().nullable().optional(),
+    colorId: z.string().uuid().nullable().optional(),
     dueDate: z.string().trim().min(1, 'Due date is required'),
     customerRef: z.string().trim().max(100).nullable().optional(),
     notes: z.string().trim().max(1000).nullable().optional(),
@@ -77,6 +79,8 @@ export type CreateProductionOrderDto = z.infer<typeof createProductionOrderSchem
 export const updateProductionOrderSchema = z
   .object({
     styleId: z.string().uuid().optional(),
+    fabricTypeId: z.string().uuid().nullable().optional(),
+    colorId: z.string().uuid().nullable().optional(),
     dueDate: z.string().trim().min(1).optional(),
     customerRef: z.string().trim().max(100).nullable().optional(),
     notes: z.string().trim().max(1000).nullable().optional(),
@@ -149,3 +153,12 @@ export const productionOrderQuerySchema = z
   })
   .strict();
 export type ProductionOrderQueryDto = z.infer<typeof productionOrderQuerySchema>;
+
+export const selectFabricColorSchema = z
+  .object({
+    fabricTypeId: z.string().uuid('Valid fabric type ID is required'),
+    colorId: z.string().uuid('Valid color ID is required'),
+    washTypeId: z.string().uuid().nullable().optional(),
+  })
+  .strict();
+export type SelectFabricColorDto = z.infer<typeof selectFabricColorSchema>;

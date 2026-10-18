@@ -2,6 +2,7 @@ import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type {
   CreateProductionOrderDto,
   ProductionOrderQueryDto,
+  SelectFabricColorDto,
   UpdateProductionOrderDto,
 } from '@denimflow/shared';
 import { OrderRepository } from './order.repository.js';
@@ -38,5 +39,9 @@ export class OrderService {
     }
 
     return this.orderRepository.updateDraftOrder(id, dto, actorId);
+  }
+
+  async selectFabricColor(id: string, dto: SelectFabricColorDto, actorId: string) {
+    return this.orderRepository.selectFabricColor(id, dto, actorId);
   }
 }

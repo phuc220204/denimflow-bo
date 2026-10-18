@@ -13,6 +13,7 @@ import {
 import {
   createProductionOrderSchema,
   productionOrderQuerySchema,
+  selectFabricColorSchema,
   updateProductionOrderSchema,
 } from '@denimflow/shared';
 import { AuthService } from '../auth/auth.service.js';
@@ -69,5 +70,16 @@ export class OrderController {
     const actorId = await this.assertPlannerOrAdmin(authHeader);
     const dto = updateProductionOrderSchema.parse(rawBody);
     return this.orderService.updateDraftOrder(id, dto, actorId);
+  }
+
+  @Patch(':id/fabric-color')
+  async selectFabricColor(
+    @Param('id') id: string,
+    @Body() rawBody: unknown,
+    @Headers('authorization') authHeader?: string,
+  ) {
+    const actorId = await this.assertPlannerOrAdmin(authHeader);
+    const dto = selectFabricColorSchema.parse(rawBody);
+    return this.orderService.selectFabricColor(id, dto, actorId);
   }
 }

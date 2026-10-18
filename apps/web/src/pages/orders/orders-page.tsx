@@ -1,19 +1,33 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertCircle, Calendar, Clock, Layers, Plus, Search, Trash2, X } from 'lucide-react';
+import {
+  AlertCircle,
+  Calendar,
+  Clock,
+  Layers,
+  Palette,
+  Plus,
+  Search,
+  Trash2,
+  X,
+} from 'lucide-react';
 import React, { useState } from 'react';
 import type {
   CreateProductionOrderDto,
   OrderStatus,
+  SelectFabricColorDto,
   UpdateProductionOrderDto,
 } from '@denimflow/shared';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import {
   createOrderApi,
+  fetchAllowedColors,
+  fetchFabricTypes,
   fetchOrdersApi,
   fetchStyles,
   fetchWashTypes,
   type ProductionOrderItem,
+  selectFabricColorApi,
   updateOrderApi,
 } from '../../lib/api';
 import { useAuth } from '../../lib/auth-context';
@@ -39,6 +53,8 @@ export const OrdersPage: React.FC = () => {
   const [customerRef, setCustomerRef] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
   const [washTypeId, setWashTypeId] = useState<string>('');
+  const [fabricTypeId, setFabricTypeId] = useState<string>('');
+  const [colorId, setColorId] = useState<string>('');
   const [isCustom, setIsCustom] = useState<boolean>(false);
   const [ppSampleRequired, setPpSampleRequired] = useState<boolean>(false);
   const [skipCleanWash, setSkipCleanWash] = useState<boolean>(false);
@@ -55,6 +71,15 @@ export const OrdersPage: React.FC = () => {
   ]);
   const [formError, setFormError] = useState<string | null>(null);
 
+  // Dedicated Fabric & Color modal state (BR-04, BR-05)
+  const [fabricColorModalOrder, setFabricColorModalOrder] = useState<ProductionOrderItem | null>(
+    null,
+  );
+  const [fcModalFabricId, setFcModalFabricId] = useState<string>('');
+  const [fcModalColorId, setFcModalColorId] = useState<string>('');
+  const [fcModalWashId, setFcModalWashId] = useState<string>('');
+  const [fcModalError, setFcModalError] = useState<string | null>(null);
+
   // Queries
   const { data: orders = [], isLoading: ordersLoading } = useQuery({
     queryKey: ['orders', statusFilter],
@@ -69,10 +94,41 @@ export const OrdersPage: React.FC = () => {
     queryFn: () => fetchStyles(),
   });
 
+  const { data: fabricTypes = [] } = useQuery({
+    queryKey: ['fabricTypes'],
+    queryFn: () => fetchFabricTypes(),
+  });
+
   const { data: washTypes = [] } = useQuery({
     queryKey: ['washTypes'],
     queryFn: () => fetchWashTypes(),
   });
+
+  // Allowed colors for create/edit modal (BR-04)
+  const { data: allowedColors = [] } = useQuery({
+    queryKey: ['allowedColors', fabricTypeId],
+    queryFn: () => fetchAllowedColors(fabricTypeId),
+    enabled: Boolean(fabricTypeId),
+  });
+
+  // Allowed colors for dedicated fabric-color modal (BR-04)
+  const { data: fcModalAllowedColors = [] } = useQuery({
+    queryKey: ['allowedColors', fcModalFabricId],
+    queryFn: () => fetchAllowedColors(fcModalFabricId),
+    enabled: Boolean(fcModalFabricId),
+  });
+
+  const isCuttingLocked = (order: ProductionOrderItem | null) => {
+    if (!order) return false;
+    if (order.status === 'IN_PRODUCTION' || order.status === 'COMPLETED') return true;
+    const wf = order.workflowInstance as
+      { stepInstances?: Array<{ stepDefinition?: { code: string }; status: string }> } | undefined;
+    const cuttingStep = wf?.stepInstances?.find((s) => s.stepDefinition?.code === 'CUTTING');
+    if (cuttingStep && cuttingStep.status !== 'PENDING' && cuttingStep.status !== 'READY') {
+      return true;
+    }
+    return false;
+  };
 
   const isPlannerOrAdmin =
     user?.role === 'PRODUCTION_PLANNER' || user?.role === 'ADMIN' || user?.role === 'MANAGER';
@@ -85,6 +141,8 @@ export const OrdersPage: React.FC = () => {
     setCustomerRef('');
     setNotes('');
     setWashTypeId('');
+    setFabricTypeId('');
+    setColorId('');
     setIsCustom(false);
     setPpSampleRequired(false);
     setSkipCleanWash(false);
@@ -111,6 +169,8 @@ export const OrdersPage: React.FC = () => {
     setCustomerRef(order.customerRef || '');
     setNotes(order.notes || '');
     setWashTypeId(order.washTypeId || '');
+    setFabricTypeId(order.fabricTypeId || '');
+    setColorId(order.colorId || '');
     setIsCustom(order.isCustom);
     setPpSampleRequired(order.ppSampleRequired);
     setSkipCleanWash(order.skipCleanWash);
@@ -126,6 +186,58 @@ export const OrdersPage: React.FC = () => {
     );
     setFormError(null);
     setIsModalOpen(true);
+  };
+
+  // Dedicated Fabric & Color modal handlers (BR-04, BR-05)
+  const handleOpenFabricColorModal = (order: ProductionOrderItem) => {
+    setFabricColorModalOrder(order);
+    setFcModalFabricId(order.fabricTypeId || '');
+    setFcModalColorId(order.colorId || '');
+    setFcModalWashId(order.washTypeId || '');
+    setFcModalError(null);
+  };
+
+  const selectFabricColorMutation = useMutation({
+    mutationFn: ({ id, dto }: { id: string; dto: SelectFabricColorDto }) =>
+      selectFabricColorApi(id, dto, token),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      setFabricColorModalOrder(null);
+    },
+    onError: (err: Error) => {
+      setFcModalError(err.message || 'Không thể chọn chất liệu và màu sắc');
+    },
+  });
+
+  const handleFcModalSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setFcModalError(null);
+
+    if (!fabricColorModalOrder) return;
+
+    if (isCuttingLocked(fabricColorModalOrder)) {
+      setFcModalError('BR-05: Đơn hàng đã bắt đầu cắt, không thể thay đổi loại vải hoặc màu sắc.');
+      return;
+    }
+
+    if (!fcModalFabricId) {
+      setFcModalError('Vui lòng chọn loại vải');
+      return;
+    }
+
+    if (!fcModalColorId) {
+      setFcModalError('Vui lòng chọn màu sắc');
+      return;
+    }
+
+    selectFabricColorMutation.mutate({
+      id: fabricColorModalOrder.id,
+      dto: {
+        fabricTypeId: fcModalFabricId,
+        colorId: fcModalColorId,
+        washTypeId: fcModalWashId || null,
+      },
+    });
   };
 
   // Mutations
@@ -232,8 +344,23 @@ export const OrdersPage: React.FC = () => {
       }
     }
 
+    if (editingOrder && isCuttingLocked(editingOrder)) {
+      if (
+        fabricTypeId !== (editingOrder.fabricTypeId || '') ||
+        colorId !== (editingOrder.colorId || '') ||
+        washTypeId !== (editingOrder.washTypeId || '')
+      ) {
+        setFormError(
+          'BR-05: Đơn hàng đã bắt đầu cắt, không thể thay đổi loại vải, màu sắc hoặc kiểu giặt.',
+        );
+        return;
+      }
+    }
+
     const payload = {
       styleId,
+      fabricTypeId: fabricTypeId || null,
+      colorId: colorId || null,
       dueDate,
       customerRef: customerRef.trim() || null,
       notes: notes.trim() || null,
@@ -385,6 +512,21 @@ export const OrdersPage: React.FC = () => {
                         <span className="text-xs text-text-muted font-mono">
                           {order.style?.styleCode}
                         </span>
+                        <div className="mt-1 flex items-center gap-1.5 text-xs">
+                          {order.fabricType ? (
+                            <span className="font-medium text-primary">
+                              {order.fabricType.code}
+                            </span>
+                          ) : (
+                            <span className="text-text-muted italic">Chưa chọn vải</span>
+                          )}
+                          <span className="text-text-muted">•</span>
+                          {order.color ? (
+                            <span className="font-medium text-text">{order.color.name}</span>
+                          ) : (
+                            <span className="text-text-muted italic">Chưa chọn màu</span>
+                          )}
+                        </div>
                       </td>
                       <td className="py-3.5 px-4">
                         <div className="flex flex-wrap gap-1 items-center">
@@ -466,16 +608,34 @@ export const OrdersPage: React.FC = () => {
                         </Badge>
                       </td>
                       <td className="py-3.5 px-4 text-right">
-                        {isPlannerOrAdmin && isDraft && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleOpenEdit(order)}
-                            className="text-xs h-8"
-                          >
-                            Chỉnh sửa
-                          </Button>
-                        )}
+                        <div className="flex items-center justify-end gap-1.5">
+                          {isPlannerOrAdmin && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleOpenFabricColorModal(order)}
+                              className="text-xs h-8 flex items-center gap-1"
+                              title={
+                                isCuttingLocked(order)
+                                  ? 'Đã khóa vì cắt đã bắt đầu (BR-05)'
+                                  : 'Chọn chất liệu và màu sắc (BR-04)'
+                              }
+                            >
+                              <Palette className="h-3.5 w-3.5 text-primary" />
+                              <span>Vải & Màu</span>
+                            </Button>
+                          )}
+                          {isPlannerOrAdmin && isDraft && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleOpenEdit(order)}
+                              className="text-xs h-8"
+                            >
+                              Chỉnh sửa
+                            </Button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -549,6 +709,64 @@ export const OrdersPage: React.FC = () => {
                   ></input>
                 </div>
               </div>
+
+              {/* Fabric Type & Color (BR-04, BR-05) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-text mb-1.5">
+                    Loại vải (Fabric Type)
+                  </label>
+                  <select
+                    value={fabricTypeId}
+                    onChange={(e) => {
+                      setFabricTypeId(e.target.value);
+                      setColorId('');
+                    }}
+                    disabled={Boolean(editingOrder && isCuttingLocked(editingOrder))}
+                    className="w-full px-3 py-2 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+                  >
+                    <option value="">-- Chưa chọn loại vải --</option>
+                    {fabricTypes.map((fb) => (
+                      <option key={fb.id} value={fb.id}>
+                        {fb.code} - {fb.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-text mb-1.5">
+                    Màu sắc (Color - Ma trận BR-04)
+                  </label>
+                  <select
+                    value={colorId}
+                    onChange={(e) => setColorId(e.target.value)}
+                    disabled={
+                      Boolean(editingOrder && isCuttingLocked(editingOrder)) || !fabricTypeId
+                    }
+                    className="w-full px-3 py-2 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+                  >
+                    <option value="">
+                      {!fabricTypeId ? '-- Chọn loại vải trước --' : '-- Chọn màu sắc phù hợp --'}
+                    </option>
+                    {allowedColors.map((cl) => (
+                      <option key={cl.id} value={cl.id}>
+                        {cl.code} - {cl.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {editingOrder && isCuttingLocked(editingOrder) && (
+                <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-md text-amber-800 text-xs flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 shrink-0 text-amber-600" />
+                  <span>
+                    BR-05: Đơn hàng đã bắt đầu công đoạn Cắt hoặc đang sản xuất. Loại vải, màu sắc
+                    và kiểu giặt đã bị khóa.
+                  </span>
+                </div>
+              )}
 
               {/* Customer Ref & Wash Type */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -829,6 +1047,156 @@ export const OrdersPage: React.FC = () => {
                       ? 'Lưu thay đổi'
                       : 'Tạo đơn hàng DRAFT'}
                 </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Quick Select Fabric & Color (BR-04, BR-05) */}
+      {fabricColorModalOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-surface rounded-xl border border-border shadow-xl max-w-md w-full overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/30">
+              <div className="flex items-center gap-2">
+                <Palette className="h-5 w-5 text-primary" />
+                <h2 className="text-base font-bold text-text">
+                  Chất liệu & Màu sắc: {fabricColorModalOrder.orderNumber}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFabricColorModalOrder(null)}
+                className="text-text-muted hover:text-text"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleFcModalSubmit} className="p-6 space-y-4">
+              {fcModalError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-xs flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span>{fcModalError}</span>
+                </div>
+              )}
+
+              {isCuttingLocked(fabricColorModalOrder) ? (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-md text-amber-800 text-xs flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
+                  <div>
+                    <strong className="block font-semibold">Khóa chỉnh sửa (BR-05)</strong>
+                    Công đoạn Cắt đã bắt đầu hoặc đơn hàng đang trong dây chuyền sản xuất. Không
+                    được phép thay đổi chất liệu và màu sắc.
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-text-muted">
+                  Chọn loại vải và màu sắc tương thích theo Ma trận phối màu (BR-04).
+                </p>
+              )}
+
+              <div>
+                <label
+                  htmlFor="fc-modal-fabric"
+                  className="block text-xs font-semibold text-text mb-1.5"
+                >
+                  Loại vải (Fabric Type) *
+                </label>
+                <select
+                  id="fc-modal-fabric"
+                  value={fcModalFabricId}
+                  onChange={(e) => {
+                    setFcModalFabricId(e.target.value);
+                    setFcModalColorId('');
+                  }}
+                  disabled={isCuttingLocked(fabricColorModalOrder)}
+                  required
+                  className="w-full px-3 py-2 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+                >
+                  <option value="">-- Chọn loại vải --</option>
+                  {fabricTypes.map((fb) => (
+                    <option key={fb.id} value={fb.id}>
+                      {fb.code} - {fb.name} ({fb.composition || 'Denim'})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="fc-modal-color"
+                  className="block text-xs font-semibold text-text mb-1.5"
+                >
+                  Màu sắc (Color - Tương thích BR-04) *
+                </label>
+                <select
+                  id="fc-modal-color"
+                  value={fcModalColorId}
+                  onChange={(e) => setFcModalColorId(e.target.value)}
+                  disabled={isCuttingLocked(fabricColorModalOrder) || !fcModalFabricId}
+                  required
+                  className="w-full px-3 py-2 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+                >
+                  <option value="">
+                    {!fcModalFabricId ? '-- Chọn loại vải trước --' : '-- Chọn màu sắc cho phép --'}
+                  </option>
+                  {fcModalAllowedColors.map((cl) => (
+                    <option key={cl.id} value={cl.id}>
+                      {cl.code} - {cl.name}
+                    </option>
+                  ))}
+                </select>
+                {fcModalFabricId && fcModalAllowedColors.length === 0 && (
+                  <span className="block text-[11px] text-amber-600 mt-1">
+                    Chưa có màu nào được cấu hình cho loại vải này trong ma trận BR-04.
+                  </span>
+                )}
+              </div>
+
+              <div>
+                <label
+                  htmlFor="fc-modal-wash"
+                  className="block text-xs font-semibold text-text mb-1.5"
+                >
+                  Kiểu giặt hiệu ứng (Wash Type)
+                </label>
+                <select
+                  id="fc-modal-wash"
+                  value={fcModalWashId}
+                  onChange={(e) => setFcModalWashId(e.target.value)}
+                  disabled={isCuttingLocked(fabricColorModalOrder)}
+                  className="w-full px-3 py-2 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+                >
+                  <option value="">Không giặt hiệu ứng (Mặc định)</option>
+                  {washTypes.map((wt) => (
+                    <option key={wt.id} value={wt.id}>
+                      {wt.code} - {wt.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setFabricColorModalOrder(null)}
+                  className="text-xs"
+                >
+                  Đóng
+                </Button>
+                {!isCuttingLocked(fabricColorModalOrder) && (
+                  <Button
+                    type="submit"
+                    disabled={
+                      selectFabricColorMutation.isPending || !fcModalFabricId || !fcModalColorId
+                    }
+                    className="text-xs bg-primary text-white hover:bg-primary/90"
+                  >
+                    {selectFabricColorMutation.isPending ? 'Đang lưu...' : 'Lưu lựa chọn'}
+                  </Button>
+                )}
               </div>
             </form>
           </div>
