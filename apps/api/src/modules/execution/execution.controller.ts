@@ -24,8 +24,14 @@ import { ExecutionService } from './execution.service.js';
 import { QuantityService } from './quantity.service.js';
 
 // Roles that own steps in a template (responsible_role). The service also checks that the user
-// has exactly the step's role and, for operators, the step's station.
-const STEP_WORKERS = [Role.STATION_OPERATOR, Role.QC_INSPECTOR, Role.PRODUCTION_PLANNER];
+// has exactly the step's role and, for operators, the step's station. The Process Engineer owns
+// no step but is let through so the service answers with BR-11 instead of a generic 403.
+const STEP_WORKERS = [
+  Role.STATION_OPERATOR,
+  Role.QC_INSPECTOR,
+  Role.PRODUCTION_PLANNER,
+  Role.PROCESS_ENGINEER,
+];
 
 @Controller()
 @UseGuards(AuthGuard)

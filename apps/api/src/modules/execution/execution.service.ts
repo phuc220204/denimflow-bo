@@ -143,6 +143,7 @@ export class ExecutionService {
       const changed = await this.executionRepository.transitionStep(tx, stepId, ['IN_PROGRESS'], {
         status: nextStatus,
         completedAt,
+        completedBy: user.id,
       });
       if (changed === 0) {
         throw new ConflictException('Bước này vừa được người khác cập nhật, vui lòng tải lại');

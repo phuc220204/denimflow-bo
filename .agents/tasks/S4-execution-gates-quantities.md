@@ -38,6 +38,6 @@ Branch: `feat/execution-separation-of-duties`
 FR/BR: BR-11
 Do: record who performed each step; block QC approval by the same person; block Process Engineer from completing production steps.
 Acceptance:
-- [ ] Both violations return `BR-11` and are covered by tests.
+- [x] Both violations return `BR-11` and are covered by tests (the self-approval check is wired into the QC decision in T5.1).
 
 Sprint exit: demo an order from READY CUTTING to DONE FINISHING with a deliberate over-quantity rejection.

@@ -40,3 +40,28 @@ export async function assertMayWork(
   }
   return null;
 }
+
+export interface StepPerformers {
+  performedBy: string | null;
+  completedBy: string | null;
+  quantityEnteredBy: string[];
+}
+
+// BR-11: whoever worked a step (started it, completed it or entered its quantities, R-23) may not
+// approve its QC. The QC decision (T5.1) calls this before recording a result.
+export function assertNotPerformer(
+  stepCode: string,
+  performers: StepPerformers,
+  user: AuthResponse['user'],
+): void {
+  const workedOnIt =
+    performers.performedBy === user.id ||
+    performers.completedBy === user.id ||
+    performers.quantityEnteredBy.includes(user.id);
+  if (workedOnIt) {
+    throw new BusinessRuleViolation(
+      'BR-11',
+      `BR-11: Bạn đã thực hiện bước ${stepCode} nên không được duyệt QC cho bước này`,
+    );
+  }
+}

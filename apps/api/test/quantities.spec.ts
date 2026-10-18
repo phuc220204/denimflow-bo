@@ -8,6 +8,7 @@ import { AppModule } from '../src/app.module.js';
 import { setupApp } from '../src/app.setup.js';
 import { PrismaClient } from '../src/generated/prisma/client.js';
 import { AuthService } from '../src/modules/auth/auth.service.js';
+import { ExecutionRepository } from '../src/modules/execution/execution.repository.js';
 import { seedCatalog } from '../src/seed/catalog.js';
 import { seedUsers } from '../src/seed/users.js';
 import { DEMO_STYLE_CODE, seedWorkflow } from '../src/seed/workflow.js';
@@ -195,6 +196,17 @@ describe('Quantity entry and conservation (T4.3)', () => {
     expect(responses.find((r) => r.status === 409)?.body.brId).toBe('BR-08');
     const sewing = await stepRow('SEWING');
     expect([sewing.qtyIn, sewing.qtyGood, sewing.qtyDefect]).toEqual([30, 28, 2]);
+  });
+
+  it('lists everyone who worked a step for the BR-11 check at QC (R-23)', async () => {
+    const performers = await app
+      .get(ExecutionRepository)
+      .findStepPerformers(prisma as never, stepIds.SEWING!);
+    expect(performers).toEqual({
+      performedBy: SEWER_ID,
+      completedBy: null,
+      quantityEnteredBy: [SEWER_ID],
+    });
   });
 
   it('BR-08 blocks completing sewing until every piece handed over is accounted for', async () => {
