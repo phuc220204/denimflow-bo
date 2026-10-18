@@ -10,34 +10,34 @@ Do: gate links in the order of `skills/add-engine-rule.md`; each link returns pa
 Acceptance:
 - [x] Tests per link and for the chain order; a SKIPPED predecessor counts as done.
 
-### T4.2 Worklist, Start and Complete   [agent]
+### T4.2 Worklist, Start and Complete   [Tran Hoang Phuc / agent]
 Branch: `feat/execution-worklist`
 FR/BR: FR-12, BR-11, BR-16
 Do: `GET /worklist` (steps in READY/IN_PROGRESS/REWORK for the user's station), `POST /steps/:id/start`, `POST /steps/:id/complete`; on complete: next state WAITING_QC or DONE by step config, then run readiness evaluation and open successors, all in one transaction with AuditLog. Operator UI optimized for few taps.
 Acceptance:
-- [ ] An operator sees only their station's steps.
-- [ ] Completing a step opens the next one; completing the last step is handled in S5.
+- [x] An operator sees only their station's steps.
+- [x] Completing a step opens the next one; completing the last step is handled in S5.
 
-### T4.3 Quantity entry with conservation   [agent]
+### T4.3 Quantity entry with conservation   [Tran Hoang Phuc / agent]
 Branch: `feat/execution-quantities`
 FR/BR: FR-13, BR-07, BR-08, BR-09
 Do: `step_quantity_entries`; bundles created at CUTTING (codes `PO-…-B001`); entry endpoint locks the step row (`FOR UPDATE`), validates BR-08 (qtyIn ≤ previous good) and BR-07 (cut ≤ plan + tolerance), writes aggregates on `step_instances`. For outsourced DYEING/WASH, record sent/received and require a reason on mismatch (BR-09).
 Acceptance:
-- [ ] **Concurrency test:** two parallel entries cannot jointly exceed the allowed quantity.
-- [ ] Differences between steps must be explained by recorded defects/wastage.
+- [x] **Concurrency test:** two parallel entries cannot jointly exceed the allowed quantity.
+- [x] Differences between steps must be explained by recorded defects/wastage.
 
-### T4.4 Evidence (FR-14, only if time)   [agent]
+### T4.4 Evidence (FR-14, only if time)   [Tran Hoang Phuc / agent]
 Branch: `feat/execution-evidence`
 FR/BR: FR-14, BR-15
 Do: upload through signed URL to the private bucket, client-side image compression, attach to `evidence`; Gate blocks completion of steps with `requiresEvidence` and no attachment. Seed `requiresEvidence = true` for FINISHING once this ships.
 Acceptance:
-- [ ] Step with `requiresEvidence` cannot complete without ≥ 1 attachment.
+- [x] Step with `requiresEvidence` cannot complete without ≥ 1 attachment.
 
-### T4.5 Separation of duties   [agent]
+### T4.5 Separation of duties   [Tran Hoang Phuc / agent]
 Branch: `feat/execution-separation-of-duties`
 FR/BR: BR-11
 Do: record who performed each step; block QC approval by the same person; block Process Engineer from completing production steps.
 Acceptance:
-- [ ] Both violations return `BR-11` and are covered by tests.
+- [x] Both violations return `BR-11` and are covered by tests.
 
 Sprint exit: demo an order from READY CUTTING to DONE FINISHING with a deliberate over-quantity rejection.

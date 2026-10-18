@@ -77,17 +77,17 @@ Ký hiệu: ✅ xong · 🟢 làm được ngay · ⏳ chờ task khác · 👤 
 | Mã | Việc | FR/BR | Phụ thuộc | Mức | Người nhận | Trạng thái | PR |
 |---|---|---|---|---|---|---|---|
 | [T4.1](../.agents/tasks/S4-execution-gates-quantities.md) | Engine: chuỗi Gate (Chain of Responsibility) | FR-11, BR-14, BR-06, BR-08, BR-15 | T2.1, T3.4 | MVP | Tran Hoang Phuc | ✅ Xong | #26 |
-| [T4.2](../.agents/tasks/S4-execution-gates-quantities.md) | Worklist, Start và Complete bước | FR-12, BR-11, BR-16 | T3.5, T4.1 | MVP | | ⏳ | |
-| [T4.3](../.agents/tasks/S4-execution-gates-quantities.md) | Nhập số lượng, bảo toàn số lượng (có test đồng thời) | FR-13, BR-07, BR-08, BR-09 | T4.2 | MVP | | ⏳ | |
-| [T4.4](../.agents/tasks/S4-execution-gates-quantities.md) | Bằng chứng (ảnh/file) cho bước | FR-14, BR-15 | T4.2 | Tuỳ chọn ☁️ | | ⏳ | |
-| [T4.5](../.agents/tasks/S4-execution-gates-quantities.md) | Tách biệt nhiệm vụ (người làm không tự duyệt) | BR-11 | T4.2 | MVP | | ⏳ | |
+| [T4.2](../.agents/tasks/S4-execution-gates-quantities.md) | Worklist, Start và Complete bước | FR-12, BR-11, BR-16 | T3.5, T4.1 | MVP | Tran Hoang Phuc | ✅ Xong | #27 |
+| [T4.3](../.agents/tasks/S4-execution-gates-quantities.md) | Nhập số lượng, bảo toàn số lượng (có test đồng thời) | FR-13, BR-07, BR-08, BR-09 | T4.2 | MVP | Tran Hoang Phuc | ✅ Xong | #29 |
+| [T4.4](../.agents/tasks/S4-execution-gates-quantities.md) | Bằng chứng (ảnh/file) cho bước | FR-14, BR-15 | T4.2 | Tuỳ chọn ☁️ | Tran Hoang Phuc | ✅ Xong | #30 |
+| [T4.5](../.agents/tasks/S4-execution-gates-quantities.md) | Tách biệt nhiệm vụ (người làm không tự duyệt) | BR-11 | T4.2 | MVP | Tran Hoang Phuc | ✅ Xong | #31 |
 
 ### Sprint 5 — QC, làm lại, dashboard, bàn giao
 
 | Mã | Việc | FR/BR | Phụ thuộc | Mức | Người nhận | Trạng thái | PR |
 |---|---|---|---|---|---|---|---|
-| [T5.1](../.agents/tasks/S5-qc-rework-dashboard.md) | Kiểm tra QC theo QC Profile | FR-16, BR-11, BR-19 | T4.2, T1.5 | MVP | | ⏳ | |
-| [T5.2](../.agents/tasks/S5-qc-rework-dashboard.md) | Định tuyến làm lại (rework), giới hạn số vòng | FR-17, BR-10 | T5.1 | MVP | | ⏳ | |
+| [T5.1](../.agents/tasks/S5-qc-rework-dashboard.md) | Kiểm tra QC theo QC Profile | FR-16, BR-11, BR-19 | T4.2, T1.5 | MVP | Tran Hoang Phuc | ✅ Xong | #32 |
+| [T5.2](../.agents/tasks/S5-qc-rework-dashboard.md) | Định tuyến làm lại (rework), giới hạn số vòng | FR-17, BR-10 | T5.1 | MVP | Tran Hoang Phuc | ✅ Xong | #33 |
 | [T5.3](../.agents/tasks/S5-qc-rework-dashboard.md) | Ghi nhận lỗi (defects) | FR-18 | T5.1 | Tuỳ chọn | | ⏳ | |
 | [T5.4](../.agents/tasks/S5-qc-rework-dashboard.md) | Đóng gói và bàn giao | FR-26 | T5.1 | MVP | | ⏳ | |
 | [T5.5](../.agents/tasks/S5-qc-rework-dashboard.md) | Dashboard WIP | FR-21 | T3.5 | MVP | | ⏳ | |
