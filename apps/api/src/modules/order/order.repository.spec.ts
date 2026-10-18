@@ -709,4 +709,234 @@ describe('OrderRepository', () => {
       );
     });
   });
+
+  describe('createHandover (FR-26)', () => {
+    const actorId = '11111111-1111-4111-8111-111111111111';
+    const orderId = 'order-handover-1';
+
+    it('rejects handover creation while FINAL_QC is not DONE', async () => {
+      const order = {
+        id: orderId,
+        orderNumber: 'PO-2026-0001',
+        status: 'IN_PRODUCTION',
+        skipCleanWash: false,
+        handoverRecord: null,
+        style: {
+          styleCode: 'J01',
+          qcProfiles: [{ id: 'qc-full', profileType: 'FULL_PROCESS' }],
+        },
+        sizeLines: [{ size: '30', plannedQty: 100 }],
+        bundles: [],
+        workflowInstance: {
+          id: 'wf-1',
+          stepInstances: [
+            {
+              id: 'step-qc',
+              stepDefinition: { code: 'FINAL_QC' },
+              status: 'WAITING_QC', // NOT DONE
+            },
+          ],
+        },
+      };
+
+      const txMock = {
+        productionOrder: { findUnique: vi.fn().mockResolvedValue(order) },
+      };
+      const mockPrisma = {
+        $transaction: vi.fn(async (cb: (tx: unknown) => unknown) => cb(txMock)),
+      };
+
+      const repo = new OrderRepository(mockPrisma as unknown as PrismaService);
+
+      await expect(repo.createHandover(orderId, {}, actorId)).rejects.toThrow(
+        'Không thể lập biên bản bàn giao khi công đoạn FINAL_QC chưa hoàn thành (DONE)',
+      );
+    });
+
+    it('creates handover record showing FULL_PROCESS and completes order when FINAL_QC is DONE', async () => {
+      const order = {
+        id: orderId,
+        orderNumber: 'PO-2026-0001',
+        status: 'IN_PRODUCTION',
+        skipCleanWash: false,
+        handoverRecord: null,
+        style: {
+          styleCode: 'J01',
+          qcProfiles: [
+            { id: 'qc-full', profileType: 'FULL_PROCESS' },
+            { id: 'qc-skip', profileType: 'SKIP_CLEAN_WASH' },
+          ],
+        },
+        qcProfile: { id: 'qc-full', profileType: 'FULL_PROCESS' },
+        sizeLines: [
+          { size: '29', plannedQty: 50 },
+          { size: '30', plannedQty: 50 },
+        ],
+        bundles: [
+          { id: 'b-1', size: '29', qty: 50 },
+          { id: 'b-2', size: '30', qty: 50 },
+        ],
+        workflowInstance: {
+          id: 'wf-1',
+          stepInstances: [
+            {
+              id: 'step-qc',
+              stepDefinition: { code: 'FINAL_QC' },
+              status: 'DONE',
+            },
+            {
+              id: 'step-pack',
+              stepDefinition: { code: 'PACK_HANDOVER' },
+              status: 'READY',
+            },
+          ],
+        },
+      };
+
+      const mockHandover = {
+        id: 'handover-1',
+        orderId,
+        qcProfileId: 'qc-full',
+        packingList: [
+          { size: '29', plannedQty: 50, actualQty: 50 },
+          { size: '30', plannedQty: 50, actualQty: 50 },
+        ],
+        totalQty: 100,
+        handedOverBy: actorId,
+        handedOverAt: new Date('2026-10-18T12:00:00Z'),
+        notes: 'Handover complete',
+        handedOverByUser: { fullName: 'Production Planner' },
+      };
+
+      const txMock = {
+        productionOrder: {
+          findUnique: vi.fn().mockResolvedValue(order),
+          update: vi.fn().mockResolvedValue({}),
+        },
+        handoverRecord: {
+          create: vi.fn().mockResolvedValue(mockHandover),
+        },
+        stepInstance: {
+          update: vi.fn().mockResolvedValue({}),
+        },
+        workflowInstance: {
+          update: vi.fn().mockResolvedValue({}),
+        },
+        auditLog: {
+          create: vi.fn().mockResolvedValue({}),
+        },
+      };
+      const mockPrisma = {
+        $transaction: vi.fn(async (cb: (tx: unknown) => unknown) => cb(txMock)),
+      };
+
+      const repo = new OrderRepository(mockPrisma as unknown as PrismaService);
+      const res = await repo.createHandover(orderId, { notes: 'Handover complete' }, actorId);
+
+      expect(res.qcProfileType).toBe('FULL_PROCESS');
+      expect(res.totalQty).toBe(100);
+      expect(res.orderStatus).toBe('COMPLETED');
+
+      // Verify order and workflow transition to COMPLETED
+      expect(txMock.productionOrder.update).toHaveBeenCalledWith({
+        where: { id: orderId },
+        data: { status: 'COMPLETED' },
+      });
+      expect(txMock.workflowInstance.update).toHaveBeenCalledWith({
+        where: { id: 'wf-1' },
+        data: { status: 'COMPLETED' },
+      });
+
+      // Verify PACK_HANDOVER completed
+      expect(txMock.stepInstance.update).toHaveBeenCalledWith({
+        where: { id: 'step-pack' },
+        data: expect.objectContaining({
+          status: 'DONE',
+          performedBy: actorId,
+          qtyGood: 100,
+        }),
+      });
+
+      // Verify AuditLog row written
+      expect(txMock.auditLog.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            action: 'HANDOVER_CREATED',
+            actorId,
+          }),
+        }),
+      );
+    });
+
+    it('creates handover record showing SKIP_CLEAN_WASH when order skipCleanWash is true', async () => {
+      const order = {
+        id: orderId,
+        orderNumber: 'PO-2026-0002',
+        status: 'IN_PRODUCTION',
+        skipCleanWash: true,
+        handoverRecord: null,
+        style: {
+          styleCode: 'J01',
+          qcProfiles: [
+            { id: 'qc-full', profileType: 'FULL_PROCESS' },
+            { id: 'qc-skip', profileType: 'SKIP_CLEAN_WASH' },
+          ],
+        },
+        qcProfile: { id: 'qc-skip', profileType: 'SKIP_CLEAN_WASH' },
+        sizeLines: [{ size: '30', plannedQty: 100 }],
+        bundles: [],
+        workflowInstance: {
+          id: 'wf-1',
+          stepInstances: [
+            {
+              id: 'step-qc',
+              stepDefinition: { code: 'FINAL_QC' },
+              status: 'DONE',
+            },
+          ],
+        },
+      };
+
+      const mockHandover = {
+        id: 'handover-2',
+        orderId,
+        qcProfileId: 'qc-skip',
+        packingList: [{ size: '30', plannedQty: 100, actualQty: 100 }],
+        totalQty: 100,
+        handedOverBy: actorId,
+        handedOverAt: new Date('2026-10-18T12:00:00Z'),
+        notes: null,
+        handedOverByUser: { fullName: 'Production Planner' },
+      };
+
+      const txMock = {
+        productionOrder: {
+          findUnique: vi.fn().mockResolvedValue(order),
+          update: vi.fn().mockResolvedValue({}),
+        },
+        handoverRecord: {
+          create: vi.fn().mockResolvedValue(mockHandover),
+        },
+        stepInstance: {
+          update: vi.fn().mockResolvedValue({}),
+        },
+        workflowInstance: {
+          update: vi.fn().mockResolvedValue({}),
+        },
+        auditLog: {
+          create: vi.fn().mockResolvedValue({}),
+        },
+      };
+      const mockPrisma = {
+        $transaction: vi.fn(async (cb: (tx: unknown) => unknown) => cb(txMock)),
+      };
+
+      const repo = new OrderRepository(mockPrisma as unknown as PrismaService);
+      const res = await repo.createHandover(orderId, {}, actorId);
+
+      expect(res.qcProfileType).toBe('SKIP_CLEAN_WASH');
+      expect(res.totalQty).toBe(100);
+      expect(res.orderStatus).toBe('COMPLETED');
+    });
+  });
 });

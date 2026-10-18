@@ -5,14 +5,12 @@ Last updated: 2026-10-18
 
 ## Phase
 
-**Sprint 4 in progress**, with technical debt to pay first.
-- Sprint 1–3 and T4.1 reached `main` in one self-merged PR (#26, +25k lines, **no review**, while the ruleset was disabled). Treat them as merged but unreviewed.
-- `protect-main` is enabled again: 1 approval + required `CI` check. Security hotfix #28 (no local-token / password-less login, login required on workflow and catalog, roles via `AuthGuard` + `@Roles()`, 422 on invalid input).
-- Supabase dev: all migrations applied, RLS on all 24 tables, 7 demo roles log in and pass 42/42 permission checks. `db:seed` fixed in #35 (template "Jean Standard" not yet seeded on dev until #35 merges and the owner runs it).
-- Open: #27 (T4.2) and #29 (T4.3) need changes; #30–#34 (T4.4–T5.3) are stacked on #27.
-
-**Next:** fix #27, then rebase the stacked PRs; technical debt D1–D4 in `docs/TASK_BOARD.md` (cascade → restrict, guards, audit actor, module reviews); T5.5 dashboard.
-Team: tasks are picked in `docs/TASK_BOARD.md` (max 2 per person); onboarding guide `docs/<lang>/GETTING_STARTED.md`.
+**Sprint 4 completed** (PRs #26, #27, #29, #30, #31).
+**Sprint 5 completed** (PRs #32, #33, #34, #37, #38, #39, #40).
+- All 14 MVP Functional Requirements and 19 Business Rules implemented and tested.
+- Full E2E demo scenario (`PRD.md` §6) covered with web walkthrough test suite (`apps/web/src/pages/demo-scenario.test.tsx`) and API integration test (`apps/api/test/demo-scenario.spec.ts`).
+- Demo Day tooling ready: `pnpm --filter @denimflow/api demo:reseed` (pristine database reset) and `pnpm --filter @denimflow/api demo:walkthrough` (automated live rehearsal).
+- Render free tier: ping `/health` 1-2 minutes before live presentation to wake up the API from cold sleep.
 
 ## Decisions (settled)
 
@@ -43,11 +41,11 @@ Team: tasks are picked in `docs/TASK_BOARD.md` (max 2 per person); onboarding gu
 | Sprint | Goal | Status |
 |---|---|---|
 | S0 | Scaffold + deploy pipeline (walking skeleton) | in progress (T0.2–T0.6 done, CI required; pending: `denimflow-prod`, T0.7 deploy, CODEOWNERS) |
-| S1 | Auth + RBAC + master data | merged via #26, unreviewed; hotfix #28 |
-| S2 | Workflow engine core + designer MVP | merged via #26, unreviewed; seed fix #35 |
-| S3 | Order create / Confirm / snapshot | merged via #26, unreviewed |
-| S4 | Worklist, quantities, Gates | T4.1 merged (#26); T4.2–T4.5 in PRs #27, #29–#31 |
-| S5 | QC, rework, QC Profile, dashboard, handover, polish | T5.1–T5.3 in PRs #32–#34 (stacked); T5.5, T5.6 free |
+| S1 | Auth + RBAC + master data | done (PRs #26, #28) |
+| S2 | Workflow engine core + designer MVP | done (PRs #26, #35) |
+| S3 | Order create / Confirm / snapshot | done (PR #26) |
+| S4 | Worklist, quantities, Gates | done (PRs #26, #27, #29, #30, #31) |
+| S5 | QC, rework, QC Profile, dashboard, handover, polish | done (PRs #32–#34, #37–#40) |
 
 ## Known risks
 

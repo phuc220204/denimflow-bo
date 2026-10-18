@@ -27,6 +27,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { fetchHealth } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
 import { i18n } from '../lib/i18n/dictionary';
+import { WipDashboard } from './dashboard/wip-dashboard';
 
 export const HomePage: React.FC = () => {
   const { user } = useAuth();
@@ -504,6 +505,9 @@ export const HomePage: React.FC = () => {
     <div className="space-y-6">
       {/* Dynamic Role Workspace Section */}
       {renderRoleWorkspace()}
+
+      {/* Production WIP Dashboard (FR-21) */}
+      <WipDashboard />
 
       {/* Account Info and System Health Status */}
       <div className="grid gap-6 md:grid-cols-2 pt-2">

@@ -6,3 +6,5 @@ export * from './template-validation.js';
 export * from './bom.js';
 export * from './gates.js';
 export * from './instance-builder.js';
+export * from './quantities.js';
+export * from './quality.js';

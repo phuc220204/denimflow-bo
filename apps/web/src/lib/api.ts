@@ -25,7 +25,44 @@ import {
   type ConfirmOrderResponseDto,
   type CuttingGateResultDto,
   type RequestStatus,
+  type CompleteStepResponseDto,
+  type StartStepResponseDto,
+  type StepStatus,
+  type WorklistItemDto,
+  type BundleDto,
+  type RecordQuantityEntryDto,
+  type StepQuantityEntryDto,
+  type AttachEvidenceDto,
+  type EvidenceDto,
+  type ApproveQcDto,
+  type EvaluateQcInspectionInputDto,
+  type QcEvaluationOutputDto,
+  type RecordQcInspectionDto,
+  type QcInspectionResponseDto,
+  type ReworkTargetDto,
+  type OrderDefectItemDto,
+  type CreateHandoverDto,
+  type HandoverRecordResponseDto,
+  type DashboardWipSummaryDto,
+  type AuditLogItemDto,
+  type AuditLogListResponseDto,
+  type AuditLogQueryDto,
 } from '@denimflow/shared';
+
+export type {
+  CompleteStepResponseDto,
+  StartStepResponseDto,
+  StepStatus,
+  WorklistItemDto,
+  BundleDto,
+  RecordQuantityEntryDto,
+  StepQuantityEntryDto,
+  AttachEvidenceDto,
+  EvidenceDto,
+  AuditLogItemDto,
+  AuditLogListResponseDto,
+  AuditLogQueryDto,
+};
 
 export interface UserProfile {
   id: string;
@@ -1172,5 +1209,275 @@ export async function fetchCuttingGateApi(
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Không thể kiểm tra Gate cắt');
+  return data;
+}
+
+// ==========================================
+// WORKLIST / EXECUTION API CLIENT (T4.2, FR-12)
+// ==========================================
+
+export async function fetchWorklistApi(
+  token?: string | null,
+  query?: { stationType?: string; status?: StepStatus },
+): Promise<WorklistItemDto[]> {
+  const params = new URLSearchParams();
+  if (query?.stationType) params.append('stationType', query.stationType);
+  if (query?.status) params.append('status', query.status);
+
+  const qs = params.toString() ? `?${params.toString()}` : '';
+  const res = await fetch(`${API_BASE}/worklist${qs}`, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tải danh sách công việc');
+  return data;
+}
+
+export async function startStepApi(
+  stepId: string,
+  token?: string | null,
+): Promise<StartStepResponseDto> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/start`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể bắt đầu công đoạn');
+  return data;
+}
+
+export async function completeStepApi(
+  stepId: string,
+  token?: string | null,
+): Promise<CompleteStepResponseDto> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/complete`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể hoàn thành công đoạn');
+  return data;
+}
+
+export async function recordQuantityApi(
+  stepId: string,
+  dto: RecordQuantityEntryDto,
+  token?: string | null,
+): Promise<StepQuantityEntryDto> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/quantities`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(dto),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể ghi nhận sản lượng');
+  return data;
+}
+
+export async function fetchStepQuantitiesApi(
+  stepId: string,
+  token?: string | null,
+): Promise<StepQuantityEntryDto[]> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/quantities`, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tải lịch sử sản lượng');
+  return data;
+}
+
+export async function generateBundlesApi(
+  stepId: string,
+  token?: string | null,
+): Promise<BundleDto[]> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/bundles/generate`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tạo kiện hàng');
+  return data;
+}
+
+export async function fetchStepBundlesApi(
+  stepId: string,
+  token?: string | null,
+): Promise<BundleDto[]> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/bundles`, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tải danh sách kiện');
+  return data;
+}
+
+export async function attachEvidenceApi(
+  stepId: string,
+  dto: AttachEvidenceDto,
+  token?: string | null,
+): Promise<EvidenceDto> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/evidence`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(dto),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể đính kèm minh chứng');
+  return data;
+}
+
+export async function fetchStepEvidenceApi(
+  stepId: string,
+  token?: string | null,
+): Promise<EvidenceDto[]> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/evidence`, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tải danh sách minh chứng');
+  return data;
+}
+
+export async function approveQcApi(
+  stepId: string,
+  dto: ApproveQcDto = {},
+  token?: string | null,
+): Promise<CompleteStepResponseDto> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/qc-approve`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(dto),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể duyệt QC');
+  return data;
+}
+
+// 7. Quality Inspection (Sprint 5, FR-16, BR-11, BR-19)
+export async function evaluateQcInspectionApi(
+  stepInstanceId: string,
+  dto: EvaluateQcInspectionInputDto,
+  token?: string | null,
+): Promise<QcEvaluationOutputDto> {
+  const res = await fetch(`${API_BASE}/quality/evaluate/${stepInstanceId}`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(dto),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể đánh giá kiểm tra QC');
+  return data;
+}
+
+export async function recordQcInspectionApi(
+  dto: RecordQcInspectionDto,
+  token?: string | null,
+): Promise<QcInspectionResponseDto> {
+  const res = await fetch(`${API_BASE}/quality/inspections`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(dto),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể lưu biên bản kiểm tra QC');
+  return data;
+}
+
+export async function fetchStepInspectionsApi(
+  stepInstanceId: string,
+  token?: string | null,
+): Promise<QcInspectionResponseDto[]> {
+  const res = await fetch(`${API_BASE}/quality/inspections/${stepInstanceId}`, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tải lịch sử kiểm tra QC');
+  return data;
+}
+
+export async function fetchReworkTargetsApi(
+  stepInstanceId: string,
+  token?: string | null,
+): Promise<ReworkTargetDto[]> {
+  const res = await fetch(`${API_BASE}/quality/rework-targets/${stepInstanceId}`, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tải danh sách công đoạn làm lại');
+  return data;
+}
+
+export async function fetchOrderDefectsApi(
+  orderId: string,
+  token?: string | null,
+): Promise<OrderDefectItemDto[]> {
+  const res = await fetch(`${API_BASE}/quality/orders/${orderId}/defects`, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tải danh sách lỗi của đơn hàng');
+  return data;
+}
+
+// 8. Handover and Packing (Sprint 5, FR-26)
+export async function createHandoverApi(
+  orderId: string,
+  dto: CreateHandoverDto = {},
+  token?: string | null,
+): Promise<HandoverRecordResponseDto> {
+  const res = await fetch(`${API_BASE}/orders/${orderId}/handover`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(dto),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tạo biên bản bàn giao');
+  return data;
+}
+
+export async function fetchHandoverApi(
+  orderId: string,
+  token?: string | null,
+): Promise<HandoverRecordResponseDto | null> {
+  const res = await fetch(`${API_BASE}/orders/${orderId}/handover`, {
+    headers: getAuthHeaders(token),
+  });
+  if (res.status === 404) return null;
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tải thông tin biên bản bàn giao');
+  return data;
+}
+
+// 9. Dashboard WIP (Sprint 5, FR-21)
+export async function fetchDashboardWipApi(token?: string | null): Promise<DashboardWipSummaryDto> {
+  const res = await fetch(`${API_BASE}/dashboard/wip`, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tải số liệu WIP phân xưởng');
+  return data;
+}
+
+// 10. Audit Log Viewer (Sprint 5, FR-25)
+export async function fetchAuditLogsApi(
+  query: Partial<AuditLogQueryDto> = {},
+  token?: string | null,
+): Promise<AuditLogListResponseDto> {
+  const params = new URLSearchParams();
+  if (query.entityType) params.append('entityType', query.entityType);
+  if (query.entityId) params.append('entityId', query.entityId);
+  if (query.actorId) params.append('actorId', query.actorId);
+  if (query.from) params.append('from', query.from);
+  if (query.to) params.append('to', query.to);
+  if (query.page) params.append('page', String(query.page));
+  if (query.limit) params.append('limit', String(query.limit));
+
+  const qs = params.toString();
+  const url = `${API_BASE}/audit${qs ? `?${qs}` : ''}`;
+  const res = await fetch(url, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tải nhật ký thao tác');
   return data;
 }

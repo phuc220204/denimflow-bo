@@ -21,13 +21,13 @@ import { ForbiddenPage } from '../pages/forbidden';
 
 // Permissions matrix: maps each Role to the routes they are allowed to access (PRD.md §4)
 const ROLE_ALLOWED_ROUTES: Record<string, string[]> = {
-  ADMIN: ['/', '/users', '/catalog', '/audit', '/workflow', '/orders', '/inventory'],
-  PROCESS_ENGINEER: ['/', '/workflow', '/catalog'],
+  ADMIN: ['/', '/users', '/catalog', '/audit', '/workflow', '/orders', '/inventory', '/worklist'],
+  PROCESS_ENGINEER: ['/', '/workflow', '/catalog', '/worklist'],
   PRODUCTION_PLANNER: ['/', '/orders', '/worklist', '/catalog', '/inventory'],
   WAREHOUSE_KEEPER: ['/', '/inventory', '/catalog'],
   STATION_OPERATOR: ['/', '/worklist'],
   QC_INSPECTOR: ['/', '/qc', '/worklist', '/catalog'],
-  MANAGER: ['/', '/orders', '/audit', '/catalog', '/inventory'],
+  MANAGER: ['/', '/orders', '/audit', '/catalog', '/inventory', '/worklist'],
 };
 
 export const ProtectedLayout: React.FC = () => {
@@ -56,11 +56,11 @@ export const ProtectedLayout: React.FC = () => {
     { label: 'Phân quyền & Nhân sự', href: '/users', icon: Users, disabled: false },
     { label: i18n.nav.orders, href: '/orders', icon: ClipboardList, disabled: false },
     { label: i18n.nav.workflow, href: '/workflow', icon: GitFork, disabled: false },
-    { label: i18n.nav.worklist, href: '/worklist', icon: Factory, disabled: true },
+    { label: i18n.nav.worklist, href: '/worklist', icon: Factory, disabled: false },
     { label: i18n.nav.qc, href: '/qc', icon: ShieldCheck, disabled: true },
     { label: i18n.nav.inventory, href: '/inventory', icon: Package, disabled: false },
     { label: i18n.nav.catalog, href: '/catalog', icon: FileSpreadsheet, disabled: false },
-    { label: i18n.nav.audit, href: '/audit', icon: History, disabled: true },
+    { label: i18n.nav.audit, href: '/audit', icon: History, disabled: false },
   ];
 
   // Filter navigation items strictly for the active user's role (RBAC)
