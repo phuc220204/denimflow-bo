@@ -199,6 +199,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@denimflow/engine':
+        specifier: workspace:*
+        version: link:../../packages/engine
       '@denimflow/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -354,6 +357,9 @@ importers:
 
   packages/engine:
     devDependencies:
+      '@denimflow/shared':
+        specifier: workspace:*
+        version: link:../shared
       tsup:
         specifier: 9.0.0
         version: 9.0.0(jiti@2.7.0)(postcss@8.5.30)(typescript@6.0.3)(yaml@2.9.1)
