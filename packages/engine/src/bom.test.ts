@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { MaterialType } from '@denimflow/shared';
+import type { MaterialType as SharedMaterialType } from '@denimflow/shared';
 import {
   BomCalculator,
   type BomNormInput,
@@ -7,7 +7,7 @@ import {
   SizeNormBomStrategy,
 } from './bom.js';
 
-const MaterialType: Record<MaterialType, MaterialType> = {
+const MaterialType: Record<SharedMaterialType, SharedMaterialType> = {
   FABRIC: 'FABRIC',
   THREAD: 'THREAD',
   BUTTON: 'BUTTON',
