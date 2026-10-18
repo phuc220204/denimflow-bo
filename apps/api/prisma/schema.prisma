@@ -150,6 +150,7 @@ model Profile {
   enteredQuantities        StepQuantityEntry[]       @relation("EnteredQuantities")
   uploadedEvidence         Evidence[]                @relation("UploadedEvidence")
   inspections              QcInspection[]            @relation("InspectorQcInspections")
+  handoverRecords          HandoverRecord[]          @relation("UserHandoverRecords")
 
   @@map("profiles")
 }
@@ -251,6 +252,7 @@ model QcProfile {
   orders                   ProductionOrder[]
   customerAcknowledgements CustomerAcknowledgement[]
   qcInspections            QcInspection[]
+  handoverRecords          HandoverRecord[]
 
   @@unique([styleId, profileType])
   @@map("qc_profiles")
@@ -402,6 +404,7 @@ model ProductionOrder {
   customerAcknowledgements CustomerAcknowledgement[]
   workflowInstance      WorkflowInstance?
   bundles               Bundle[]
+  handoverRecord        HandoverRecord?
 
   @@index([status, dueDate])
   @@map("production_orders")
@@ -673,6 +676,29 @@ model Defect {
   @@index([bundleId])
   @@map("defects")
 }
+
+model HandoverRecord {
+  id           String          @id @default(uuid()) @db.Uuid
+  orderId      String          @unique @map("order_id") @db.Uuid
+  qcProfileId  String          @map("qc_profile_id") @db.Uuid
+  packingList  Json            @map("packing_list")
+  totalQty     Int             @map("total_qty")
+  handedOverBy String          @map("handed_over_by") @db.Uuid
+  handedOverAt DateTime        @default(now()) @map("handed_over_at") @db.Timestamptz
+  notes        String?
+  createdAt    DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime        @updatedAt @map("updated_at") @db.Timestamptz
+
+  order            ProductionOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  qcProfile        QcProfile       @relation(fields: [qcProfileId], references: [id])
+  handedOverByUser Profile         @relation("UserHandoverRecords", fields: [handedOverBy], references: [id])
+
+  @@index([orderId])
+  @@index([qcProfileId])
+  @@index([handedOverBy])
+  @@map("handover_records")
+}
+
 
 
 

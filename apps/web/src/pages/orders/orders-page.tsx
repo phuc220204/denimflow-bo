@@ -14,6 +14,7 @@ import {
   Search,
   Trash2,
   X,
+  PackageCheck,
 } from 'lucide-react';
 import React, { useState } from 'react';
 import type {
@@ -30,10 +31,12 @@ import {
   attachAcknowledgementApi,
   calculateBomApi,
   confirmOrderApi,
+  createHandoverApi,
   createOrderApi,
   fetchAllowedColors,
   fetchBomLinesApi,
   fetchFabricTypes,
+  fetchHandoverApi,
   fetchOrderDefectsApi,
   fetchOrdersApi,
   fetchStyles,
@@ -111,6 +114,30 @@ export const OrdersPage: React.FC = () => {
     queryKey: ['order-defects', defectsModalOrder?.id],
     queryFn: () => fetchOrderDefectsApi(defectsModalOrder!.id, token),
     enabled: Boolean(defectsModalOrder?.id),
+  });
+
+  // Dedicated Handover modal state (T5.4, FR-26)
+  const [handoverModalOrder, setHandoverModalOrder] = useState<ProductionOrderItem | null>(null);
+  const [handoverNotes, setHandoverNotes] = useState<string>('');
+  const [handoverError, setHandoverError] = useState<string | null>(null);
+
+  const { data: existingHandover, refetch: refetchHandover } = useQuery({
+    queryKey: ['order-handover', handoverModalOrder?.id],
+    queryFn: () => fetchHandoverApi(handoverModalOrder!.id, token),
+    enabled: Boolean(handoverModalOrder?.id),
+  });
+
+  const createHandoverMutation = useMutation({
+    mutationFn: ({ orderId, notes }: { orderId: string; notes?: string }) =>
+      createHandoverApi(orderId, { notes }, token),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['orders'] });
+      void refetchHandover();
+      setHandoverError(null);
+    },
+    onError: (err: Error) => {
+      setHandoverError(err.message || 'Không thể tạo biên bản bàn giao');
+    },
   });
 
   // Queries
@@ -791,6 +818,32 @@ export const OrdersPage: React.FC = () => {
                             <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
                             <span>Lỗi</span>
                           </Button>
+                          {(order.status === 'IN_PRODUCTION' || order.status === 'COMPLETED') && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setHandoverModalOrder(order);
+                                setHandoverNotes('');
+                                setHandoverError(null);
+                              }}
+                              className={`text-xs h-8 flex items-center gap-1 ${
+                                order.status === 'COMPLETED'
+                                  ? 'text-emerald-700 hover:text-emerald-800 border-emerald-200 hover:bg-emerald-50'
+                                  : 'text-blue-700 hover:text-blue-800 border-blue-200 hover:bg-blue-50'
+                              }`}
+                              title={
+                                order.status === 'COMPLETED'
+                                  ? 'Xem biên bản bàn giao & đóng gói (FR-26)'
+                                  : 'Lập biên bản bàn giao & đóng gói (FR-26)'
+                              }
+                            >
+                              <PackageCheck className="h-3.5 w-3.5" />
+                              <span>
+                                {order.status === 'COMPLETED' ? 'Đã bàn giao' : 'Bàn giao'}
+                              </span>
+                            </Button>
+                          )}
                           {isPlannerOrAdmin && isDraft && (
                             <Button
                               size="sm"
@@ -1866,6 +1919,237 @@ export const OrdersPage: React.FC = () => {
                 >
                   Đóng
                 </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Handover and Packing (T5.4, FR-26) */}
+      {handoverModalOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-surface rounded-xl border border-border shadow-xl max-w-2xl w-full my-8 overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/30">
+              <div className="flex items-center gap-2">
+                <PackageCheck className="h-5 w-5 text-blue-600" />
+                <h2 className="text-base font-bold text-text">
+                  Đóng gói & Bàn giao đơn hàng {handoverModalOrder.orderNumber} (FR-26)
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setHandoverModalOrder(null)}
+                className="text-text-muted hover:text-text"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {/* Order and QC Profile Summary */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 bg-muted/30 rounded-lg border border-border text-xs">
+                <div>
+                  <span className="text-text-muted">Kiểu dáng: </span>
+                  <span className="font-semibold text-text">
+                    {handoverModalOrder.style?.styleCode} - {handoverModalOrder.style?.name}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-text-muted">Hồ sơ QC áp dụng: </span>
+                  <Badge
+                    tone={handoverModalOrder.skipCleanWash ? 'warning' : 'primary'}
+                    className="ml-1 text-[11px] font-mono"
+                  >
+                    {handoverModalOrder.skipCleanWash ? 'SKIP_CLEAN_WASH' : 'FULL_PROCESS'}
+                  </Badge>
+                </div>
+                <div>
+                  <span className="text-text-muted">Trạng thái đơn: </span>
+                  <Badge tone="neutral" className="ml-1 text-[11px]">
+                    {i18n.orderStatus[handoverModalOrder.status] || handoverModalOrder.status}
+                  </Badge>
+                </div>
+                <div>
+                  <span className="text-text-muted">Quy trình giặt: </span>
+                  <span className="font-medium text-text">
+                    {handoverModalOrder.skipCleanWash
+                      ? 'Bỏ giặt sạch (BR-18)'
+                      : 'Quy trình tiêu chuẩn'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Already Handed Over Notice */}
+              {existingHandover ? (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800 text-xs space-y-1">
+                  <div className="flex items-center gap-1.5 font-semibold">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                    <span>Đơn hàng đã được bàn giao hoàn tất!</span>
+                  </div>
+                  <p className="text-[11px] text-emerald-700">
+                    Người thực hiện:{' '}
+                    <span className="font-medium">{existingHandover.handedOverByName}</span> lúc{' '}
+                    {new Date(existingHandover.handedOverAt).toLocaleString('vi-VN')}
+                  </p>
+                  {existingHandover.notes && (
+                    <p className="text-[11px] text-emerald-700 italic">
+                      Ghi chú: {existingHandover.notes}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                (() => {
+                  const wf = handoverModalOrder.workflowInstance as
+                    | {
+                        stepInstances?: Array<{
+                          stepDefinition?: { code: string; name: string };
+                          status: string;
+                        }>;
+                      }
+                    | undefined;
+                  const finalQcStep = wf?.stepInstances?.find(
+                    (s) => s.stepDefinition?.code === 'FINAL_QC',
+                  );
+                  const isFinalQcDone = finalQcStep?.status === 'DONE';
+
+                  if (!isFinalQcDone) {
+                    return (
+                      <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-xs flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
+                        <span>
+                          Chưa thể bàn giao: Công đoạn kiểm tra chất lượng cuối cùng (FINAL_QC) chưa
+                          hoàn thành (DONE).
+                          {finalQcStep ? ` Trạng thái hiện tại: [${finalQcStep.status}].` : ''}
+                        </span>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()
+              )}
+
+              {/* Packing List Table */}
+              <div>
+                <h3 className="text-xs font-semibold text-text mb-2">
+                  Bảng kê đóng gói theo cỡ (Packing List by Size)
+                </h3>
+                <div className="border border-border rounded-lg overflow-hidden">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="border-b border-border bg-muted/50 text-text-muted uppercase text-[10px] tracking-wider">
+                        <th className="py-2 px-3">Size</th>
+                        <th className="py-2 px-3 text-right">SL Kế hoạch</th>
+                        <th className="py-2 px-3 text-right">SL Đóng gói thực tế</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {(existingHandover?.packingList ?? handoverModalOrder.sizeLines).map(
+                        (line) => {
+                          const actualQty = 'actualQty' in line ? line.actualQty : line.plannedQty;
+                          return (
+                            <tr key={line.size} className="hover:bg-muted/10">
+                              <td className="py-2 px-3 font-semibold text-text">{line.size}</td>
+                              <td className="py-2 px-3 text-right text-text-muted">
+                                {line.plannedQty}
+                              </td>
+                              <td className="py-2 px-3 text-right font-bold text-text">
+                                {actualQty}
+                              </td>
+                            </tr>
+                          );
+                        },
+                      )}
+                      <tr className="bg-muted/30 font-semibold border-t border-border">
+                        <td className="py-2 px-3 text-text">Tổng cộng (Total Qty)</td>
+                        <td className="py-2 px-3 text-right text-text-muted">
+                          {(existingHandover?.packingList ?? handoverModalOrder.sizeLines).reduce(
+                            (acc, l) => acc + l.plannedQty,
+                            0,
+                          )}
+                        </td>
+                        <td className="py-2 px-3 text-right text-blue-700">
+                          {existingHandover?.totalQty ??
+                            handoverModalOrder.sizeLines.reduce((acc, l) => acc + l.plannedQty, 0)}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Handover notes input for pending handovers */}
+              {!existingHandover && (
+                <div>
+                  <label
+                    htmlFor="handover-notes"
+                    className="block text-xs font-semibold text-text mb-1"
+                  >
+                    Ghi chú bàn giao
+                  </label>
+                  <input
+                    id="handover-notes"
+                    type="text"
+                    value={handoverNotes}
+                    onChange={(e) => setHandoverNotes(e.target.value)}
+                    placeholder="Ví dụ: Đóng thùng 10 kiện carton, niêm phong đầy đủ"
+                    className="w-full px-3 py-2 text-xs bg-background border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+              )}
+
+              {handoverError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-xs flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span>{handoverError}</span>
+                </div>
+              )}
+
+              {/* Footer actions */}
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setHandoverModalOrder(null)}
+                  className="text-xs"
+                >
+                  Đóng
+                </Button>
+                {!existingHandover &&
+                  (() => {
+                    const wf = handoverModalOrder.workflowInstance as
+                      | {
+                          stepInstances?: Array<{
+                            stepDefinition?: { code: string };
+                            status: string;
+                          }>;
+                        }
+                      | undefined;
+                    const finalQcStep = wf?.stepInstances?.find(
+                      (s) => s.stepDefinition?.code === 'FINAL_QC',
+                    );
+                    const isFinalQcDone = finalQcStep?.status === 'DONE';
+
+                    return (
+                      <Button
+                        type="button"
+                        disabled={!isFinalQcDone || createHandoverMutation.isPending}
+                        onClick={() =>
+                          createHandoverMutation.mutate({
+                            orderId: handoverModalOrder.id,
+                            notes: handoverNotes || undefined,
+                          })
+                        }
+                        className="text-xs bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1.5"
+                      >
+                        <PackageCheck className="h-4 w-4" />
+                        <span>
+                          {createHandoverMutation.isPending
+                            ? 'Đang tạo biên bản...'
+                            : 'Tạo biên bản bàn giao & Hoàn tất đơn'}
+                        </span>
+                      </Button>
+                    );
+                  })()}
               </div>
             </div>
           </div>

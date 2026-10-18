@@ -31,8 +31,8 @@ Branch: `feat/order-handover`
 FR/BR: FR-26
 Do: after FINAL_QC pass: packing list by size, handover record that states the QC Profile used; order → COMPLETED when the last step is DONE.
 Acceptance:
-- [ ] Handover cannot be created while FINAL_QC is not DONE.
-- [ ] Handover record shows FULL_PROCESS or SKIP_CLEAN_WASH.
+- [x] Handover cannot be created while FINAL_QC is not DONE.
+- [x] Handover record shows FULL_PROCESS or SKIP_CLEAN_WASH.
 
 ### T5.5 Dashboard   [agent]
 Branch: `feat/dashboard-wip`

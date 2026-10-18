@@ -41,6 +41,8 @@ import {
   type QcInspectionResponseDto,
   type ReworkTargetDto,
   type OrderDefectItemDto,
+  type CreateHandoverDto,
+  type HandoverRecordResponseDto,
 } from '@denimflow/shared';
 
 export type {
@@ -1407,5 +1409,34 @@ export async function fetchOrderDefectsApi(
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Không thể tải danh sách lỗi của đơn hàng');
+  return data;
+}
+
+// 8. Handover and Packing (Sprint 5, FR-26)
+export async function createHandoverApi(
+  orderId: string,
+  dto: CreateHandoverDto = {},
+  token?: string | null,
+): Promise<HandoverRecordResponseDto> {
+  const res = await fetch(`${API_BASE}/orders/${orderId}/handover`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(dto),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tạo biên bản bàn giao');
+  return data;
+}
+
+export async function fetchHandoverApi(
+  orderId: string,
+  token?: string | null,
+): Promise<HandoverRecordResponseDto | null> {
+  const res = await fetch(`${API_BASE}/orders/${orderId}/handover`, {
+    headers: getAuthHeaders(token),
+  });
+  if (res.status === 404) return null;
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tải thông tin biên bản bàn giao');
   return data;
 }
