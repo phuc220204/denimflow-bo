@@ -173,3 +173,25 @@ export const bomLineDtoSchema = z.object({
   updatedAt: z.string().optional(),
 });
 export type BomLineDto = z.infer<typeof bomLineDtoSchema>;
+
+export const attachAcknowledgementSchema = z
+  .object({
+    acknowledgedByName: z.string().trim().min(1, 'Tên người ký biên bản xác nhận là bắt buộc'),
+    acknowledgedAt: z.string().optional(),
+    filePath: z.string().trim().min(1, 'Đường dẫn file biên bản xác nhận là bắt buộc'),
+  })
+  .strict();
+export type AttachAcknowledgementDto = z.infer<typeof attachAcknowledgementSchema>;
+
+export interface ConfirmOrderResponseDto {
+  success?: boolean;
+  orderId: string;
+  orderNumber: string;
+  status: string;
+  workflowInstanceId: string;
+  versionNo: number;
+  qcProfileType: string;
+  stepInstancesCount: number;
+  firstReadyStepCode?: string;
+  skippedStepCodes: string[];
+}

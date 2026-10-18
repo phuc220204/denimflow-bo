@@ -16,9 +16,9 @@ Giá trị trạng thái: `TODO`, `IN PROGRESS`, `DONE`, `DEFERRED` (ngoài MVP,
 
 | ID | Rule | Layer | Module | Sprint | Trạng thái |
 |---|---|---|---|---|---|
-| BR-01 | Chỉ publish template hợp lệ: đúng một step bắt đầu, có step kết thúc, mọi step đều có đường tới step kết thúc, không có step mồ côi, mọi rework loop đều có giới hạn số lần lặp | E, A (publish), W (preview) | workflow | S2 | TODO |
-| BR-02 | Version là bất biến. Sửa template tạo version mới; template đang có đơn chạy chỉ được vô hiệu hoá, không được xoá | A, D (trigger + partial unique index) | workflow | S2 | TODO |
-| BR-03 | Khi Confirm, snapshot version PUBLISHED của Style; Style chưa có template PUBLISHED thì không Confirm được | A, E | order | S3 | TODO |
+| BR-01 | Chỉ publish template hợp lệ: đúng một step bắt đầu, có step kết thúc, mọi step đều có đường tới step kết thúc, không có step mồ côi, mọi rework loop đều có giới hạn số lần lặp | E, A (publish), W (preview) | workflow | S2 | XONG |
+| BR-02 | Version là bất biến. Sửa template tạo version mới; template đang có đơn chạy chỉ được vô hiệu hoá, không được xoá | A, D (trigger + partial unique index) | workflow | S2 | XONG |
+| BR-03 | Khi Confirm, snapshot version PUBLISHED của Style; Style chưa có template PUBLISHED thì không Confirm được | A, E | order | S3 | XONG |
 | BR-04 | Chỉ được chọn màu nằm trong Fabric–Color Matrix của loại vải đã chọn | A, D (dữ liệu), W (lọc) | order, catalog | S1 dữ liệu / S3 | XONG |
 | BR-05 | Khi step CUTTING bắt đầu, vải–màu–wash bị khoá. Muốn đổi cần BR-13 hoặc huỷ đơn | A | order | S3 (khoá có hiệu lực từ S4) | XONG |
 | BR-06 | Không được bắt đầu CUTTING nếu vải chưa được phân bổ đủ theo BOM | E (Gate) | inventory, execution | S3–S4 | XONG |
@@ -31,10 +31,10 @@ Giá trị trạng thái: `TODO`, `IN PROGRESS`, `DONE`, `DEFERRED` (ngoài MVP,
 | BR-13 | Đổi workflow khi đang chạy: chỉ được chèn/bỏ qua step chưa bắt đầu, không được bỏ step bắt buộc, cần Process Engineer duyệt | E, A | workflow, execution | sau MVP (FR-19/20) | DEFERRED |
 | BR-14 | Gatekeeper: một step chỉ mở khi mọi step trước đã hoàn thành và các Gate đều đạt | E | execution | S4 | TODO |
 | BR-15 | Step cấu hình "cần minh chứng" không được hoàn thành nếu chưa có ≥ 1 file đính kèm | E (Gate), A | execution | S4 (cùng FR-14, stretch) | TODO |
-| BR-16 | Mọi chuyển trạng thái, thay đổi workflow và lần nhập số lượng đều ghi AuditLog (ai, khi nào, giá trị cũ, giá trị mới); AuditLog không được sửa hay xoá | A (cùng transaction), D (trigger append-only) | audit | nền móng S0, mọi sprint | TODO |
+| BR-16 | Mọi chuyển trạng thái, thay đổi workflow và lần nhập số lượng đều ghi AuditLog (ai, khi nào, giá trị cũ, giá trị mới); AuditLog không được sửa hay xoá | A (cùng transaction), D (trigger append-only) | audit | nền móng S0, mọi sprint | XONG |
 | BR-17 | Đơn có yêu cầu custom phải qua nhánh CUSTOM_REVIEW: đánh giá khả thi (từ chối nếu bất khả thi); nếu khả thi thì clone template gần nhất thành workflow riêng, kiểm tra (BR-01), Process Engineer duyệt, thay thế snapshot; bắt buộc duyệt mẫu trước khi cắt | A, E | workflow, order | sau MVP (FR-27) | DEFERRED (xem R-04) |
-| BR-18 | Giặt sạch (clean wash) chạy mặc định. Chỉ được bỏ qua khi khách yêu cầu để giảm giá; Planner ghi lý do và xác nhận của khách, step chuyển SKIPPED và ghi AuditLog; QC cuối khi đó dùng SKIP_CLEAN_WASH | A, E | order, execution | S3 | TODO |
-| BR-19 | Mỗi Style có hai QC Profile (FULL_PROCESS, SKIP_CLEAN_WASH) với ngưỡng co rút và phai màu riêng, do Process Engineer cấu hình. Đơn có `skipCleanWash = true` chỉ được Confirm khi đã đính kèm giấy xác nhận có chữ ký của khách; QC cuối và biên bản bàn giao dùng SKIP_CLEAN_WASH, ngược lại dùng FULL_PROCESS. Đổi quyết định bỏ qua sau Confirm là thay đổi runtime (BR-13) và cần giấy xác nhận mới | A, E, W | order, quality | dữ liệu S1, Confirm S3, QC S5 | TODO |
+| BR-18 | Giặt sạch (clean wash) chạy mặc định. Chỉ được bỏ qua khi khách yêu cầu để giảm giá; Planner ghi lý do và xác nhận của khách, step chuyển SKIPPED và ghi AuditLog; QC cuối khi đó dùng SKIP_CLEAN_WASH | A, E | order, execution | S3 | XONG |
+| BR-19 | Mỗi Style có hai QC Profile (FULL_PROCESS, SKIP_CLEAN_WASH) với ngưỡng co rút và phai màu riêng, do Process Engineer cấu hình. Đơn có `skipCleanWash = true` chỉ được Confirm khi đã đính kèm giấy xác nhận có chữ ký của khách; QC cuối và biên bản bàn giao dùng SKIP_CLEAN_WASH, ngược lại dùng FULL_PROCESS. Đổi quyết định bỏ qua sau Confirm là thay đổi runtime (BR-13) và cần giấy xác nhận mới | A, E, W | order, quality | dữ liệu S1, Confirm S3, QC S5 | XONG (Lát cắt Confirm XONG) |
 
 ## 3. Template workflow mặc định "Jean Standard"
 
@@ -101,15 +101,15 @@ MVP = 14 FR của Proposal. Mục đánh dấu ◐ là **phần tối thiểu** 
 |---|---|---|---|---|---|---|
 | FR-01 | Auth & Master Data | Đăng nhập, RBAC | MVP | ✔ | S1 T1.1–T1.2 (nền móng S0) | XONG |
 | FR-02 | Auth & Master Data | Style, FabricType, ColorOption, Fabric–Color Matrix | MVP | ✔ | S1 T1.3–T1.4 | XONG |
-| FR-03 | Auth & Master Data | Tồn kho vải theo lô và phụ liệu | High | ◐ chỉ lô vải | S3 T3.4 | TODO |
-| FR-04 | Workflow Designer | Tạo/sửa template (step, transition, condition, gate) | MVP | ✔ | S2 T2.2, T2.4, T2.5 | TODO |
-| FR-05 | Workflow Designer | Validate, publish, gán cho Style | MVP | ✔ | S2 T2.3, T2.4 | TODO |
+| FR-03 | Auth & Master Data | Tồn kho vải theo lô và phụ liệu | High | ◐ chỉ lô vải | S3 T3.4 | XONG |
+| FR-04 | Workflow Designer | Tạo/sửa template (step, transition, condition, gate) | MVP | ✔ | S2 T2.2, T2.4, T2.5 | XONG |
+| FR-05 | Workflow Designer | Validate, publish, gán cho Style | MVP | ✔ | S2 T2.3, T2.4 | XONG |
 | FR-06 | Workflow Designer | Lịch sử version, vô hiệu hoá | Medium | — | sau MVP | DEFERRED |
-| FR-07 | Production Order | Tạo và Confirm đơn | MVP | ✔ | S3 T3.1, T3.5 | TODO |
+| FR-07 | Production Order | Tạo và Confirm đơn | MVP | ✔ | S3 T3.1, T3.5 | XONG |
 | FR-08 | Production Order | Chọn vải–màu lọc theo matrix | MVP | ✔ | S3 T3.2 | XONG |
-| FR-09 | Production Order | BOM, phân bổ, Material Request | MVP | ✔ | S3 T3.3–T3.4 | TODO |
+| FR-09 | Production Order | BOM, phân bổ, Material Request | MVP | ✔ | S3 T3.3–T3.4 | XONG |
 | FR-10 | Production Order | Hold, Resume, Cancel | High | — | sau MVP | DEFERRED |
-| FR-11 | Execution Engine | Tạo instance từ snapshot, mở step theo Gate | MVP | ✔ | S2 T2.1, S3 T3.5, S4 T4.1 | TODO |
+| FR-11 | Execution Engine | Tạo instance từ snapshot, mở step theo Gate | MVP | ✔ | S2 T2.1, S3 T3.5, S4 T4.1 | MỘT PHẦN (Engine S2 + Snapshot S3 XONG) |
 | FR-12 | Execution Engine | Worklist theo trạm, Start/Complete | MVP | ✔ | S4 T4.2 | TODO |
 | FR-13 | Execution Engine | Nhập số lượng đạt/lỗi theo bundle, bảo toàn số lượng | MVP | ✔ | S4 T4.3 | TODO |
 | FR-14 | Execution Engine | Đính kèm minh chứng | High | stretch | S4 T4.4 | TODO |
@@ -127,7 +127,7 @@ MVP = 14 FR của Proposal. Mục đánh dấu ◐ là **phần tối thiểu** 
 | FR-26 | Notification & Audit | Đóng gói, packing list, biên bản bàn giao | MVP | ✔ | S5 T5.4 | TODO |
 | FR-27 | Production Order | Yêu cầu custom, đánh giá khả thi, workflow riêng | High | — | sau MVP | DEFERRED |
 | FR-28 | QC & Rework | Ngưỡng QC Profile theo Style, áp dụng ở QC cuối | High | ◐ | S1 T1.5, S5 T5.1 | MỘT PHẦN (lát cắt S1 XONG) |
-| FR-29 | Production Order | Giấy xác nhận của khách; chặn Confirm tới khi đính kèm | High | ◐ | S3 T3.5 | TODO |
+| FR-29 | Production Order | Giấy xác nhận của khách; chặn Confirm tới khi đính kèm | High | ◐ | S3 T3.5 | XONG |
 
 ## 6. Giả định trong Appendix (Q1 .. Q19): code đang giả định thế nào
 

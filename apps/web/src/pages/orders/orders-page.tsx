@@ -2,7 +2,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertCircle,
   Calendar,
+  Check,
+  CheckCircle2,
   Clock,
+  FileText,
   Layers,
   Palette,
   Calculator,
@@ -13,6 +16,8 @@ import {
 } from 'lucide-react';
 import React, { useState } from 'react';
 import type {
+  AttachAcknowledgementDto,
+  ConfirmOrderResponseDto,
   CreateProductionOrderDto,
   OrderStatus,
   SelectFabricColorDto,
@@ -21,7 +26,9 @@ import type {
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import {
+  attachAcknowledgementApi,
   calculateBomApi,
+  confirmOrderApi,
   createOrderApi,
   fetchAllowedColors,
   fetchBomLinesApi,
@@ -87,6 +94,13 @@ export const OrdersPage: React.FC = () => {
   // Dedicated BOM modal state (FR-09)
   const [bomModalOrder, setBomModalOrder] = useState<ProductionOrderItem | null>(null);
   const [bomModalError, setBomModalError] = useState<string | null>(null);
+
+  // Dedicated Confirm Order modal state (T3.5, FR-07, FR-11, BR-03, BR-18, BR-19)
+  const [confirmModalOrder, setConfirmModalOrder] = useState<ProductionOrderItem | null>(null);
+  const [confirmModalError, setConfirmModalError] = useState<string | null>(null);
+  const [confirmResult, setConfirmResult] = useState<ConfirmOrderResponseDto | null>(null);
+  const [ackCustomerName, setAckCustomerName] = useState<string>('');
+  const [ackFilePath, setAckFilePath] = useState<string>('');
 
   // Queries
   const { data: orders = [], isLoading: ordersLoading } = useQuery({
@@ -270,6 +284,81 @@ export const OrdersPage: React.FC = () => {
   const handleOpenBomModal = (order: ProductionOrderItem) => {
     setBomModalOrder(order);
     setBomModalError(null);
+  };
+
+  // Dedicated Confirm Order handlers (T3.5, FR-07, FR-11, BR-03, BR-18, BR-19)
+  const handleOpenConfirmModal = (order: ProductionOrderItem) => {
+    setConfirmModalOrder(order);
+    setConfirmModalError(null);
+    setConfirmResult(null);
+    setAckCustomerName(order.customerRef ? `Đại diện ${order.customerRef}` : 'Đại diện khách hàng');
+    setAckFilePath(`tailieu/xac-nhan-bo-giat-${order.orderNumber}.pdf`);
+  };
+
+  const confirmOrderMutation = useMutation({
+    mutationFn: (orderId: string) => confirmOrderApi(orderId, token),
+    onSuccess: (data) => {
+      setConfirmResult(data);
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+    },
+    onError: (err: Error) => {
+      setConfirmModalError(err.message || 'Không thể xác nhận đơn hàng');
+    },
+  });
+
+  const attachAckAndConfirmMutation = useMutation({
+    mutationFn: async ({ orderId, dto }: { orderId: string; dto: AttachAcknowledgementDto }) => {
+      await attachAcknowledgementApi(orderId, dto, token);
+      return confirmOrderApi(orderId, token);
+    },
+    onSuccess: (data) => {
+      setConfirmResult(data);
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+    },
+    onError: (err: Error) => {
+      setConfirmModalError(err.message || 'Lỗi khi đính kèm xác nhận và khởi chạy đơn hàng');
+    },
+  });
+
+  const handleConfirmSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setConfirmModalError(null);
+    if (!confirmModalOrder) return;
+
+    if (confirmModalOrder.isCustom) {
+      setConfirmModalError(
+        'BR-17: Đơn hàng tuỳ chỉnh thuộc quy trình CUSTOM_REVIEW sau MVP (R-04). Không thể xác nhận.',
+      );
+      return;
+    }
+
+    if (!confirmModalOrder.fabricTypeId || !confirmModalOrder.colorId) {
+      setConfirmModalError(
+        'BR-04: Đơn hàng chưa chọn loại vải và màu sắc hợp lệ. Vui lòng chọn vải & màu trước.',
+      );
+      return;
+    }
+
+    if (confirmModalOrder.skipCleanWash) {
+      if (!ackCustomerName.trim()) {
+        setConfirmModalError('Vui lòng nhập tên người đại diện khách hàng xác nhận');
+        return;
+      }
+      if (!ackFilePath.trim()) {
+        setConfirmModalError('Vui lòng cung cấp đường dẫn hoặc tên tệp văn bản xác nhận');
+        return;
+      }
+      attachAckAndConfirmMutation.mutate({
+        orderId: confirmModalOrder.id,
+        dto: {
+          acknowledgedByName: ackCustomerName.trim(),
+          filePath: ackFilePath.trim(),
+        },
+      });
+      return;
+    }
+
+    confirmOrderMutation.mutate(confirmModalOrder.id);
   };
 
   // Mutations
@@ -667,6 +756,18 @@ export const OrdersPage: React.FC = () => {
                             >
                               <Calculator className="h-3.5 w-3.5 text-primary" />
                               <span>BOM</span>
+                            </Button>
+                          )}
+                          {isPlannerOrAdmin && isDraft && (
+                            <Button
+                              size="sm"
+                              variant="primary"
+                              onClick={() => handleOpenConfirmModal(order)}
+                              className="text-xs h-8 bg-green-600 hover:bg-green-700 text-white flex items-center gap-1 font-medium"
+                              title="Xác nhận đơn hàng và tạo snapshot quy trình (T3.5, BR-03)"
+                            >
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                              <span>Xác nhận</span>
                             </Button>
                           )}
                           {isPlannerOrAdmin && isDraft && (
@@ -1384,6 +1485,254 @@ export const OrdersPage: React.FC = () => {
                 </Button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Confirm Order & Process Snapshot (T3.5, FR-07, FR-11, BR-03, BR-18, BR-19) */}
+      {confirmModalOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-surface rounded-xl border border-border shadow-xl max-w-xl w-full my-8 overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/30">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                <h2 className="text-lg font-bold text-text">
+                  Xác nhận Đơn hàng & Khởi chạy Quy trình
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setConfirmModalOrder(null)}
+                className="text-text-muted hover:text-text"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {confirmResult ? (
+              <div className="p-6 space-y-5">
+                <div className="p-4 rounded-xl bg-green-50 border border-green-200 text-green-900 space-y-2">
+                  <div className="flex items-center gap-2 font-bold text-base text-green-800">
+                    <Check className="h-5 w-5 text-green-600" />
+                    <span>Đơn hàng đã được xác nhận thành công!</span>
+                  </div>
+                  <p className="text-xs text-green-700">
+                    Snapshot quy trình sản xuất (Workflow Instance) đã được tạo tự động từ phiên bản
+                    PUBLISHED (BR-03) và đơn hàng chính thức chuyển sang trạng thái CONFIRMED.
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-lg bg-muted/40 border border-border space-y-2.5 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-text-muted">Mã đơn hàng:</span>
+                    <span className="font-mono font-bold text-text">
+                      {confirmResult.orderNumber}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-text-muted">Phiên bản quy trình:</span>
+                    <span className="font-medium text-primary">v{confirmResult.versionNo}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-text-muted">Tổng số bước quy trình:</span>
+                    <span className="font-medium text-text">
+                      {confirmResult.stepInstancesCount} bước
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-text-muted">Bước bắt đầu khả dụng:</span>
+                    <span className="font-semibold text-green-700">
+                      {confirmResult.firstReadyStepCode || 'Không có'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-text-muted">Hồ sơ kiểm định QC:</span>
+                    <span className="font-medium text-text">
+                      {confirmResult.qcProfileType === 'SKIP_CLEAN_WASH'
+                        ? 'Bỏ qua giặt sạch (Độ co tối đa 5%, độ phai cấp 2)'
+                        : 'Quy trình chuẩn (Độ co tối đa 3%, độ phai cấp 1)'}
+                    </span>
+                  </div>
+                  {confirmResult.skippedStepCodes.length > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-text-muted">Các bước tự động bỏ qua:</span>
+                      <span className="font-mono text-purple-700">
+                        {confirmResult.skippedStepCodes.join(', ')}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-end pt-3 border-t border-border">
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setConfirmModalOrder(null);
+                      setConfirmResult(null);
+                    }}
+                    className="text-xs bg-primary text-white hover:bg-primary/90"
+                  >
+                    Hoàn tất & Đóng
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleConfirmSubmit} className="p-6 space-y-4">
+                <div className="p-3.5 rounded-lg bg-muted/40 border border-border text-xs space-y-1.5">
+                  <div className="flex justify-between">
+                    <span className="text-text-muted">Mã đơn hàng:</span>
+                    <span className="font-mono font-bold text-primary">
+                      {confirmModalOrder.orderNumber}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-text-muted">Kiểu dáng:</span>
+                    <span className="font-medium text-text">
+                      {confirmModalOrder.style?.styleCode} - {confirmModalOrder.style?.name}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-text-muted">Vải & Màu:</span>
+                    <span className="font-medium text-text">
+                      {confirmModalOrder.fabricType?.name || (
+                        <span className="text-red-500 italic">Chưa chọn vải</span>
+                      )}{' '}
+                      —{' '}
+                      {confirmModalOrder.color?.name || (
+                        <span className="text-red-500 italic">Chưa chọn màu</span>
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-text-muted">Tổng số lượng:</span>
+                    <span className="font-semibold text-text">
+                      {confirmModalOrder.sizeLines
+                        .reduce((s, l) => s + l.plannedQty, 0)
+                        .toLocaleString()}{' '}
+                      chiếc
+                    </span>
+                  </div>
+                </div>
+
+                {/* Validation Warnings */}
+                {confirmModalOrder.isCustom && (
+                  <div className="flex items-start gap-2 p-3 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-md">
+                    <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-amber-600" />
+                    <div>
+                      <p className="font-semibold">Đơn hàng tuỳ chỉnh (BR-17, R-04)</p>
+                      <p className="mt-0.5">
+                        Đơn hàng có cờ tuỳ chỉnh (isCustom = true) thuộc luồng CUSTOM_REVIEW sau
+                        MVP. Không thể xác nhận trong phạm vi MVP.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {(!confirmModalOrder.fabricTypeId || !confirmModalOrder.colorId) && (
+                  <div className="flex items-start gap-2 p-3 text-xs text-red-800 bg-red-50 border border-red-200 rounded-md">
+                    <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-red-600" />
+                    <div>
+                      <p className="font-semibold">Chưa hoàn tất chọn chất liệu (BR-04)</p>
+                      <p className="mt-0.5">
+                        Đơn hàng chưa chọn loại vải và màu sắc hợp lệ theo ma trận. Vui lòng bấm
+                        &quot;Vải & Màu&quot; để chọn trước khi xác nhận.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Customer Acknowledgement (BR-18, BR-19) */}
+                {confirmModalOrder.skipCleanWash && (
+                  <div className="space-y-3 p-3.5 rounded-lg bg-purple-50/60 border border-purple-200">
+                    <div className="flex items-start gap-2 text-xs text-purple-900">
+                      <FileText className="h-4 w-4 shrink-0 mt-0.5 text-purple-700" />
+                      <div>
+                        <p className="font-bold">Yêu cầu văn bản xác nhận của khách hàng (BR-19)</p>
+                        <p className="text-[11px] text-purple-700 mt-0.5">
+                          Đơn hàng bỏ qua công đoạn giặt sạch (Clean Wash). Theo BR-18 & BR-19, đơn
+                          hàng sẽ áp dụng hồ sơ kiểm định QC nới lỏng và bắt buộc phải lưu hồ sơ xác
+                          nhận chấp nhận rủi ro từ khách hàng.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 pt-1 text-xs">
+                      <div>
+                        <label
+                          htmlFor="ack-name-input"
+                          className="block text-[11px] font-semibold text-text mb-1"
+                        >
+                          Người đại diện khách hàng ký nhận <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          id="ack-name-input"
+                          type="text"
+                          value={ackCustomerName}
+                          onChange={(e) => setAckCustomerName(e.target.value)}
+                          placeholder="Ví dụ: Đại diện phòng mua hàng đối tác"
+                          required
+                          className="w-full px-3 py-1.5 text-xs bg-surface border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+                        />
+                      </div>
+                      <div>
+                        <label
+                          htmlFor="ack-file-input"
+                          className="block text-[11px] font-semibold text-text mb-1"
+                        >
+                          Đường dẫn / Tên tệp văn bản đính kèm{' '}
+                          <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          id="ack-file-input"
+                          type="text"
+                          value={ackFilePath}
+                          onChange={(e) => setAckFilePath(e.target.value)}
+                          placeholder="Ví dụ: uploads/xac-nhan-bo-giat-PO-001.pdf"
+                          required
+                          className="w-full px-3 py-1.5 text-xs bg-surface border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary font-mono"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {confirmModalError && (
+                  <div className="flex items-center gap-2 p-3 text-xs text-red-700 bg-red-50 border border-red-200 rounded-md">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    <span>{confirmModalError}</span>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setConfirmModalOrder(null)}
+                    className="text-xs"
+                  >
+                    Hủy bỏ
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={
+                      confirmOrderMutation.isPending ||
+                      attachAckAndConfirmMutation.isPending ||
+                      confirmModalOrder.isCustom ||
+                      !confirmModalOrder.fabricTypeId ||
+                      !confirmModalOrder.colorId
+                    }
+                    className="text-xs bg-green-600 hover:bg-green-700 text-white font-medium flex items-center gap-1.5"
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    <span>
+                      {confirmOrderMutation.isPending || attachAckAndConfirmMutation.isPending
+                        ? 'Đang xác nhận...'
+                        : 'Xác nhận & Khởi chạy'}
+                    </span>
+                  </Button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}

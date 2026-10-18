@@ -60,6 +60,23 @@ const mockOrders: api.ProductionOrderItem[] = [
     ppSampleRequired: false,
     skipCleanWash: false,
     isCustom: false,
+    fabricTypeId: 'fab-1',
+    colorId: 'col-1',
+    fabricType: {
+      id: 'fab-1',
+      code: 'DENIM-12OZ',
+      name: 'Vải Denim 12oz',
+      stretchType: 'RIGID',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+    color: {
+      id: 'col-1',
+      code: 'INDIGO-DARK',
+      name: 'Xanh Chàm Đậm',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
     createdBy: 'planner-uuid',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -238,6 +255,123 @@ describe('OrdersPage', () => {
 
     await waitFor(() => {
       expect(api.calculateBomApi).toHaveBeenCalledWith('order-1', 'planner-token');
+    });
+  });
+
+  describe('Confirm Order & Snapshot (T3.5, FR-07, FR-11, BR-03, BR-18, BR-19)', () => {
+    it('T3.5: opens Confirm Order modal and successfully confirms order', async () => {
+      vi.spyOn(api, 'confirmOrderApi').mockResolvedValue({
+        success: true,
+        orderId: 'order-1',
+        orderNumber: 'PO-2026-0001',
+        status: 'CONFIRMED',
+        workflowInstanceId: 'inst-1',
+        versionNo: 1,
+        qcProfileType: 'FULL_PROCESS',
+        stepInstancesCount: 5,
+        firstReadyStepCode: 'FABRIC_INSPECT',
+        skippedStepCodes: [],
+      });
+
+      renderWithClient(<OrdersPage />);
+
+      const confirmBtn = await screen.findByRole('button', { name: /^Xác nhận$/i });
+      fireEvent.click(confirmBtn);
+
+      expect(
+        await screen.findByText(/Xác nhận Đơn hàng & Khởi chạy Quy trình/i),
+      ).toBeInTheDocument();
+
+      const submitBtn = screen.getByRole('button', { name: /Xác nhận & Khởi chạy/i });
+      fireEvent.click(submitBtn);
+
+      await waitFor(() => {
+        expect(api.confirmOrderApi).toHaveBeenCalledWith('order-1', 'planner-token');
+      });
+
+      expect(await screen.findByText(/Đơn hàng đã được xác nhận thành công!/i)).toBeInTheDocument();
+      expect(screen.getByText(/v1/i)).toBeInTheDocument();
+      expect(screen.getByText(/5 bước/i)).toBeInTheDocument();
+    });
+
+    it('T3.5: enforces BR-19 Customer Acknowledgement input when skipCleanWash is true', async () => {
+      const skipWashOrder: api.ProductionOrderItem = {
+        ...mockOrders[0]!,
+        id: 'order-skip',
+        orderNumber: 'PO-2026-0002',
+        skipCleanWash: true,
+      };
+      vi.spyOn(api, 'fetchOrdersApi').mockResolvedValue([skipWashOrder]);
+      vi.spyOn(api, 'attachAcknowledgementApi').mockResolvedValue({ id: 'ack-1' });
+      vi.spyOn(api, 'confirmOrderApi').mockResolvedValue({
+        success: true,
+        orderId: 'order-skip',
+        orderNumber: 'PO-2026-0002',
+        status: 'CONFIRMED',
+        workflowInstanceId: 'inst-skip',
+        versionNo: 1,
+        qcProfileType: 'SKIP_CLEAN_WASH',
+        stepInstancesCount: 5,
+        firstReadyStepCode: 'FABRIC_INSPECT',
+        skippedStepCodes: ['CLEAN_WASH'],
+      });
+
+      renderWithClient(<OrdersPage />);
+
+      const confirmBtn = await screen.findByRole('button', { name: /^Xác nhận$/i });
+      fireEvent.click(confirmBtn);
+
+      expect(
+        await screen.findByText(/Yêu cầu văn bản xác nhận của khách hàng \(BR-19\)/i),
+      ).toBeInTheDocument();
+
+      const nameInput = screen.getByLabelText(/Người đại diện khách hàng ký nhận/i);
+      const fileInput = screen.getByLabelText(/Đường dẫn \/ Tên tệp văn bản đính kèm/i);
+
+      fireEvent.change(nameInput, { target: { value: 'Khách hàng ABC' } });
+      fireEvent.change(fileInput, { target: { value: 'uploads/ack-signed.pdf' } });
+
+      const submitBtn = screen.getByRole('button', { name: /Xác nhận & Khởi chạy/i });
+      fireEvent.click(submitBtn);
+
+      await waitFor(() => {
+        expect(api.attachAcknowledgementApi).toHaveBeenCalledWith(
+          'order-skip',
+          {
+            acknowledgedByName: 'Khách hàng ABC',
+            filePath: 'uploads/ack-signed.pdf',
+          },
+          'planner-token',
+        );
+      });
+
+      await waitFor(() => {
+        expect(api.confirmOrderApi).toHaveBeenCalledWith('order-skip', 'planner-token');
+      });
+
+      expect(await screen.findByText(/Đơn hàng đã được xác nhận thành công!/i)).toBeInTheDocument();
+      expect(screen.getByText('CLEAN_WASH')).toBeInTheDocument();
+    });
+
+    it('T3.5: disables confirm button when order isCustom is true (BR-17)', async () => {
+      const customOrder: api.ProductionOrderItem = {
+        ...mockOrders[0]!,
+        id: 'order-custom',
+        orderNumber: 'PO-2026-0003',
+        isCustom: true,
+      };
+      vi.spyOn(api, 'fetchOrdersApi').mockResolvedValue([customOrder]);
+
+      renderWithClient(<OrdersPage />);
+
+      const confirmBtn = await screen.findByRole('button', { name: /^Xác nhận$/i });
+      fireEvent.click(confirmBtn);
+
+      expect(await screen.findByText(/Đơn hàng tuỳ chỉnh \(BR-17, R-04\)/i)).toBeInTheDocument();
+      const submitBtn = screen.getByRole('button', {
+        name: /Xác nhận & Khởi chạy/i,
+      }) as HTMLButtonElement;
+      expect(submitBtn.disabled).toBe(true);
     });
   });
 });

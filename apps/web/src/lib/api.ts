@@ -21,6 +21,8 @@ import {
   type UpdateStepDefinitionDto,
   type VersionStatus,
   type AllocateFabricDto,
+  type AttachAcknowledgementDto,
+  type ConfirmOrderResponseDto,
   type CuttingGateResultDto,
   type RequestStatus,
 } from '@denimflow/shared';
@@ -991,6 +993,38 @@ export async function fetchBomLinesApi(
   const data = await res.json();
   if (!res.ok) {
     throw new Error(data.message || 'Không thể tải danh sách định mức BOM');
+  }
+  return data;
+}
+
+export async function attachAcknowledgementApi(
+  orderId: string,
+  dto: AttachAcknowledgementDto,
+  token?: string | null,
+): Promise<unknown> {
+  const res = await fetch(`${API_BASE}/orders/${orderId}/acknowledgement`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(dto),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || 'Không thể đính kèm văn bản xác nhận');
+  }
+  return data;
+}
+
+export async function confirmOrderApi(
+  orderId: string,
+  token?: string | null,
+): Promise<ConfirmOrderResponseDto> {
+  const res = await fetch(`${API_BASE}/orders/${orderId}/confirm`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || 'Không thể xác nhận đơn hàng');
   }
   return data;
 }

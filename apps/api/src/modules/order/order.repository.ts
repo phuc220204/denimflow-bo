@@ -1,8 +1,22 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { BomCalculator, type BomNormInput, type OrderSizeLineInput } from '@denimflow/engine';
+import {
+  BadRequestException,
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  BomCalculator,
+  buildWorkflowInstancePlan,
+  type BomNormInput,
+  type OrderSizeLineInput,
+} from '@denimflow/engine';
 import type {
+  AttachAcknowledgementDto,
+  ConfirmOrderResponseDto,
   CreateProductionOrderDto,
   MaterialType,
+  OrderConditionContext,
   ProductionOrderQueryDto,
   SelectFabricColorDto,
   UpdateProductionOrderDto,
@@ -482,6 +496,320 @@ export class OrderRepository {
     return this.prisma.bomLine.findMany({
       where: { orderId },
       orderBy: { materialType: 'asc' },
+    });
+  }
+
+  async attachCustomerAcknowledgement(
+    orderId: string,
+    dto: AttachAcknowledgementDto,
+    actorId: string,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const order = await tx.productionOrder.findUnique({
+        where: { id: orderId },
+      });
+      if (!order) {
+        throw new NotFoundException(`Order with ID ${orderId} not found`);
+      }
+
+      // Find SKIP_CLEAN_WASH profile for Style
+      let qcProfile = await tx.qcProfile.findUnique({
+        where: {
+          styleId_profileType: {
+            styleId: order.styleId,
+            profileType: 'SKIP_CLEAN_WASH',
+          },
+        },
+      });
+
+      if (!qcProfile) {
+        // Create demo SKIP_CLEAN_WASH profile if missing
+        qcProfile = await tx.qcProfile.create({
+          data: {
+            styleId: order.styleId,
+            profileType: 'SKIP_CLEAN_WASH',
+            maxShrinkagePercent: 5.0,
+            maxColorFadingLevel: 2,
+            isActive: true,
+          },
+        });
+      }
+
+      const ack = await tx.customerAcknowledgement.create({
+        data: {
+          orderId,
+          ackType: 'SKIP_CLEAN_WASH',
+          qcProfileId: qcProfile.id,
+          filePath: dto.filePath,
+          acknowledgedByName: dto.acknowledgedByName,
+          acknowledgedAt: dto.acknowledgedAt ? new Date(dto.acknowledgedAt) : new Date(),
+          recordedBy: actorId,
+        },
+      });
+
+      // Write AuditLog (BR-16)
+      await tx.auditLog.create({
+        data: {
+          entityType: 'customer_acknowledgement',
+          entityId: ack.id,
+          action: 'ATTACH_CUSTOMER_ACKNOWLEDGEMENT',
+          actorId,
+          newValue: {
+            orderId,
+            ackType: 'SKIP_CLEAN_WASH',
+            filePath: dto.filePath,
+            acknowledgedByName: dto.acknowledgedByName,
+          },
+        },
+      });
+
+      return ack;
+    });
+  }
+
+  async confirmOrder(orderId: string, actorId: string): Promise<ConfirmOrderResponseDto> {
+    return this.prisma.$transaction(async (tx) => {
+      // 1. SELECT order FOR UPDATE (DATABASE_DESIGN.md §7.1)
+      const lockedOrders = await tx.$queryRaw<
+        Array<{
+          id: string;
+          order_number: string;
+          status: string;
+          style_id: string;
+          fabric_type_id: string | null;
+          color_id: string | null;
+          wash_type_id: string | null;
+          is_custom: boolean;
+          skip_clean_wash: boolean;
+          pp_sample_required: boolean;
+          dye_required: boolean;
+          dye_mode: string | null;
+          dye_source: string | null;
+          embroidery_required: boolean;
+          fabric_inspect_required: boolean;
+        }>
+      >`SELECT id, order_number, status, style_id, fabric_type_id, color_id, wash_type_id, is_custom, skip_clean_wash, pp_sample_required, dye_required, dye_mode, dye_source, embroidery_required, fabric_inspect_required FROM production_orders WHERE id = ${orderId}::uuid FOR UPDATE`;
+
+      const orderRow = lockedOrders[0];
+      if (!orderRow) {
+        throw new NotFoundException(`Order with ID ${orderId} not found`);
+      }
+
+      if (orderRow.status !== 'DRAFT') {
+        throw new ConflictException(
+          `Đơn hàng ${orderRow.order_number} đang ở trạng thái ${orderRow.status}, không thể xác nhận (chỉ áp dụng cho DRAFT).`,
+        );
+      }
+
+      // 2. Reject custom order (R-04 post-MVP notice)
+      if (orderRow.is_custom) {
+        throw new BusinessRuleViolation(
+          'BR-17',
+          'BR-17: Đơn hàng gia công tuỳ chỉnh (isCustom = true) thuộc nhánh CUSTOM_REVIEW sau MVP (R-04). Không thể xác nhận trong phạm vi MVP.',
+        );
+      }
+
+      // 3. Completeness: size lines, fabric, color
+      const sizeLines = await tx.orderSizeLine.findMany({
+        where: { orderId: orderRow.id },
+      });
+      if (sizeLines.length === 0) {
+        throw new BadRequestException('Đơn hàng phải có ít nhất 1 cỡ (Size) trước khi xác nhận');
+      }
+
+      if (!orderRow.fabric_type_id || !orderRow.color_id) {
+        throw new BadRequestException(
+          'Đơn hàng chưa chọn loại vải và màu sắc hợp lệ theo ma trận (BR-04)',
+        );
+      }
+
+      // 4. Style -> default template -> PUBLISHED version (BR-03)
+      const style = await tx.style.findUnique({
+        where: { id: orderRow.style_id },
+      });
+      if (!style || !style.defaultTemplateId) {
+        throw new BusinessRuleViolation(
+          'BR-03',
+          `BR-03: Kiểu dáng của đơn hàng chưa được gán quy trình sản xuất mặc định.`,
+        );
+      }
+
+      const publishedVersion = await tx.workflowVersion.findFirst({
+        where: {
+          templateId: style.defaultTemplateId,
+          status: 'PUBLISHED',
+        },
+        include: {
+          steps: {
+            orderBy: { seq: 'asc' },
+          },
+        },
+      });
+
+      if (!publishedVersion) {
+        throw new BusinessRuleViolation(
+          'BR-03',
+          `BR-03: Kiểu dáng ${style.styleCode} chưa có phiên bản quy trình nào được xuất bản (PUBLISHED). Không thể xác nhận đơn hàng (BR-03).`,
+        );
+      }
+
+      // 5. If skipCleanWash, require CustomerAcknowledgement (BR-19)
+      const targetProfileType = orderRow.skip_clean_wash ? 'SKIP_CLEAN_WASH' : 'FULL_PROCESS';
+
+      if (orderRow.skip_clean_wash) {
+        const acknowledgement = await tx.customerAcknowledgement.findFirst({
+          where: { orderId: orderRow.id, ackType: 'SKIP_CLEAN_WASH' },
+        });
+
+        if (!acknowledgement) {
+          throw new BusinessRuleViolation(
+            'BR-19',
+            'BR-19: Đơn hàng bỏ qua giặt sạch (skipCleanWash = true) bắt buộc phải có văn bản xác nhận của khách hàng (Customer Acknowledgement) được đính kèm trước khi xác nhận đơn hàng.',
+          );
+        }
+      }
+
+      // Pick QC profile
+      let qcProfile = await tx.qcProfile.findUnique({
+        where: {
+          styleId_profileType: {
+            styleId: orderRow.style_id,
+            profileType: targetProfileType,
+          },
+        },
+      });
+
+      if (!qcProfile) {
+        // Auto-provision standard profile if not yet seeded
+        qcProfile = await tx.qcProfile.create({
+          data: {
+            styleId: orderRow.style_id,
+            profileType: targetProfileType,
+            maxShrinkagePercent: orderRow.skip_clean_wash ? 5.0 : 3.0,
+            maxColorFadingLevel: orderRow.skip_clean_wash ? 2 : 1,
+            isActive: true,
+          },
+        });
+      }
+
+      // 6. Engine: build workflow instance plan (initial status per step)
+      const context: OrderConditionContext = {
+        order: {
+          dyeRequired: orderRow.dye_required,
+          dyeMode: (orderRow.dye_mode as 'TOTAL' | 'PARTIAL') || null,
+          dyeSource: (orderRow.dye_source as 'INTERNAL' | 'OUTSOURCED') || null,
+          embroideryRequired: orderRow.embroidery_required,
+          fabricInspectRequired: orderRow.fabric_inspect_required,
+          ppSampleRequired: orderRow.pp_sample_required,
+          skipCleanWash: orderRow.skip_clean_wash,
+          washTypeId: orderRow.wash_type_id,
+          isCustom: orderRow.is_custom,
+        },
+      };
+
+      const planOutput = buildWorkflowInstancePlan(
+        publishedVersion.steps.map((s) => ({
+          id: s.id,
+          code: s.code,
+          name: s.name,
+          seq: s.seq,
+          isStart: s.isStart,
+          isEnd: s.isEnd,
+          isMandatory: s.isMandatory,
+          conditionExpr: s.conditionExpr,
+        })),
+        context,
+      );
+
+      // 7. INSERT workflow_instances and step_instances (snapshot)
+      const workflowInstance = await tx.workflowInstance.create({
+        data: {
+          orderId: orderRow.id,
+          versionId: publishedVersion.id,
+          status: 'RUNNING',
+        },
+      });
+
+      for (const item of planOutput.plan) {
+        await tx.stepInstance.create({
+          data: {
+            instanceId: workflowInstance.id,
+            stepDefinitionId: item.stepDefinitionId,
+            status: item.status,
+            completedAt: item.status === 'DONE' ? new Date() : null,
+            startedAt: item.status === 'DONE' || item.status === 'READY' ? new Date() : null,
+          },
+        });
+      }
+
+      // 8. UPDATE order status = CONFIRMED
+      await tx.productionOrder.update({
+        where: { id: orderRow.id },
+        data: {
+          status: 'CONFIRMED',
+          qcProfileId: qcProfile.id,
+        },
+      });
+
+      // 9. INSERT audit_logs (order, skipped steps, BR-16, BR-18)
+      await tx.auditLog.create({
+        data: {
+          entityType: 'production_order',
+          entityId: orderRow.id,
+          action: 'CONFIRM_ORDER',
+          actorId,
+          oldValue: { status: 'DRAFT' },
+          newValue: {
+            status: 'CONFIRMED',
+            versionId: publishedVersion.id,
+            versionNo: publishedVersion.versionNo,
+            qcProfileType: targetProfileType,
+            firstReadyStep: planOutput.firstReadyStepCode,
+          },
+        },
+      });
+
+      if (orderRow.skip_clean_wash) {
+        await tx.auditLog.create({
+          data: {
+            entityType: 'workflow_instance',
+            entityId: workflowInstance.id,
+            action: 'SKIP_CLEAN_WASH',
+            actorId,
+            newValue: {
+              rule: 'BR-18',
+              reason: 'Bỏ giặt sạch theo yêu cầu giảm chi phí của khách hàng',
+            },
+          },
+        });
+      }
+
+      for (const code of planOutput.skippedStepCodes) {
+        if (code !== 'CLEAN_WASH') {
+          await tx.auditLog.create({
+            data: {
+              entityType: 'workflow_instance',
+              entityId: workflowInstance.id,
+              action: 'STEP_SKIPPED_BY_CONDITION',
+              actorId,
+              newValue: { stepCode: code },
+            },
+          });
+        }
+      }
+
+      return {
+        success: true,
+        orderId: orderRow.id,
+        orderNumber: orderRow.order_number,
+        status: 'CONFIRMED',
+        workflowInstanceId: workflowInstance.id,
+        versionNo: publishedVersion.versionNo,
+        qcProfileType: targetProfileType,
+        stepInstancesCount: planOutput.plan.length,
+        firstReadyStepCode: planOutput.firstReadyStepCode,
+        skippedStepCodes: planOutput.skippedStepCodes,
+      };
     });
   }
 }

@@ -18,6 +18,8 @@ describe('OrderService', () => {
     selectFabricColor: ReturnType<typeof vi.fn>;
     calculateAndPersistBom: ReturnType<typeof vi.fn>;
     getBomLines: ReturnType<typeof vi.fn>;
+    attachCustomerAcknowledgement: ReturnType<typeof vi.fn>;
+    confirmOrder: ReturnType<typeof vi.fn>;
   };
 
   const actorId = '11111111-1111-4111-8111-111111111111';
@@ -32,6 +34,8 @@ describe('OrderService', () => {
       selectFabricColor: vi.fn(),
       calculateAndPersistBom: vi.fn(),
       getBomLines: vi.fn(),
+      attachCustomerAcknowledgement: vi.fn(),
+      confirmOrder: vi.fn(),
     };
     service = new OrderService(repository as unknown as OrderRepository);
   });
@@ -155,6 +159,43 @@ describe('OrderService', () => {
       const res = await service.getBomLines('order-1');
       expect(res).toHaveLength(1);
       expect(repository.getBomLines).toHaveBeenCalledWith('order-1');
+    });
+  });
+
+  describe('attachCustomerAcknowledgement', () => {
+    it('delegates to repository.attachCustomerAcknowledgement', async () => {
+      const dto = {
+        acknowledgedByName: 'Nguyen Van A',
+        filePath: 'uploads/ack-123.pdf',
+      };
+      repository.attachCustomerAcknowledgement.mockResolvedValue({ id: 'ack-1', ...dto });
+
+      const res = await service.attachCustomerAcknowledgement('order-1', dto, actorId);
+      expect(res).toEqual(expect.objectContaining({ id: 'ack-1' }));
+      expect(repository.attachCustomerAcknowledgement).toHaveBeenCalledWith(
+        'order-1',
+        dto,
+        actorId,
+      );
+    });
+  });
+
+  describe('confirmOrder', () => {
+    it('delegates to repository.confirmOrder', async () => {
+      repository.confirmOrder.mockResolvedValue({
+        success: true,
+        orderId: 'order-1',
+        status: 'CONFIRMED',
+        workflowInstanceId: 'inst-1',
+        totalSteps: 10,
+        runningStep: 'ORDER_CONFIRM',
+        nextStep: 'FABRIC_INSPECT',
+      });
+
+      const res = await service.confirmOrder('order-1', actorId);
+      expect(res.success).toBe(true);
+      expect(res.status).toBe('CONFIRMED');
+      expect(repository.confirmOrder).toHaveBeenCalledWith('order-1', actorId);
     });
   });
 });

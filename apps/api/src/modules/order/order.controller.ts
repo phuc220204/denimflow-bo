@@ -11,6 +11,7 @@ import {
   Query,
 } from '@nestjs/common';
 import {
+  attachAcknowledgementSchema,
   createProductionOrderSchema,
   productionOrderQuerySchema,
   selectFabricColorSchema,
@@ -93,5 +94,22 @@ export class OrderController {
   async getBomLines(@Param('id') id: string, @Headers('authorization') authHeader?: string) {
     await this.assertAuthenticated(authHeader);
     return this.orderService.getBomLines(id);
+  }
+
+  @Post(':id/acknowledgement')
+  async attachAcknowledgement(
+    @Param('id') id: string,
+    @Body() rawBody: unknown,
+    @Headers('authorization') authHeader?: string,
+  ) {
+    const actorId = await this.assertPlannerOrAdmin(authHeader);
+    const dto = attachAcknowledgementSchema.parse(rawBody);
+    return this.orderService.attachCustomerAcknowledgement(id, dto, actorId);
+  }
+
+  @Post(':id/confirm')
+  async confirmOrder(@Param('id') id: string, @Headers('authorization') authHeader?: string) {
+    const actorId = await this.assertPlannerOrAdmin(authHeader);
+    return this.orderService.confirmOrder(id, actorId);
   }
 }

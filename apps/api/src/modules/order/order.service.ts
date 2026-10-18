@@ -1,5 +1,6 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type {
+  AttachAcknowledgementDto,
   CreateProductionOrderDto,
   ProductionOrderQueryDto,
   SelectFabricColorDto,
@@ -51,5 +52,17 @@ export class OrderService {
 
   async getBomLines(orderId: string) {
     return this.orderRepository.getBomLines(orderId);
+  }
+
+  async attachCustomerAcknowledgement(
+    orderId: string,
+    dto: AttachAcknowledgementDto,
+    actorId: string,
+  ) {
+    return this.orderRepository.attachCustomerAcknowledgement(orderId, dto, actorId);
+  }
+
+  async confirmOrder(orderId: string, actorId: string) {
+    return this.orderRepository.confirmOrder(orderId, actorId);
   }
 }

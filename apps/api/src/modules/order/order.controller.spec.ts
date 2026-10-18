@@ -14,6 +14,8 @@ describe('OrderController', () => {
     selectFabricColor: ReturnType<typeof vi.fn>;
     calculateAndPersistBom: ReturnType<typeof vi.fn>;
     getBomLines: ReturnType<typeof vi.fn>;
+    attachCustomerAcknowledgement: ReturnType<typeof vi.fn>;
+    confirmOrder: ReturnType<typeof vi.fn>;
   };
   let authService: {
     getMe: ReturnType<typeof vi.fn>;
@@ -44,6 +46,8 @@ describe('OrderController', () => {
       selectFabricColor: vi.fn(),
       calculateAndPersistBom: vi.fn(),
       getBomLines: vi.fn(),
+      attachCustomerAcknowledgement: vi.fn(),
+      confirmOrder: vi.fn(),
     };
     authService = {
       getMe: vi.fn(),
@@ -175,6 +179,67 @@ describe('OrderController', () => {
       const res = await controller.getBomLines('po-1', 'Bearer token');
       expect(res).toHaveLength(1);
       expect(orderService.getBomLines).toHaveBeenCalledWith('po-1');
+    });
+  });
+
+  describe('attachAcknowledgement', () => {
+    it('allows planner to attach customer acknowledgement', async () => {
+      authService.getMe.mockResolvedValue(plannerUser);
+      orderService.attachCustomerAcknowledgement.mockResolvedValue({
+        id: 'ack-1',
+        acknowledgedByName: 'Nguyen Van A',
+      });
+
+      const body = {
+        acknowledgedByName: 'Nguyen Van A',
+        filePath: 'uploads/ack-signed.pdf',
+      };
+
+      const res = await controller.attachAcknowledgement('po-1', body, 'Bearer token');
+      expect(res).toEqual(expect.objectContaining({ id: 'ack-1' }));
+      expect(orderService.attachCustomerAcknowledgement).toHaveBeenCalledWith(
+        'po-1',
+        expect.objectContaining(body),
+        plannerUser.id,
+      );
+    });
+
+    it('rejects operator from attaching acknowledgement', async () => {
+      authService.getMe.mockResolvedValue(operatorUser);
+
+      const body = {
+        acknowledgedByName: 'Nguyen Van A',
+        filePath: 'uploads/ack-signed.pdf',
+      };
+
+      await expect(controller.attachAcknowledgement('po-1', body, 'Bearer token')).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(orderService.attachCustomerAcknowledgement).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('confirmOrder', () => {
+    it('allows planner to confirm order', async () => {
+      authService.getMe.mockResolvedValue(plannerUser);
+      orderService.confirmOrder.mockResolvedValue({
+        success: true,
+        orderId: 'po-1',
+        status: 'CONFIRMED',
+      });
+
+      const res = await controller.confirmOrder('po-1', 'Bearer token');
+      expect(res).toEqual(expect.objectContaining({ success: true, status: 'CONFIRMED' }));
+      expect(orderService.confirmOrder).toHaveBeenCalledWith('po-1', plannerUser.id);
+    });
+
+    it('rejects operator from confirming order', async () => {
+      authService.getMe.mockResolvedValue(operatorUser);
+
+      await expect(controller.confirmOrder('po-1', 'Bearer token')).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(orderService.confirmOrder).not.toHaveBeenCalled();
     });
   });
 });

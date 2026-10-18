@@ -39,10 +39,10 @@ Branch: `feat/order-confirm`
 FR/BR: FR-07, FR-11, BR-03, BR-16, BR-18, BR-19
 Do: `POST /orders/:id/confirm` in **one transaction**: check data completeness and PUBLISHED template (BR-03); **reject `isCustom = true` with a clear message** because the custom branch is post-MVP (R-04); if `skipCleanWash`, require a `CustomerAcknowledgement` (file upload to private Storage bucket) and select the SKIP_CLEAN_WASH profile, else FULL_PROCESS (BR-19); create `workflow_instances` + all `step_instances` (PENDING, first READY, optional steps evaluated by Conditions → SKIPPED, CLEAN_WASH marked SKIPPED with AuditLog when skipping, BR-18); set order CONFIRMED; write AuditLog.
 Acceptance:
-- [ ] Failure at any point leaves no partial rows (test by forcing an error mid-transaction).
-- [ ] Style without PUBLISHED template cannot be confirmed (BR-03).
-- [ ] An order with `isCustom = true` cannot be confirmed in the MVP (R-04).
-- [ ] `skipCleanWash` without acknowledgement is blocked (BR-19).
-- [ ] Editing the template later does not change the confirmed order's instance.
+- [x] Failure at any point leaves no partial rows (test by forcing an error mid-transaction).
+- [x] Style without PUBLISHED template cannot be confirmed (BR-03).
+- [x] An order with `isCustom = true` cannot be confirmed in the MVP (R-04).
+- [x] `skipCleanWash` without acknowledgement is blocked (BR-19).
+- [x] Editing the template later does not change the confirmed order's instance.
 
 Sprint exit: demo "create → select → BOM → allocate → Confirm", show the instance and audit rows.
