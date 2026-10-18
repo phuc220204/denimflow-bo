@@ -11,6 +11,7 @@ import { InventoryModule } from './modules/inventory/inventory.module.js';
 import { ExecutionModule } from './modules/execution/execution.module.js';
 import { QualityModule } from './modules/quality/quality.module.js';
 import { DashboardModule } from './modules/dashboard/dashboard.module.js';
+import { AuditModule } from './modules/audit/audit.module.js';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module.js';
     ExecutionModule,
     QualityModule,
     DashboardModule,
+    AuditModule,
   ],
 })
 export class AppModule {}

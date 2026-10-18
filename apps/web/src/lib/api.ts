@@ -44,6 +44,9 @@ import {
   type CreateHandoverDto,
   type HandoverRecordResponseDto,
   type DashboardWipSummaryDto,
+  type AuditLogItemDto,
+  type AuditLogListResponseDto,
+  type AuditLogQueryDto,
 } from '@denimflow/shared';
 
 export type {
@@ -56,6 +59,9 @@ export type {
   StepQuantityEntryDto,
   AttachEvidenceDto,
   EvidenceDto,
+  AuditLogItemDto,
+  AuditLogListResponseDto,
+  AuditLogQueryDto,
 };
 
 export interface UserProfile {
@@ -1449,5 +1455,29 @@ export async function fetchDashboardWipApi(token?: string | null): Promise<Dashb
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Không thể tải số liệu WIP phân xưởng');
+  return data;
+}
+
+// 10. Audit Log Viewer (Sprint 5, FR-25)
+export async function fetchAuditLogsApi(
+  query: Partial<AuditLogQueryDto> = {},
+  token?: string | null,
+): Promise<AuditLogListResponseDto> {
+  const params = new URLSearchParams();
+  if (query.entityType) params.append('entityType', query.entityType);
+  if (query.entityId) params.append('entityId', query.entityId);
+  if (query.actorId) params.append('actorId', query.actorId);
+  if (query.from) params.append('from', query.from);
+  if (query.to) params.append('to', query.to);
+  if (query.page) params.append('page', String(query.page));
+  if (query.limit) params.append('limit', String(query.limit));
+
+  const qs = params.toString();
+  const url = `${API_BASE}/audit${qs ? `?${qs}` : ''}`;
+  const res = await fetch(url, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tải nhật ký thao tác');
   return data;
 }

@@ -195,9 +195,9 @@ describe('WorkflowDesignerPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Jean Tiêu Chuẩn')).toBeInTheDocument();
       expect(screen.getByText('Phiên bản v2 (Nháp)')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Kiểm tra BR-01/i })).toBeInTheDocument();
     });
 
-    expect(screen.getByRole('button', { name: /Kiểm tra BR-01/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Xuất bản \(Publish\)/i })).toBeInTheDocument();
   });
 
@@ -230,6 +230,7 @@ describe('WorkflowDesignerPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Jean Tiêu Chuẩn')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Kiểm tra BR-01/i })).toBeInTheDocument();
     });
 
     const validateBtn = screen.getByRole('button', { name: /Kiểm tra BR-01/i });
@@ -258,6 +259,7 @@ describe('WorkflowDesignerPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Jean Tiêu Chuẩn')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Kiểm tra BR-01/i })).toBeInTheDocument();
     });
 
     const validateBtn = screen.getByRole('button', { name: /Kiểm tra BR-01/i });
