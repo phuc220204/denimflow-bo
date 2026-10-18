@@ -123,7 +123,7 @@ MVP = 14 FRs from the Proposal. Items marked ◐ are **minimal slices** pulled i
 | FR-22 | Tracking & Report | Defect rate and run-time reports | Medium | — | post-MVP | DEFERRED |
 | FR-23 | Tracking & Report | Traceability by lot and bundle | High | — | post-MVP | DEFERRED |
 | FR-24 | Notification & Audit | Notifications (READY, BLOCKED, QC fail) | High | — | post-MVP | DEFERRED |
-| FR-25 | Notification & Audit | View/filter AuditLog | High | optional | S5 T5.6 | TODO |
+| FR-25 | Notification & Audit | View/filter AuditLog | High | optional | S5 T5.6 | DONE (Admin and Manager, read-only; filters by entity type, entity id, actor, date range; before/after diff) |
 | FR-26 | Notification & Audit | Packing, packing list, handover record | MVP | ✔ | S5 T5.4 | TODO |
 | FR-27 | Production Order | Custom request, feasibility, dedicated workflow | High | — | post-MVP | DEFERRED |
 | FR-28 | QC & Rework | QC Profile thresholds per Style, applied at final QC | High | ◐ | S1 T1.5, S5 T5.1 | PARTIAL (S1 slice DONE) |

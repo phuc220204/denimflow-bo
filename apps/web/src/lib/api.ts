@@ -32,9 +32,17 @@ import {
   type StepQuantityPanelDto,
   type StepStatus,
   type WorklistItemDto,
+  type AuditLogFilterOptionsDto,
+  type AuditLogItemDto,
+  type AuditLogListResponseDto,
+  type AuditLogQueryDto,
 } from '@denimflow/shared';
 
 export type {
+  AuditLogFilterOptionsDto,
+  AuditLogItemDto,
+  AuditLogListResponseDto,
+  AuditLogQueryDto,
   CompleteStepResponseDto,
   RecordQuantityEntryDto,
   StartStepResponseDto,
@@ -1285,5 +1293,40 @@ export async function reverseQuantityApi(
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Không thể huỷ dòng nhập');
+  return data;
+}
+
+// ==========================================
+// AUDIT LOG VIEWER API CLIENT (T5.6, FR-25)
+// ==========================================
+
+export async function fetchAuditLogsApi(
+  query: Partial<AuditLogQueryDto>,
+  token?: string | null,
+): Promise<AuditLogListResponseDto> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined && value !== '') params.append(key, String(value));
+  }
+
+  const qs = params.toString() ? `?${params.toString()}` : '';
+  const res = await fetch(`${API_BASE}/audit${qs}`, {
+    headers: getAuthHeaders(token),
+  });
+  // A proxy or crash page may answer without JSON; keep the Vietnamese message then.
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Không thể tải nhật ký kiểm toán');
+  return data;
+}
+
+export async function fetchAuditFilterOptionsApi(
+  token?: string | null,
+): Promise<AuditLogFilterOptionsDto> {
+  const res = await fetch(`${API_BASE}/audit/filter-options`, {
+    headers: getAuthHeaders(token),
+  });
+  // A proxy or crash page may answer without JSON; keep the Vietnamese message then.
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Không thể tải bộ lọc nhật ký');
   return data;
 }
