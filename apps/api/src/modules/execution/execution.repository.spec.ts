@@ -832,4 +832,92 @@ describe('ExecutionRepository', () => {
       expect(list[0]!.filePath).toBe('orders/ord-1/evidence/finish-front.jpg');
     });
   });
+
+  describe('approveQc (BR-11, BR-16)', () => {
+    const mockWaitingStep = {
+      id: 'step-qc-1',
+      status: 'WAITING_QC',
+      performedBy: 'operator-user-1',
+      stepDefinition: {
+        id: 'sd-sew',
+        code: 'SEWING',
+        name: 'May ráp',
+        seq: 20,
+        isMandatory: true,
+        requiresEvidence: false,
+        requiresQc: true,
+        responsibleRole: 'STATION_OPERATOR',
+      },
+      instance: {
+        id: 'inst-1',
+        order: {
+          id: 'ord-1',
+          status: 'IN_PRODUCTION',
+          sizeLines: [{ size: '30', plannedQty: 100 }],
+          bomLines: [],
+        },
+        stepInstances: [],
+      },
+    };
+
+    it('BR-11: rejects QC approval when inspector is the same person who performed the step', async () => {
+      prisma.stepInstance.findUnique.mockResolvedValue(mockWaitingStep);
+
+      await expect(
+        repository.approveQc('step-qc-1', 'operator-user-1', 'QC_INSPECTOR'),
+      ).rejects.toThrow('BR-11: Performer may not approve QC for their own step');
+    });
+
+    it('rejects when step is not in WAITING_QC', async () => {
+      prisma.stepInstance.findUnique.mockResolvedValue({
+        ...mockWaitingStep,
+        status: 'IN_PROGRESS',
+      });
+
+      await expect(repository.approveQc('step-qc-1', 'qc-user-2', 'QC_INSPECTOR')).rejects.toThrow(
+        ConflictException,
+      );
+    });
+
+    it('rejects when actor does not have QC_INSPECTOR or ADMIN role', async () => {
+      prisma.stepInstance.findUnique.mockResolvedValue(mockWaitingStep);
+
+      await expect(
+        repository.approveQc('step-qc-1', 'qc-user-2', 'STATION_OPERATOR'),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('succeeds and marks step DONE when actor is a different QC inspector (BR-11, BR-16)', async () => {
+      prisma.stepInstance.findUnique.mockResolvedValue(mockWaitingStep);
+      prisma.stepInstance.count.mockResolvedValue(1); // 1 remaining step
+
+      const res = await repository.approveQc(
+        'step-qc-1',
+        'qc-user-2',
+        'QC_INSPECTOR',
+        'QC passed with 0 defects',
+      );
+
+      expect(prisma.stepInstance.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'step-qc-1' },
+          data: expect.objectContaining({
+            status: 'DONE',
+          }),
+        }),
+      );
+
+      expect(prisma.auditLog.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            action: 'APPROVE_QC',
+            entityType: 'StepInstance',
+            actorId: 'qc-user-2',
+          }),
+        }),
+      );
+
+      expect(res.status).toBe('DONE');
+    });
+  });
 });

@@ -26,7 +26,7 @@ Status values: `TODO`, `IN PROGRESS`, `DONE`, `DEFERRED` (outside MVP, deliberat
 | BR-08 | Quantity conservation: quantity entering the next step ≤ good quantity of the previous step; the difference must match recorded defects or wastage | E, A, D (row lock + CHECK) | execution | S4 | DONE |
 | BR-09 | Outsourced wash/dye: quantity received must be reconciled with quantity sent; a mismatch needs a recorded reason | A, E | execution | S4 | DONE |
 | BR-10 | QC Fail/Rework must select a step to return to and record a reason. Beyond the max rework loops, the order goes to the Planner | E, A | quality | S5 | TODO |
-| BR-11 | Separation of duties: whoever performed a step may not approve QC of that step; the Process Engineer may not confirm completion of production steps | A | execution, quality | S4 / S5 | TODO |
+| BR-11 | Separation of duties: whoever performed a step may not approve QC of that step; the Process Engineer may not confirm completion of production steps | A | execution, quality | S4 / S5 | DONE |
 | BR-12 | Cancelling needs a reason. Before CUTTING release all allocations; from CUTTING onward record cut fabric and cost | A | order | post-MVP (FR-10) | DEFERRED |
 | BR-13 | Changing a running workflow: only unstarted steps may be inserted/skipped, mandatory steps cannot be skipped, Process Engineer approval required | E, A | workflow, execution | post-MVP (FR-19/20) | DEFERRED |
 | BR-14 | Gatekeeper: a step opens only when all predecessors are complete and their Gates pass | E | execution | S4 | DONE |

@@ -7,7 +7,14 @@ import { Role } from '@denimflow/shared';
 import * as api from '../../lib/api';
 import { WorklistPage } from './worklist-page';
 
-const mockOperator = {
+const mockOperator: {
+  id: string;
+  email: string;
+  fullName: string;
+  role: Role;
+  isActive: boolean;
+  token: string;
+} = {
   id: 'op-cutting-id',
   email: 'opcutting@denimflow.internal',
   fullName: 'Công Nhân Cắt Vải',
@@ -16,9 +23,11 @@ const mockOperator = {
   token: 'operator-token',
 };
 
+let currentMockUser = mockOperator;
+
 vi.mock('../../lib/auth-context', () => ({
   useAuth: () => ({
-    user: mockOperator,
+    user: currentMockUser,
     token: 'operator-token',
     isLoading: false,
     logout: vi.fn(),
@@ -102,6 +111,7 @@ function renderWithProviders() {
 
 describe('WorklistPage (T4.2, FR-12)', () => {
   beforeEach(() => {
+    currentMockUser = mockOperator;
     vi.clearAllMocks();
   });
 
@@ -286,6 +296,45 @@ describe('WorklistPage (T4.2, FR-12)', () => {
         }),
         'operator-token',
       );
+    });
+  });
+
+  it('triggers approveQcApi when QC Inspector clicks Phê duyệt QC (BR-11)', async () => {
+    currentMockUser = {
+      ...mockOperator,
+      id: 'qc-inspector-id',
+      fullName: 'Chuyên Viên QC',
+      role: Role.QC_INSPECTOR,
+    };
+
+    const waitingItem: api.WorklistItemDto = {
+      ...mockWorklistItems[1]!,
+      id: 'step-qc-waiting-1',
+      stepCode: 'SEWING',
+      stepName: 'May ráp',
+      status: 'WAITING_QC' as const,
+      performedBy: 'other-operator-id',
+    };
+
+    vi.spyOn(api, 'fetchWorklistApi').mockResolvedValue([waitingItem]);
+    const approveSpy = vi.spyOn(api, 'approveQcApi').mockResolvedValue({
+      id: 'step-qc-waiting-1',
+      status: 'DONE',
+      completedAt: new Date().toISOString(),
+      newlyReadyStepCodes: ['WASH'],
+      newlySkippedStepCodes: [],
+    });
+
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText('Phê duyệt QC (BR-11)')).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByText('Phê duyệt QC (BR-11)'));
+
+    await waitFor(() => {
+      expect(approveSpy).toHaveBeenCalledWith('step-qc-waiting-1', {}, 'operator-token');
     });
   });
 });

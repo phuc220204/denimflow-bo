@@ -131,7 +131,9 @@ export class ExecutionRepository {
     actorRole: string,
   ): Promise<StartStepResponseDto> {
     return this.prisma.$transaction(async (tx) => {
-      // 1. Lock step instance row
+      // 1. Lock step instance row (DATABASE_DESIGN.md §7.2)
+      await tx.$executeRaw`SELECT id FROM "step_instances" WHERE id = ${stepId}::uuid FOR UPDATE`;
+
       const step = await tx.stepInstance.findUnique({
         where: { id: stepId },
         include: {
@@ -154,6 +156,15 @@ export class ExecutionRepository {
           'BR-11',
           'BR-11: Process Engineer may not start or execute production steps',
         );
+      }
+
+      // Role authorization check (responsibleRole)
+      if (actorRole !== 'ADMIN' && step.stepDefinition.responsibleRole) {
+        if (step.stepDefinition.responsibleRole !== actorRole) {
+          throw new ForbiddenException(
+            `Role ${actorRole} is not authorized for step ${step.stepDefinition.code} (required: ${step.stepDefinition.responsibleRole}).`,
+          );
+        }
       }
 
       // Step status must be READY or REWORK
@@ -193,7 +204,10 @@ export class ExecutionRepository {
       });
 
       // If CUTTING starts and order is CONFIRMED, advance order to IN_PRODUCTION
-      if (step.stepDefinition.code === 'CUTTING' && step.instance.order.status === 'CONFIRMED') {
+      if (
+        step.stepDefinition.stationType === 'CUTTING' &&
+        step.instance.order.status === 'CONFIRMED'
+      ) {
         await tx.productionOrder.update({
           where: { id: step.instance.order.id },
           data: { status: 'IN_PRODUCTION' },
@@ -242,7 +256,9 @@ export class ExecutionRepository {
     actorRole: string,
   ): Promise<CompleteStepResponseDto> {
     return this.prisma.$transaction(async (tx) => {
-      // 1. Lock step instance
+      // 1. Lock step instance row (DATABASE_DESIGN.md §7.2)
+      await tx.$executeRaw`SELECT id FROM "step_instances" WHERE id = ${stepId}::uuid FOR UPDATE`;
+
       const step = await tx.stepInstance.findUnique({
         where: { id: stepId },
         include: {
@@ -284,6 +300,32 @@ export class ExecutionRepository {
           'BR-11',
           'BR-11: Process Engineer may not confirm completion of production steps',
         );
+      }
+
+      // Role authorization check (responsibleRole)
+      if (actorRole !== 'ADMIN' && step.stepDefinition.responsibleRole) {
+        if (step.stepDefinition.responsibleRole !== actorRole) {
+          throw new ForbiddenException(
+            `Role ${actorRole} is not authorized for step ${step.stepDefinition.code} (required: ${step.stepDefinition.responsibleRole}).`,
+          );
+        }
+      }
+
+      // Station operator station match check
+      if (actorRole === 'STATION_OPERATOR') {
+        const actorProfile = await tx.profile.findUnique({
+          where: { id: actorId },
+          include: { station: true },
+        });
+
+        if (
+          step.stepDefinition.stationType &&
+          actorProfile?.station?.stationType !== step.stepDefinition.stationType
+        ) {
+          throw new ForbiddenException(
+            `Operator station (${actorProfile?.station?.stationType}) does not match step station (${step.stepDefinition.stationType}).`,
+          );
+        }
       }
 
       // Must be IN_PROGRESS
@@ -367,15 +409,50 @@ export class ExecutionRepository {
           };
         });
 
+        const conditionCtx: Record<string, unknown> = {
+          styleId: order.styleId,
+          fabricTypeId: order.fabricTypeId,
+          colorId: order.colorId,
+          washTypeId: order.washTypeId,
+          dyeRequired: order.dyeRequired,
+          dyeMode: order.dyeMode,
+          dyeSource: order.dyeSource,
+          embroideryRequired: order.embroideryRequired,
+          fabricInspectRequired: order.fabricInspectRequired,
+          ppSampleRequired: order.ppSampleRequired,
+          skipCleanWash: order.skipCleanWash,
+          qcProfileId: order.qcProfileId,
+          isCustom: order.isCustom,
+          status: order.status,
+          dueDate: order.dueDate ? order.dueDate.toISOString() : null,
+          orderNumber: order.orderNumber,
+          customerRef: order.customerRef,
+          notes: order.notes,
+          orderQuantity: totalPlannedQty,
+          'order.styleId': order.styleId,
+          'order.fabricTypeId': order.fabricTypeId,
+          'order.colorId': order.colorId,
+          'order.washTypeId': order.washTypeId,
+          'order.dyeRequired': order.dyeRequired,
+          'order.dyeMode': order.dyeMode,
+          'order.dyeSource': order.dyeSource,
+          'order.embroideryRequired': order.embroideryRequired,
+          'order.fabricInspectRequired': order.fabricInspectRequired,
+          'order.ppSampleRequired': order.ppSampleRequired,
+          'order.skipCleanWash': order.skipCleanWash,
+          'order.qcProfileId': order.qcProfileId,
+          'order.isCustom': order.isCustom,
+          'order.status': order.status,
+          'order.dueDate': order.dueDate ? order.dueDate.toISOString() : null,
+          'order.orderNumber': order.orderNumber,
+          'order.customerRef': order.customerRef,
+          'order.notes': order.notes,
+          'order.orderQuantity': totalPlannedQty,
+        };
+
         const snapshot: WorkflowInstanceSnapshot = {
           steps: allStepSnapshots,
-          orderConditionContext: {
-            orderQuantity: totalPlannedQty,
-            washType: order.washType?.code || 'RAW',
-            fabricWeightOz: order.fabricType?.weightOz ? Number(order.fabricType.weightOz) : 12,
-            hasRipEffect: false,
-            hasEmbroidery: order.embroideryRequired,
-          },
+          orderConditionContext: conditionCtx,
           fabricBomLine: fabricBomLine
             ? {
                 requiredQty: Number(fabricBomLine.requiredQty),
@@ -425,18 +502,13 @@ export class ExecutionRepository {
             data: { status: 'COMPLETED' },
           });
 
-          await tx.productionOrder.update({
-            where: { id: order.id },
-            data: { status: 'COMPLETED' },
-          });
-
           await tx.auditLog.create({
             data: {
-              entityType: 'ProductionOrder',
-              entityId: order.id,
-              action: 'ORDER_COMPLETED',
+              entityType: 'WorkflowInstance',
+              entityId: step.instanceId,
+              action: 'WORKFLOW_COMPLETED',
               actorId,
-              oldValue: { status: order.status },
+              oldValue: { status: 'RUNNING' },
               newValue: { status: 'COMPLETED' },
             },
           });
@@ -447,6 +519,240 @@ export class ExecutionRepository {
         id: stepId,
         status: nextStatus,
         completedAt: completedAt?.toISOString(),
+        newlyReadyStepCodes,
+        newlySkippedStepCodes,
+      };
+    });
+  }
+
+  async approveQc(
+    stepId: string,
+    actorId: string,
+    actorRole: string,
+    notes?: string,
+  ): Promise<CompleteStepResponseDto> {
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Lock step instance row
+      await tx.$executeRaw`SELECT id FROM "step_instances" WHERE id = ${stepId}::uuid FOR UPDATE`;
+
+      const step = await tx.stepInstance.findUnique({
+        where: { id: stepId },
+        include: {
+          stepDefinition: true,
+          instance: {
+            include: {
+              order: {
+                include: {
+                  style: true,
+                  fabricType: true,
+                  washType: true,
+                  sizeLines: true,
+                  bomLines: {
+                    include: { materialAllocations: true },
+                  },
+                },
+              },
+              stepInstances: {
+                include: {
+                  stepDefinition: {
+                    include: {
+                      toTransitions: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!step) {
+        throw new NotFoundException(`StepInstance with ID ${stepId} not found`);
+      }
+
+      // Step must be WAITING_QC
+      if (step.status !== 'WAITING_QC') {
+        throw new ConflictException(
+          `Step ${step.stepDefinition.code} is in status ${step.status}, cannot approve QC (must be WAITING_QC).`,
+        );
+      }
+
+      // BR-11: Separation of duties: whoever performed a step may not approve QC of that step
+      if (step.performedBy && step.performedBy === actorId) {
+        throw new BusinessRuleViolation(
+          'BR-11',
+          'BR-11: Performer may not approve QC for their own step',
+        );
+      }
+
+      // Only QC_INSPECTOR or ADMIN can approve QC
+      if (actorRole !== 'QC_INSPECTOR' && actorRole !== 'ADMIN') {
+        throw new ForbiddenException(
+          `Role ${actorRole} is not authorized to approve QC (required: QC_INSPECTOR or ADMIN).`,
+        );
+      }
+
+      const completedAt = new Date();
+
+      // Transition step to DONE
+      await tx.stepInstance.update({
+        where: { id: stepId },
+        data: {
+          status: 'DONE',
+          completedAt,
+        },
+      });
+
+      // Write AuditLog (BR-16)
+      await tx.auditLog.create({
+        data: {
+          entityType: 'StepInstance',
+          entityId: stepId,
+          action: 'APPROVE_QC',
+          actorId,
+          oldValue: { status: 'WAITING_QC' },
+          newValue: { status: 'DONE', completedAt: completedAt.toISOString(), notes },
+        },
+      });
+
+      const newlyReadyStepCodes: string[] = [];
+      const newlySkippedStepCodes: string[] = [];
+
+      // Evaluate downstream steps readiness
+      const order = step.instance.order;
+      const totalPlannedQty = order.sizeLines.reduce((sum, line) => sum + line.plannedQty, 0);
+
+      const fabricBomLine = order.bomLines.find((l) => l.materialType === 'FABRIC');
+      const fabricAllocatedQty = fabricBomLine
+        ? fabricBomLine.materialAllocations.reduce((sum, a) => sum + Number(a.allocatedQty), 0)
+        : 0;
+
+      const allStepSnapshots: StepInstanceSnapshot[] = step.instance.stepInstances.map((s) => {
+        const isTarget = s.id === stepId;
+        return {
+          id: s.id,
+          code: s.stepDefinition.code,
+          name: s.stepDefinition.name,
+          seq: s.stepDefinition.seq,
+          status: isTarget ? 'DONE' : s.status,
+          isMandatory: s.stepDefinition.isMandatory,
+          requiresEvidence: s.stepDefinition.requiresEvidence,
+          requiresQc: s.stepDefinition.requiresQc,
+          conditionExpr: s.stepDefinition.conditionExpr,
+          qtyIn: s.qtyIn ?? undefined,
+          qtyGood: s.qtyGood ?? undefined,
+          qtyDefect: s.qtyDefect ?? undefined,
+        };
+      });
+
+      const conditionCtx: Record<string, unknown> = {
+        styleId: order.styleId,
+        fabricTypeId: order.fabricTypeId,
+        colorId: order.colorId,
+        washTypeId: order.washTypeId,
+        dyeRequired: order.dyeRequired,
+        dyeMode: order.dyeMode,
+        dyeSource: order.dyeSource,
+        embroideryRequired: order.embroideryRequired,
+        fabricInspectRequired: order.fabricInspectRequired,
+        ppSampleRequired: order.ppSampleRequired,
+        skipCleanWash: order.skipCleanWash,
+        qcProfileId: order.qcProfileId,
+        isCustom: order.isCustom,
+        status: order.status,
+        dueDate: order.dueDate ? order.dueDate.toISOString() : null,
+        orderNumber: order.orderNumber,
+        customerRef: order.customerRef,
+        notes: order.notes,
+        orderQuantity: totalPlannedQty,
+        'order.styleId': order.styleId,
+        'order.fabricTypeId': order.fabricTypeId,
+        'order.colorId': order.colorId,
+        'order.washTypeId': order.washTypeId,
+        'order.dyeRequired': order.dyeRequired,
+        'order.dyeMode': order.dyeMode,
+        'order.dyeSource': order.dyeSource,
+        'order.embroideryRequired': order.embroideryRequired,
+        'order.fabricInspectRequired': order.fabricInspectRequired,
+        'order.ppSampleRequired': order.ppSampleRequired,
+        'order.skipCleanWash': order.skipCleanWash,
+        'order.qcProfileId': order.qcProfileId,
+        'order.isCustom': order.isCustom,
+        'order.status': order.status,
+        'order.dueDate': order.dueDate ? order.dueDate.toISOString() : null,
+        'order.orderNumber': order.orderNumber,
+        'order.customerRef': order.customerRef,
+        'order.notes': order.notes,
+        'order.orderQuantity': totalPlannedQty,
+      };
+
+      const snapshot: WorkflowInstanceSnapshot = {
+        steps: allStepSnapshots,
+        orderConditionContext: conditionCtx,
+        fabricBomLine: fabricBomLine
+          ? {
+              requiredQty: Number(fabricBomLine.requiredQty),
+              allocatedQty: fabricAllocatedQty,
+            }
+          : null,
+      };
+
+      const readinessOutput = evaluateStepReadiness(snapshot);
+
+      for (const change of readinessOutput.changes) {
+        await tx.stepInstance.update({
+          where: { id: change.stepId },
+          data: { status: change.toStatus },
+        });
+
+        await tx.auditLog.create({
+          data: {
+            entityType: 'StepInstance',
+            entityId: change.stepId,
+            action: change.toStatus === 'READY' ? 'STEP_READY' : 'STEP_SKIPPED',
+            actorId,
+            oldValue: { status: change.fromStatus },
+            newValue: { status: change.toStatus, reason: change.reason },
+          },
+        });
+
+        if (change.toStatus === 'READY') {
+          newlyReadyStepCodes.push(change.code);
+        } else if (change.toStatus === 'SKIPPED') {
+          newlySkippedStepCodes.push(change.code);
+        }
+      }
+
+      // Check if all steps in instance are DONE or SKIPPED
+      const remainingIncomplete = await tx.stepInstance.count({
+        where: {
+          instanceId: step.instanceId,
+          status: { notIn: ['DONE', 'SKIPPED'] },
+        },
+      });
+
+      if (remainingIncomplete === 0) {
+        await tx.workflowInstance.update({
+          where: { id: step.instanceId },
+          data: { status: 'COMPLETED' },
+        });
+
+        await tx.auditLog.create({
+          data: {
+            entityType: 'WorkflowInstance',
+            entityId: step.instanceId,
+            action: 'WORKFLOW_COMPLETED',
+            actorId,
+            oldValue: { status: 'RUNNING' },
+            newValue: { status: 'COMPLETED' },
+          },
+        });
+      }
+
+      return {
+        id: stepId,
+        status: 'DONE',
+        completedAt: completedAt.toISOString(),
         newlyReadyStepCodes,
         newlySkippedStepCodes,
       };
@@ -511,7 +817,8 @@ export class ExecutionRepository {
 
       const currentStepTotalGoodSoFar = existingEntries.reduce((sum, e) => sum + e.qtyGood, 0);
 
-      const isCutting = step.stepDefinition.code === 'CUTTING';
+      const isCutting =
+        step.stepDefinition.stationType === 'CUTTING' || step.stepDefinition.code === 'CUTTING';
       let targetSize = input.size;
 
       if (!targetSize && input.bundleId) {

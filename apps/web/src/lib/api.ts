@@ -34,6 +34,7 @@ import {
   type StepQuantityEntryDto,
   type AttachEvidenceDto,
   type EvidenceDto,
+  type ApproveQcDto,
 } from '@denimflow/shared';
 
 export type {
@@ -1319,5 +1320,20 @@ export async function fetchStepEvidenceApi(
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Không thể tải danh sách minh chứng');
+  return data;
+}
+
+export async function approveQcApi(
+  stepId: string,
+  dto: ApproveQcDto = {},
+  token?: string | null,
+): Promise<CompleteStepResponseDto> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/qc-approve`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(dto),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể duyệt QC');
   return data;
 }

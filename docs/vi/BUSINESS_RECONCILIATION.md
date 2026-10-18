@@ -26,7 +26,7 @@ Giá trị trạng thái: `TODO`, `IN PROGRESS`, `DONE`, `DEFERRED` (ngoài MVP,
 | BR-08 | Bảo toàn số lượng: số lượng vào step sau ≤ số lượng đạt của step trước; phần chênh lệch phải khớp với lỗi hoặc hao hụt đã ghi nhận | E, A, D (row lock + CHECK) | execution | S4 | XONG |
 | BR-09 | Nhuộm/wash thuê ngoài: số lượng nhận về phải đối soát với số lượng gửi đi; lệch thì phải có lý do | A, E | execution | S4 | XONG |
 | BR-10 | QC Fail/Rework phải chọn step quay về và ghi lý do. Vượt số vòng rework tối đa thì giao cho Planner | E, A | quality | S5 | TODO |
-| BR-11 | Phân tách nhiệm vụ: người thực hiện step không được duyệt QC của step đó; Process Engineer không được xác nhận hoàn thành các step sản xuất | A | execution, quality | S4 / S5 | TODO |
+| BR-11 | Phân tách nhiệm vụ: người thực hiện step không được duyệt QC của step đó; Process Engineer không được xác nhận hoàn thành các step sản xuất | A | execution, quality | S4 / S5 | XONG |
 | BR-12 | Huỷ đơn cần lý do. Trước CUTTING thì giải phóng mọi allocation; từ CUTTING trở đi phải ghi nhận vải đã cắt và chi phí | A | order | sau MVP (FR-10) | DEFERRED |
 | BR-13 | Đổi workflow khi đang chạy: chỉ được chèn/bỏ qua step chưa bắt đầu, không được bỏ step bắt buộc, cần Process Engineer duyệt | E, A | workflow, execution | sau MVP (FR-19/20) | DEFERRED |
 | BR-14 | Gatekeeper: một step chỉ mở khi mọi step trước đã hoàn thành và các Gate đều đạt | E | execution | S4 | XONG |

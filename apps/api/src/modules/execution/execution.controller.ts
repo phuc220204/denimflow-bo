@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Headers, Inject, Param, Post, Query } from '@nestjs/common';
 import {
+  approveQcSchema,
   attachEvidenceSchema,
   recordQuantityEntrySchema,
   worklistQuerySchema,
@@ -31,6 +32,17 @@ export class ExecutionController {
   async completeStep(@Param('id') id: string, @Headers('authorization') authHeader?: string) {
     const user = await this.authService.getMe(authHeader);
     return this.executionService.completeStep(id, user.id, user.role);
+  }
+
+  @Post('steps/:id/qc-approve')
+  async approveQc(
+    @Param('id') id: string,
+    @Body() rawBody: unknown,
+    @Headers('authorization') authHeader?: string,
+  ) {
+    const user = await this.authService.getMe(authHeader);
+    const body = approveQcSchema.parse(rawBody ?? {});
+    return this.executionService.approveQc(id, user.id, user.role, body.notes);
   }
 
   @Post('steps/:id/quantities')

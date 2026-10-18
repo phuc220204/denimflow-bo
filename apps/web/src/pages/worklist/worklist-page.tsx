@@ -23,6 +23,7 @@ import {
   CardTitle,
 } from '../../components/ui/card';
 import {
+  approveQcApi,
   attachEvidenceApi,
   completeStepApi,
   fetchWorklistApi,
@@ -162,6 +163,18 @@ export const WorklistPage: React.FC = () => {
     },
   });
 
+  const approveQcMutation = useMutation({
+    mutationFn: (stepId: string) => approveQcApi(stepId, {}, token),
+    onSuccess: () => {
+      setActionSuccess('Đã phê duyệt QC thành công (BR-11)!');
+      setActionError(null);
+      void queryClient.invalidateQueries({ queryKey: ['worklist'] });
+    },
+    onError: (err: Error) => {
+      setActionError(err.message || 'Không thể phê duyệt QC');
+    },
+  });
+
   const handleStart = (stepId: string) => {
     setActionError(null);
     setActionSuccess(null);
@@ -172,6 +185,12 @@ export const WorklistPage: React.FC = () => {
     setActionError(null);
     setActionSuccess(null);
     completeMutation.mutate(stepId);
+  };
+
+  const handleApproveQc = (stepId: string) => {
+    setActionError(null);
+    setActionSuccess(null);
+    approveQcMutation.mutate(stepId);
   };
 
   const openEvidenceModal = (step: WorklistItemDto) => {
@@ -330,6 +349,7 @@ export const WorklistPage: React.FC = () => {
             const isPendingAction =
               startMutation.isPending ||
               completeMutation.isPending ||
+              approveQcMutation.isPending ||
               generateBundlesMutation.isPending;
 
             const isCutting = item.stepCode === 'CUTTING';
@@ -472,8 +492,22 @@ export const WorklistPage: React.FC = () => {
                     )}
 
                     {item.status === 'WAITING_QC' && (
-                      <div className="text-center py-1 text-xs text-purple-700 font-medium">
-                        Đang chờ QC Inspector phê duyệt
+                      <div className="space-y-2">
+                        <div className="text-center py-1 text-xs text-purple-700 font-medium">
+                          Đang chờ QC Inspector phê duyệt
+                        </div>
+                        {(user?.role === 'QC_INSPECTOR' || user?.role === 'ADMIN') && (
+                          <Button
+                            variant="primary"
+                            className="w-full bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center gap-2"
+                            size="sm"
+                            disabled={isPendingAction}
+                            onClick={() => handleApproveQc(item.id)}
+                          >
+                            <CheckCircle2 className="h-4 w-4" />
+                            Phê duyệt QC (BR-11)
+                          </Button>
+                        )}
                       </div>
                     )}
                   </div>

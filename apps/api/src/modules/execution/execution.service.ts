@@ -38,6 +38,15 @@ export class ExecutionService {
     return this.executionRepository.completeStep(stepId, actorId, actorRole);
   }
 
+  async approveQc(
+    stepId: string,
+    actorId: string,
+    actorRole: string,
+    notes?: string,
+  ): Promise<CompleteStepResponseDto> {
+    return this.executionRepository.approveQc(stepId, actorId, actorRole, notes);
+  }
+
   async recordQuantity(
     stepId: string,
     input: RecordQuantityEntryDto,

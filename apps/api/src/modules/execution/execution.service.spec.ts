@@ -14,6 +14,7 @@ describe('ExecutionService', () => {
     getQuantityEntries: ReturnType<typeof vi.fn>;
     attachEvidence: ReturnType<typeof vi.fn>;
     getEvidence: ReturnType<typeof vi.fn>;
+    approveQc: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(() => {
@@ -27,6 +28,7 @@ describe('ExecutionService', () => {
       getQuantityEntries: vi.fn(),
       attachEvidence: vi.fn(),
       getEvidence: vi.fn(),
+      approveQc: vi.fn(),
     };
     service = new ExecutionService(repository as unknown as ExecutionRepository);
   });
@@ -149,5 +151,19 @@ describe('ExecutionService', () => {
     expect(res).toEqual(mockEvidence);
     expect(repository.getEvidence).toHaveBeenCalledWith('step-1');
     expect(list).toEqual([mockEvidence]);
+  });
+
+  it('delegates approveQc to repository', async () => {
+    const mockRes = {
+      id: 'step-1',
+      status: 'DONE',
+      completedAt: '2026-10-18T20:30:00.000Z',
+      newlyReadyStepCodes: ['PACKING'],
+      newlySkippedStepCodes: [],
+    };
+    repository.approveQc = vi.fn().mockResolvedValue(mockRes);
+    const res = await service.approveQc('step-1', 'qc-1', 'QC_INSPECTOR', 'Passes');
+    expect(repository.approveQc).toHaveBeenCalledWith('step-1', 'qc-1', 'QC_INSPECTOR', 'Passes');
+    expect(res).toEqual(mockRes);
   });
 });

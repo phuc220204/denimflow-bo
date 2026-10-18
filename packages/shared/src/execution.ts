@@ -109,3 +109,9 @@ export const evidenceSchema = z.object({
   uploadedAt: z.string(),
 });
 export type EvidenceDto = z.infer<typeof evidenceSchema>;
+
+// T4.5 / T5.1 QC Approval schemas (BR-11)
+export const approveQcSchema = z.object({
+  notes: z.string().optional(),
+});
+export type ApproveQcDto = z.infer<typeof approveQcSchema>;

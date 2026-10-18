@@ -15,6 +15,7 @@ describe('ExecutionController', () => {
     getQuantityEntries: ReturnType<typeof vi.fn>;
     attachEvidence: ReturnType<typeof vi.fn>;
     getEvidence: ReturnType<typeof vi.fn>;
+    approveQc: ReturnType<typeof vi.fn>;
   };
   let authService: {
     getMe: ReturnType<typeof vi.fn>;
@@ -39,6 +40,7 @@ describe('ExecutionController', () => {
       getQuantityEntries: vi.fn(),
       attachEvidence: vi.fn(),
       getEvidence: vi.fn(),
+      approveQc: vi.fn(),
     };
     authService = {
       getMe: vi.fn(),
@@ -180,5 +182,35 @@ describe('ExecutionController', () => {
     expect(res).toEqual(mockEvidence);
     expect(executionService.getEvidence).toHaveBeenCalledWith('step-1');
     expect(list).toEqual([mockEvidence]);
+  });
+
+  it('approveQc calls executionService.approveQc with step id, actorId, and actorRole', async () => {
+    const qcUser = {
+      id: 'qc-user-1',
+      email: 'qc@denimflow.com',
+      fullName: 'QC Inspector',
+      role: 'QC_INSPECTOR' as const,
+      isActive: true,
+    };
+    authService.getMe.mockResolvedValue(qcUser);
+    const mockResponse = {
+      id: 'step-1',
+      status: 'DONE',
+      completedAt: new Date().toISOString(),
+      newlyReadyStepCodes: ['PACKING'],
+      newlySkippedStepCodes: [],
+    };
+    executionService.approveQc = vi.fn().mockResolvedValue(mockResponse);
+
+    const result = await controller.approveQc('step-1', { notes: 'Passed' }, 'Bearer token');
+
+    expect(authService.getMe).toHaveBeenCalledWith('Bearer token');
+    expect(executionService.approveQc).toHaveBeenCalledWith(
+      'step-1',
+      qcUser.id,
+      qcUser.role,
+      'Passed',
+    );
+    expect(result).toEqual(mockResponse);
   });
 });
