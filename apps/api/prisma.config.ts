@@ -11,6 +11,9 @@ export default defineConfig({
   schema: 'prisma/schema.prisma',
   migrations: {
     path: 'prisma/migrations',
+    // Runs the compiled seed (build first; `pnpm db:seed` does both). Used by `prisma db seed`
+    // and `prisma migrate reset`.
+    seed: 'node --env-file-if-exists=.env dist/seed/index.js',
   },
   datasource: {
     // Migrations use the direct (or session pooler) connection; the transaction pooler

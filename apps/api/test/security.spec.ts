@@ -23,6 +23,9 @@ const fakeAuthService = {
     }
     return { ...user, email: 'x@denimflow.test', fullName: 'Test', isActive: true };
   },
+  async login() {
+    return { accessToken: 'pe-token', user: { ...(await this.getMe('Bearer pe-token')) } };
+  },
 };
 
 describe('API security hotfix', () => {
@@ -84,6 +87,15 @@ describe('API security hotfix', () => {
       await request(app.getHttpServer())
         .get('/catalog/stations')
         .set('Authorization', 'Bearer planner-token')
+        .expect(200);
+    });
+  });
+
+  describe('login', () => {
+    it('answers 200 (not 201) because logging in creates nothing', async () => {
+      await request(app.getHttpServer())
+        .post('/auth/login')
+        .send({ email: 'pe@denimflow.internal', password: 'any-password' })
         .expect(200);
     });
   });

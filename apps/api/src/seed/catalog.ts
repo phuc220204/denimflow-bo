@@ -1,12 +1,9 @@
-import { PrismaPg } from '@prisma/adapter-pg';
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import {
-  PrismaClient,
+  type PrismaClient,
   QcProfileType,
-  Role,
   StationType,
   StretchType,
-} from './generated/prisma/client.js';
+} from '../generated/prisma/client.js';
 
 interface StationSeed {
   code: string;
@@ -23,34 +20,9 @@ interface FabricSeed {
   stretchType: StretchType;
 }
 
-const connectionString = process.env.DIRECT_URL || process.env.DATABASE_URL;
-if (!connectionString) {
-  console.error('DATABASE_URL or DIRECT_URL is required to seed.');
-  process.exit(1);
-}
-
-const prisma = new PrismaClient({
-  adapter: new PrismaPg({ connectionString }),
-});
-
-let supabase: SupabaseClient | null = null;
-if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-}
-
-// The demo accounts' password comes only from the environment: the repository is public, so a
-// committed fallback would give everyone the ADMIN login (rule 04, DATABASE_DESIGN §9).
-const DEFAULT_PASSWORD = process.env.SEED_DEFAULT_PASSWORD ?? '';
-if (supabase && DEFAULT_PASSWORD.length < 12) {
-  console.error('SEED_DEFAULT_PASSWORD (at least 12 characters) is required to create Auth users.');
-  process.exit(1);
-}
-
-async function main() {
-  console.log('--- Bắt đầu khởi tạo dữ liệu mẫu DenimFlow BO (Sprint 1) ---');
-
+// Reference data: stations, styles, fabrics, colors, wash types, Fabric-Color matrix (BR-04)
+// and the two QC Profiles per style (BR-19). Everything is upserted by code.
+export async function seedCatalog(prisma: PrismaClient): Promise<void> {
   // 1. Stations
   const stations: StationSeed[] = [
     {
@@ -329,126 +301,4 @@ async function main() {
   console.log(
     `[T1.5] Đã khởi tạo cấu hình QC Profile (FULL_PROCESS & SKIP_CLEAN_WASH) cho ${dbStyles.length} kiểu dáng.`,
   );
-
-  // 8. 7 Demo Users (T1.1, FR-01)
-  const cuttingStation = await prisma.station.findUnique({ where: { code: 'CUT-01' } });
-  const qcStation = await prisma.station.findUnique({ where: { code: 'QC-01' } });
-
-  const demoUsers: Array<{
-    id: string;
-    email: string;
-    fullName: string;
-    role: Role;
-    stationId?: string;
-  }> = [
-    {
-      id: '00000000-0000-0000-0000-000000000001',
-      email: 'admin@denimflow.internal',
-      fullName: 'Quản Trị Viên Hệ Thống',
-      role: Role.ADMIN,
-    },
-    {
-      id: '00000000-0000-0000-0000-000000000002',
-      email: 'pe@denimflow.internal',
-      fullName: 'Kỹ Sư Quy Trình May',
-      role: Role.PROCESS_ENGINEER,
-    },
-    {
-      id: '00000000-0000-0000-0000-000000000003',
-      email: 'planner@denimflow.internal',
-      fullName: 'Điều Độ Kế Hoạch Sản Xuất',
-      role: Role.PRODUCTION_PLANNER,
-    },
-    {
-      id: '00000000-0000-0000-0000-000000000004',
-      email: 'warehouse@denimflow.internal',
-      fullName: 'Thủ Kho Vải & Phụ Liệu',
-      role: Role.WAREHOUSE_KEEPER,
-    },
-    {
-      id: '00000000-0000-0000-0000-000000000005',
-      email: 'operator@denimflow.internal',
-      fullName: 'Tổ Trưởng Chuyền Cắt',
-      role: Role.STATION_OPERATOR,
-      stationId: cuttingStation?.id,
-    },
-    {
-      id: '00000000-0000-0000-0000-000000000006',
-      email: 'qc@denimflow.internal',
-      fullName: 'Kiểm Động Chất Lượng KCS',
-      role: Role.QC_INSPECTOR,
-      stationId: qcStation?.id,
-    },
-    {
-      id: '00000000-0000-0000-0000-000000000007',
-      email: 'manager@denimflow.internal',
-      fullName: 'Giám Đốc Quản Lý Xưởng',
-      role: Role.MANAGER,
-    },
-  ];
-
-  for (const u of demoUsers) {
-    let authUserId = u.id;
-
-    if (supabase) {
-      try {
-        // Try to create or find existing supabase auth user
-        const { data: created, error: createErr } = await supabase.auth.admin.createUser({
-          email: u.email,
-          password: DEFAULT_PASSWORD,
-          email_confirm: true,
-          user_metadata: {
-            full_name: u.fullName,
-            role: u.role,
-          },
-        });
-
-        if (created?.user) {
-          authUserId = created.user.id;
-        } else if (createErr) {
-          // If already registered, find user id by listing
-          const { data: listData } = await supabase.auth.admin.listUsers();
-          const existing = listData?.users.find((eu) => eu.email === u.email);
-          if (existing) {
-            authUserId = existing.id;
-          }
-        }
-      } catch (err) {
-        console.warn(`Supabase auth user create note for ${u.email}:`, err);
-      }
-    }
-
-    // Upsert into Profile table
-    await prisma.profile.upsert({
-      where: { email: u.email },
-      update: {
-        fullName: u.fullName,
-        role: u.role,
-        stationId: u.stationId ?? null,
-        isActive: true,
-      },
-      create: {
-        id: authUserId,
-        email: u.email,
-        fullName: u.fullName,
-        role: u.role,
-        stationId: u.stationId ?? null,
-        isActive: true,
-      },
-    });
-  }
-  console.log(
-    supabase
-      ? '[T1.1] Đã khởi tạo 7 tài khoản demo (mật khẩu lấy từ SEED_DEFAULT_PASSWORD).'
-      : '[T1.1] Đã khởi tạo 7 profile demo (chưa cấu hình Supabase nên không tạo tài khoản Auth).',
-  );
-
-  console.log('--- Hoàn tất khởi tạo toàn bộ dữ liệu mẫu Sprint 1! ---');
 }
-
-main()
-  .catch((err) => {
-    console.error('Lỗi khởi tạo seed data:', err);
-    process.exit(1);
-  })
-  .finally(() => prisma.$disconnect());
