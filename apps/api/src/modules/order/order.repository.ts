@@ -21,6 +21,7 @@ import type {
   SelectFabricColorDto,
   UpdateProductionOrderDto,
 } from '@denimflow/shared';
+import { toOrderConditionContext } from '@denimflow/shared';
 import { BusinessRuleViolation } from '../../common/errors/business-rule-violation.js';
 import type { Prisma } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../infrastructure/prisma/prisma.service.js';
@@ -693,19 +694,17 @@ export class OrderRepository {
       }
 
       // 6. Engine: build workflow instance plan (initial status per step)
-      const context: OrderConditionContext = {
-        order: {
-          dyeRequired: orderRow.dye_required,
-          dyeMode: (orderRow.dye_mode as 'TOTAL' | 'PARTIAL') || null,
-          dyeSource: (orderRow.dye_source as 'INTERNAL' | 'OUTSOURCED') || null,
-          embroideryRequired: orderRow.embroidery_required,
-          fabricInspectRequired: orderRow.fabric_inspect_required,
-          ppSampleRequired: orderRow.pp_sample_required,
-          skipCleanWash: orderRow.skip_clean_wash,
-          washTypeId: orderRow.wash_type_id,
-          isCustom: orderRow.is_custom,
-        },
-      };
+      const context: OrderConditionContext = toOrderConditionContext({
+        dyeRequired: orderRow.dye_required,
+        dyeMode: orderRow.dye_mode || null,
+        dyeSource: orderRow.dye_source || null,
+        embroideryRequired: orderRow.embroidery_required,
+        fabricInspectRequired: orderRow.fabric_inspect_required,
+        ppSampleRequired: orderRow.pp_sample_required,
+        skipCleanWash: orderRow.skip_clean_wash,
+        washTypeId: orderRow.wash_type_id,
+        isCustom: orderRow.is_custom,
+      });
 
       const planOutput = buildWorkflowInstancePlan(
         publishedVersion.steps.map((s) => ({

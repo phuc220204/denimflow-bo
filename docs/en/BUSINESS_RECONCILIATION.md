@@ -26,7 +26,7 @@ Status values: `TODO`, `IN PROGRESS`, `DONE`, `DEFERRED` (outside MVP, deliberat
 | BR-08 | Quantity conservation: quantity entering the next step ≤ good quantity of the previous step; the difference must match recorded defects or wastage | E, A, D (row lock + CHECK) | execution | S4 | TODO |
 | BR-09 | Outsourced wash/dye: quantity received must be reconciled with quantity sent; a mismatch needs a recorded reason | A | execution | S4 | TODO |
 | BR-10 | QC Fail/Rework must select a step to return to and record a reason. Beyond the max rework loops, the order goes to the Planner | E, A | quality | S5 | TODO |
-| BR-11 | Separation of duties: whoever performed a step may not approve QC of that step; the Process Engineer may not confirm completion of production steps | A | execution, quality | S4 / S5 | TODO |
+| BR-11 | Separation of duties: whoever performed a step may not approve QC of that step; the Process Engineer may not confirm completion of production steps | A | execution, quality | S4 / S5 | PARTIAL (T4.2: Process Engineer blocked from production steps; self-approval of QC in T4.5) |
 | BR-12 | Cancelling needs a reason. Before CUTTING release all allocations; from CUTTING onward record cut fabric and cost | A | order | post-MVP (FR-10) | DEFERRED |
 | BR-13 | Changing a running workflow: only unstarted steps may be inserted/skipped, mandatory steps cannot be skipped, Process Engineer approval required | E, A | workflow, execution | post-MVP (FR-19/20) | DEFERRED |
 | BR-14 | Gatekeeper: a step opens only when all predecessors are complete and their Gates pass | E | execution | S4 | DONE |
@@ -89,7 +89,7 @@ MVP implements DRAFT → CONFIRMED → IN_PRODUCTION → COMPLETED. ON_HOLD and 
 | WAITING_QC | Waiting for the QC Inspector | DONE (pass), REWORK (fail/rework, BR-10) |
 | REWORK | Being redone | IN_PROGRESS; beyond `maxRework`, Planner handles it |
 | DONE | Complete | opens successors |
-| SKIPPED | Skipped | counts as done for Gate evaluation |
+| SKIPPED | Skipped | counts as done for Gate evaluation, but is passed through: the step before it must still be complete (R-17) |
 
 Interpretation of QC-type steps (R-06): for `stepType = QC` the inspection decision *is* the completion. PASS ⇒ DONE. REWORK ⇒ the chosen target step becomes REWORK (its `reworkCount` + 1), the QC step returns to PENDING and re-runs after the target completes. REJECT ⇒ the order is flagged for the Planner.
 
@@ -110,7 +110,7 @@ MVP = 14 FRs from the Proposal. Items marked ◐ are **minimal slices** pulled i
 | FR-09 | Production Order | BOM, allocation, Material Request | MVP | ✔ | S3 T3.3–T3.4 | DONE |
 | FR-10 | Production Order | Hold, Resume, Cancel | High | — | post-MVP | DEFERRED |
 | FR-11 | Execution Engine | Instance from snapshot, open steps by Gate | MVP | ✔ | S2 T2.1, S3 T3.5, S4 T4.1 | DONE |
-| FR-12 | Execution Engine | Worklist by station, Start/Complete | MVP | ✔ | S4 T4.2 | TODO |
+| FR-12 | Execution Engine | Worklist by station, Start/Complete | MVP | ✔ | S4 T4.2 | DONE |
 | FR-13 | Execution Engine | Good/defect quantities per bundle, conservation | MVP | ✔ | S4 T4.3 | TODO |
 | FR-14 | Execution Engine | Evidence attachments | High | stretch | S4 T4.4 | TODO |
 | FR-15 | Execution Engine | Bundle generation and codes | High | ◐ at CUTTING | S4 T4.3 | TODO |
@@ -173,5 +173,7 @@ Add a row whenever the implementation interprets or departs from the Proposal. N
 | R-14 | 2026-10-16 | QC thresholds (Q19) | Seed placeholder demo values, labeled as demo data in the UI | Real numbers depend on fabric and workshop practice | Open |
 | R-15 | 2026-10-16 | File references | `fileUrl` fields (acknowledgement, evidence) are stored as private Storage **paths** (`file_path`), served via signed URLs | Public URLs on a public repo's bucket would leak documents | Agreed |
 | R-16 | 2026-10-16 | Extra tables | Added `handover_records` (FR-26), `bom_norms` (BOM strategy data), `wash_types` | Needed to implement the listed FRs | Proposed |
+| R-17 | 2026-10-19 | Skipped predecessors (BR-14) | Readiness looks through a SKIPPED step to the step before it, which must be DONE (or skipped in turn) | Read literally, "SKIPPED counts as done" opened SEWING while CUTTING was still pending whenever EMBROIDERY was skipped | Proposed |
+| R-18 | 2026-10-19 | Who may start/complete a step (FR-12) | The step's `responsibleRole` (operators also only at a station of the step's `stationType`); Planner and QC steps of the template use the same endpoints | The PRD matrix lists only operators, but the template assigns Planner and QC steps (R-07) | Proposed |
 
 "Proposed" rows await the owner's confirmation; change to "Agreed" or rewrite.
