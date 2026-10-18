@@ -2,3 +2,4 @@
 // (see .agents/rules/01-architecture-boundaries.md).
 export const ENGINE_NAME = '@denimflow/engine';
 export * from './conditions.js';
+export * from './template-validation.js';
