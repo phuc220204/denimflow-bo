@@ -15,11 +15,9 @@
     "db:studio": "prisma studio",
     "db:test:up": "docker run -d --rm --name denimflow-test-db -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=denimflow_test -p 54329:5432 postgres:17-alpine",
     "db:test:down": "docker stop denimflow-test-db",
-    "db:seed": "prisma db seed",
-    "postinstall": "prisma generate"
-  },
-  "prisma": {
-    "seed": "node --experimental-strip-types prisma/seed.ts"
+    "db:seed": "pnpm --filter \"@denimflow/api...\" build && node --env-file-if-exists=.env dist/seed/index.js",
+    "postinstall": "prisma generate",
+    "smoke:roles": "node --env-file-if-exists=.env scripts/role-smoke-test.mjs"
   },
   "dependencies": {
     "@denimflow/engine": "workspace:*",
