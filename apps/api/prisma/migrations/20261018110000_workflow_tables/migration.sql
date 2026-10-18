@@ -5,7 +5,11 @@ CREATE TYPE "VersionStatus" AS ENUM ('DRAFT', 'PUBLISHED', 'RETIRED');
 CREATE TYPE "StepType" AS ENUM ('SELECTION', 'MATERIAL', 'PRODUCTION', 'QC', 'APPROVAL');
 
 -- CreateEnum
-CREATE TYPE "StationType" AS ENUM ('CUTTING', 'SEWING', 'EMBROIDERY', 'DYEING', 'WASH', 'FINISHING', 'QC', 'PACKING');
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'StationType') THEN
+        CREATE TYPE "StationType" AS ENUM ('CUTTING', 'SEWING', 'EMBROIDERY', 'DYEING', 'WASH', 'FINISHING', 'QC', 'PACKING');
+    END IF;
+END $$;
 
 -- CreateEnum
 CREATE TYPE "TransitionKind" AS ENUM ('NORMAL', 'REWORK');
@@ -76,7 +80,7 @@ CREATE TABLE "step_transitions" (
 );
 
 -- CreateTable
-CREATE TABLE "styles" (
+CREATE TABLE IF NOT EXISTS "styles" (
     "id" UUID NOT NULL,
     "style_code" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -89,6 +93,8 @@ CREATE TABLE "styles" (
 
     CONSTRAINT "styles_pkey" PRIMARY KEY ("id")
 );
+
+ALTER TABLE "styles" ADD COLUMN IF NOT EXISTS "default_template_id" UUID;
 
 -- CreateIndex
 CREATE UNIQUE INDEX "workflow_versions_template_id_version_no_key" ON "workflow_versions"("template_id", "version_no");
@@ -103,7 +109,7 @@ CREATE UNIQUE INDEX "step_definitions_version_id_code_key" ON "step_definitions"
 CREATE UNIQUE INDEX "step_transitions_version_id_from_step_id_to_step_id_kind_key" ON "step_transitions"("version_id", "from_step_id", "to_step_id", "kind");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "styles_style_code_key" ON "styles"("style_code");
+CREATE UNIQUE INDEX IF NOT EXISTS "styles_style_code_key" ON "styles"("style_code");
 
 -- AddForeignKey
 ALTER TABLE "workflow_versions" ADD CONSTRAINT "workflow_versions_template_id_fkey" FOREIGN KEY ("template_id") REFERENCES "workflow_templates"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -124,7 +130,11 @@ ALTER TABLE "step_transitions" ADD CONSTRAINT "step_transitions_from_step_id_fke
 ALTER TABLE "step_transitions" ADD CONSTRAINT "step_transitions_to_step_id_fkey" FOREIGN KEY ("to_step_id") REFERENCES "step_definitions"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "styles" ADD CONSTRAINT "styles_default_template_id_fkey" FOREIGN KEY ("default_template_id") REFERENCES "workflow_templates"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'styles_default_template_id_fkey') THEN
+        ALTER TABLE "styles" ADD CONSTRAINT "styles_default_template_id_fkey" FOREIGN KEY ("default_template_id") REFERENCES "workflow_templates"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+END $$;
 
 -- Row Level Security: deny-all for Supabase's auto-generated REST API (no policies).
 ALTER TABLE "workflow_templates" ENABLE ROW LEVEL SECURITY;
