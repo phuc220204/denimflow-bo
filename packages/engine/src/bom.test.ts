@@ -1,11 +1,21 @@
-import { MaterialType } from '@denimflow/shared';
 import { describe, expect, it } from 'vitest';
+import type { MaterialType } from '@denimflow/shared';
 import {
   BomCalculator,
   type BomNormInput,
   type OrderSizeLineInput,
   SizeNormBomStrategy,
 } from './bom.js';
+
+const MaterialType: Record<MaterialType, MaterialType> = {
+  FABRIC: 'FABRIC',
+  THREAD: 'THREAD',
+  BUTTON: 'BUTTON',
+  RIVET: 'RIVET',
+  ZIPPER: 'ZIPPER',
+  LABEL: 'LABEL',
+  PACKAGING: 'PACKAGING',
+};
 
 describe('BOM Calculation Strategy (T3.3, FR-09)', () => {
   const norms: BomNormInput[] = [
