@@ -9,6 +9,7 @@ import { LoginPage } from './pages/login';
 import { NotFoundPage } from './pages/not-found';
 import { UsersPage } from './pages/users';
 import { WorkflowDesignerPage } from './pages/workflow/workflow-designer';
+import { OrdersPage } from './pages/orders';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -31,6 +32,7 @@ export const App: React.FC = () => {
               <Route path="users" element={<UsersPage />} />
               <Route path="catalog" element={<CatalogPage />} />
               <Route path="workflow" element={<WorkflowDesignerPage />} />
+              <Route path="orders" element={<OrdersPage />} />
             </Route>
             <Route path="*" element={<NotFoundPage />} />
           </Routes>

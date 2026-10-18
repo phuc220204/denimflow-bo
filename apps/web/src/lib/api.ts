@@ -1,15 +1,21 @@
 import {
   type AssignTemplateToStyleDto,
   type ConditionAst,
+  type CreateProductionOrderDto,
   type CreateStepDefinitionDto,
   type CreateStepTransitionDto,
   type CreateWorkflowTemplateDto,
+  type DyeMode,
+  type DyeSource,
   type HealthResponse,
   healthResponseSchema,
+  type OrderStatus,
+  type ProductionOrderQueryDto,
   type Role,
   type StationType,
   type StepType,
   type TransitionKind,
+  type UpdateProductionOrderDto,
   type UpdateStepDefinitionDto,
   type VersionStatus,
 } from '@denimflow/shared';
@@ -809,5 +815,119 @@ export async function assignTemplateToStyleApi(
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Không thể gán mẫu cho mã hàng');
+  return data;
+}
+
+// ==========================================
+// ORDERS API TYPES & CLIENT FUNCTIONS
+// ==========================================
+
+export interface OrderSizeLineItem {
+  id?: string;
+  orderId?: string;
+  size: string;
+  plannedQty: number;
+}
+
+export interface ProductionOrderItem {
+  id: string;
+  orderNumber: string;
+  styleId: string;
+  fabricTypeId?: string | null;
+  colorId?: string | null;
+  washTypeId?: string | null;
+  dyeRequired: boolean;
+  dyeMode?: DyeMode | null;
+  dyeSource?: DyeSource | null;
+  embroideryRequired: boolean;
+  fabricInspectRequired: boolean;
+  ppSampleRequired: boolean;
+  skipCleanWash: boolean;
+  qcProfileId?: string | null;
+  isCustom: boolean;
+  status: OrderStatus;
+  dueDate: string;
+  customerRef?: string | null;
+  notes?: string | null;
+  createdBy: string;
+  confirmedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  style?: StyleItem;
+  fabricType?: FabricTypeItem | null;
+  color?: ColorOptionItem | null;
+  washType?: WashTypeItem | null;
+  qcProfile?: QcProfileItem | null;
+  creator?: { id: string; fullName: string; email: string; role: Role };
+  sizeLines: OrderSizeLineItem[];
+  bomLines?: unknown[];
+  materialRequests?: unknown[];
+  customerAcknowledgements?: unknown[];
+  workflowInstance?: unknown;
+}
+
+export async function fetchOrdersApi(
+  token?: string | null,
+  query?: ProductionOrderQueryDto,
+): Promise<ProductionOrderItem[]> {
+  const params = new URLSearchParams();
+  if (query?.status) params.append('status', query.status);
+  if (query?.styleId) params.append('styleId', query.styleId);
+  const qs = params.toString() ? `?${params.toString()}` : '';
+
+  const res = await fetch(`${API_BASE}/orders${qs}`, {
+    headers: getAuthHeaders(token),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || 'Không thể tải danh sách đơn hàng');
+  }
+  return res.json();
+}
+
+export async function fetchOrderDetailApi(
+  id: string,
+  token?: string | null,
+): Promise<ProductionOrderItem> {
+  const res = await fetch(`${API_BASE}/orders/${id}`, {
+    headers: getAuthHeaders(token),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || 'Không thể tải chi tiết đơn hàng');
+  }
+  return res.json();
+}
+
+export async function createOrderApi(
+  dto: CreateProductionOrderDto,
+  token?: string | null,
+): Promise<ProductionOrderItem> {
+  const res = await fetch(`${API_BASE}/orders`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(dto),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || 'Không thể tạo đơn hàng');
+  }
+  return data;
+}
+
+export async function updateOrderApi(
+  id: string,
+  dto: UpdateProductionOrderDto,
+  token?: string | null,
+): Promise<ProductionOrderItem> {
+  const res = await fetch(`${API_BASE}/orders/${id}`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(dto),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || 'Không thể cập nhật đơn hàng');
+  }
   return data;
 }

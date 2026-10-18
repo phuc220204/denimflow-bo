@@ -21,7 +21,7 @@ import { ForbiddenPage } from '../pages/forbidden';
 
 // Permissions matrix: maps each Role to the routes they are allowed to access (PRD.md §4)
 const ROLE_ALLOWED_ROUTES: Record<string, string[]> = {
-  ADMIN: ['/', '/users', '/catalog', '/audit', '/workflow'],
+  ADMIN: ['/', '/users', '/catalog', '/audit', '/workflow', '/orders'],
   PROCESS_ENGINEER: ['/', '/workflow', '/catalog'],
   PRODUCTION_PLANNER: ['/', '/orders', '/worklist', '/catalog'],
   WAREHOUSE_KEEPER: ['/', '/inventory', '/catalog'],
@@ -54,7 +54,7 @@ export const ProtectedLayout: React.FC = () => {
   const allNavItems = [
     { label: i18n.nav.home, href: '/', icon: Home, disabled: false },
     { label: 'Phân quyền & Nhân sự', href: '/users', icon: Users, disabled: false },
-    { label: i18n.nav.orders, href: '/orders', icon: ClipboardList, disabled: true },
+    { label: i18n.nav.orders, href: '/orders', icon: ClipboardList, disabled: false },
     { label: i18n.nav.workflow, href: '/workflow', icon: GitFork, disabled: false },
     { label: i18n.nav.worklist, href: '/worklist', icon: Factory, disabled: true },
     { label: i18n.nav.qc, href: '/qc', icon: ShieldCheck, disabled: true },
@@ -66,7 +66,11 @@ export const ProtectedLayout: React.FC = () => {
   // Filter navigation items strictly for the active user's role (RBAC)
   const allowedHrefs = ROLE_ALLOWED_ROUTES[user.role] || ['/'];
   const navItems = allNavItems.filter((item) => allowedHrefs.includes(item.href));
-  const isForbidden = location.pathname !== '/' && !allowedHrefs.includes(location.pathname);
+  const isForbidden =
+    location.pathname !== '/' &&
+    !allowedHrefs.some(
+      (href) => location.pathname === href || location.pathname.startsWith(href + '/'),
+    );
 
   return (
     <div className="flex min-h-screen bg-background text-text">

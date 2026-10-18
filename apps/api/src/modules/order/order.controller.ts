@@ -1,0 +1,73 @@
+import {
+  Body,
+  Controller,
+  ForbiddenException,
+  Get,
+  Headers,
+  Inject,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
+import {
+  createProductionOrderSchema,
+  productionOrderQuerySchema,
+  updateProductionOrderSchema,
+} from '@denimflow/shared';
+import { AuthService } from '../auth/auth.service.js';
+import { OrderService } from './order.service.js';
+
+@Controller('orders')
+export class OrderController {
+  constructor(
+    @Inject(OrderService) private readonly orderService: OrderService,
+    @Inject(AuthService) private readonly authService: AuthService,
+  ) {}
+
+  private async assertPlannerOrAdmin(authHeader?: string): Promise<string> {
+    const user = await this.authService.getMe(authHeader);
+    if (user.role !== 'PRODUCTION_PLANNER' && user.role !== 'ADMIN' && user.role !== 'MANAGER') {
+      throw new ForbiddenException(
+        'Chỉ Người lập kế hoạch (Production Planner), Quản lý hoặc Quản trị viên mới có quyền thao tác',
+      );
+    }
+    return user.id;
+  }
+
+  private async assertAuthenticated(authHeader?: string): Promise<string> {
+    const user = await this.authService.getMe(authHeader);
+    return user.id;
+  }
+
+  @Get()
+  async listOrders(@Query() rawQuery: unknown, @Headers('authorization') authHeader?: string) {
+    await this.assertAuthenticated(authHeader);
+    const query = productionOrderQuerySchema.parse(rawQuery);
+    return this.orderService.listOrders(query);
+  }
+
+  @Get(':id')
+  async getOrderById(@Param('id') id: string, @Headers('authorization') authHeader?: string) {
+    await this.assertAuthenticated(authHeader);
+    return this.orderService.getOrderById(id);
+  }
+
+  @Post()
+  async createDraftOrder(@Body() rawBody: unknown, @Headers('authorization') authHeader?: string) {
+    const actorId = await this.assertPlannerOrAdmin(authHeader);
+    const dto = createProductionOrderSchema.parse(rawBody);
+    return this.orderService.createDraftOrder(dto, actorId);
+  }
+
+  @Patch(':id')
+  async updateDraftOrder(
+    @Param('id') id: string,
+    @Body() rawBody: unknown,
+    @Headers('authorization') authHeader?: string,
+  ) {
+    const actorId = await this.assertPlannerOrAdmin(authHeader);
+    const dto = updateProductionOrderSchema.parse(rawBody);
+    return this.orderService.updateDraftOrder(id, dto, actorId);
+  }
+}
