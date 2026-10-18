@@ -16,6 +16,8 @@ describe('OrderController', () => {
     getBomLines: ReturnType<typeof vi.fn>;
     attachCustomerAcknowledgement: ReturnType<typeof vi.fn>;
     confirmOrder: ReturnType<typeof vi.fn>;
+    createHandover: ReturnType<typeof vi.fn>;
+    getHandover: ReturnType<typeof vi.fn>;
   };
   let authService: {
     getMe: ReturnType<typeof vi.fn>;
@@ -48,6 +50,8 @@ describe('OrderController', () => {
       getBomLines: vi.fn(),
       attachCustomerAcknowledgement: vi.fn(),
       confirmOrder: vi.fn(),
+      createHandover: vi.fn(),
+      getHandover: vi.fn(),
     };
     authService = {
       getMe: vi.fn(),
@@ -240,6 +244,54 @@ describe('OrderController', () => {
         ForbiddenException,
       );
       expect(orderService.confirmOrder).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('createHandover (FR-26)', () => {
+    it('allows planner to create handover record', async () => {
+      authService.getMe.mockResolvedValue(plannerUser);
+      const mockResult = {
+        id: 'hand-1',
+        orderId: 'po-1',
+        orderNumber: 'PO-2026-0001',
+        qcProfileId: 'prof-1',
+        qcProfileType: 'FULL_PROCESS',
+        packingList: [],
+        totalQty: 100,
+        handedOverBy: plannerUser.id,
+        handedOverByName: 'Planner User',
+        handedOverAt: new Date().toISOString(),
+        orderStatus: 'COMPLETED',
+      };
+      orderService.createHandover.mockResolvedValue(mockResult);
+
+      const res = await controller.createHandover('po-1', { notes: 'Pack OK' }, 'Bearer token');
+      expect(res).toEqual(mockResult);
+      expect(orderService.createHandover).toHaveBeenCalledWith(
+        'po-1',
+        { notes: 'Pack OK' },
+        plannerUser.id,
+      );
+    });
+
+    it('rejects operator from creating handover record', async () => {
+      authService.getMe.mockResolvedValue(operatorUser);
+
+      await expect(controller.createHandover('po-1', {}, 'Bearer token')).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(orderService.createHandover).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getHandover', () => {
+    it('delegates to orderService.getHandover for authenticated user', async () => {
+      authService.getMe.mockResolvedValue(operatorUser);
+      orderService.getHandover.mockResolvedValue(null);
+
+      const res = await controller.getHandover('po-1', 'Bearer token');
+      expect(res).toBeNull();
+      expect(orderService.getHandover).toHaveBeenCalledWith('po-1');
     });
   });
 });

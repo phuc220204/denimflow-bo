@@ -14,9 +14,12 @@ import {
 import type {
   AttachAcknowledgementDto,
   ConfirmOrderResponseDto,
+  CreateHandoverDto,
   CreateProductionOrderDto,
+  HandoverRecordResponseDto,
   MaterialType,
   OrderConditionContext,
+  PackingListItemDto,
   ProductionOrderQueryDto,
   SelectFabricColorDto,
   UpdateProductionOrderDto,
@@ -811,5 +814,194 @@ export class OrderRepository {
         skippedStepCodes: planOutput.skippedStepCodes,
       };
     });
+  }
+
+  async createHandover(
+    orderId: string,
+    input: CreateHandoverDto,
+    actorId: string,
+  ): Promise<HandoverRecordResponseDto> {
+    return this.prisma.$transaction(async (tx) => {
+      const order = await tx.productionOrder.findUnique({
+        where: { id: orderId },
+        include: {
+          style: {
+            include: {
+              qcProfiles: true,
+            },
+          },
+          qcProfile: true,
+          sizeLines: true,
+          bundles: true,
+          handoverRecord: true,
+          workflowInstance: {
+            include: {
+              stepInstances: {
+                include: {
+                  stepDefinition: true,
+                  quantityEntries: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!order) {
+        throw new NotFoundException(`Order with ID ${orderId} not found`);
+      }
+
+      if (order.handoverRecord) {
+        throw new ConflictException('Đơn hàng đã được tạo biên bản bàn giao trước đó');
+      }
+
+      if (!order.workflowInstance) {
+        throw new BadRequestException('Đơn hàng chưa có quy trình sản xuất (workflow instance)');
+      }
+
+      // Acceptance: Handover cannot be created while FINAL_QC is not DONE
+      const finalQcStep = order.workflowInstance.stepInstances.find(
+        (s) => s.stepDefinition.code === 'FINAL_QC',
+      );
+      if (!finalQcStep || finalQcStep.status !== 'DONE') {
+        throw new BusinessRuleViolation(
+          'FR-26',
+          'Không thể lập biên bản bàn giao khi công đoạn FINAL_QC chưa hoàn thành (DONE)',
+        );
+      }
+
+      // Acceptance: Handover record shows FULL_PROCESS or SKIP_CLEAN_WASH
+      const expectedProfileType = order.skipCleanWash ? 'SKIP_CLEAN_WASH' : 'FULL_PROCESS';
+      let qcProfile = order.qcProfile;
+      if (!qcProfile) {
+        qcProfile =
+          order.style.qcProfiles.find((p) => p.profileType === expectedProfileType) ?? null;
+      }
+      if (!qcProfile) {
+        throw new BadRequestException(
+          `Không tìm thấy QC Profile [${expectedProfileType}] cho kiểu dáng ${order.style.styleCode}`,
+        );
+      }
+
+      // Calculate packing list by size (from bundles or size lines)
+      const packingList: PackingListItemDto[] = order.sizeLines.map((line) => {
+        const bundlesForSize = order.bundles.filter((b) => b.size === line.size);
+        const actualQty =
+          bundlesForSize.length > 0
+            ? bundlesForSize.reduce((sum, b) => sum + b.qty, 0)
+            : line.plannedQty;
+        return {
+          size: line.size,
+          plannedQty: line.plannedQty,
+          actualQty,
+        };
+      });
+
+      const totalQty = packingList.reduce((sum, item) => sum + item.actualQty, 0);
+
+      // Create HandoverRecord
+      const handover = await tx.handoverRecord.create({
+        data: {
+          orderId: order.id,
+          qcProfileId: qcProfile.id,
+          packingList: packingList as unknown as Prisma.InputJsonValue,
+          totalQty,
+          handedOverBy: actorId,
+          notes: input.notes,
+        },
+        include: {
+          handedOverByUser: true,
+        },
+      });
+
+      // Complete PACK_HANDOVER step instance if present and not DONE
+      const packStep = order.workflowInstance.stepInstances.find(
+        (s) => s.stepDefinition.code === 'PACK_HANDOVER',
+      );
+      if (packStep && packStep.status !== 'DONE') {
+        await tx.stepInstance.update({
+          where: { id: packStep.id },
+          data: {
+            status: 'DONE',
+            completedAt: new Date(),
+            performedBy: actorId,
+            qtyGood: totalQty,
+          },
+        });
+      }
+
+      // Transition order status to COMPLETED
+      await tx.productionOrder.update({
+        where: { id: order.id },
+        data: { status: 'COMPLETED' },
+      });
+
+      // Transition workflowInstance status to COMPLETED
+      await tx.workflowInstance.update({
+        where: { id: order.workflowInstance.id },
+        data: { status: 'COMPLETED' },
+      });
+
+      // AuditLog (BR-16)
+      await tx.auditLog.create({
+        data: {
+          entityType: 'ProductionOrder',
+          entityId: order.id,
+          action: 'HANDOVER_CREATED',
+          actorId,
+          oldValue: { status: order.status },
+          newValue: {
+            status: 'COMPLETED',
+            handoverId: handover.id,
+            qcProfileType: qcProfile.profileType,
+            totalQty,
+            packingList,
+          },
+        },
+      });
+
+      return {
+        id: handover.id,
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        qcProfileId: qcProfile.id,
+        qcProfileType: qcProfile.profileType,
+        packingList,
+        totalQty,
+        handedOverBy: actorId,
+        handedOverByName: handover.handedOverByUser.fullName,
+        handedOverAt: handover.handedOverAt.toISOString(),
+        notes: handover.notes,
+        orderStatus: 'COMPLETED',
+      };
+    });
+  }
+
+  async getHandover(orderId: string): Promise<HandoverRecordResponseDto | null> {
+    const handover = await this.prisma.handoverRecord.findUnique({
+      where: { orderId },
+      include: {
+        order: true,
+        qcProfile: true,
+        handedOverByUser: true,
+      },
+    });
+
+    if (!handover) return null;
+
+    return {
+      id: handover.id,
+      orderId: handover.orderId,
+      orderNumber: handover.order.orderNumber,
+      qcProfileId: handover.qcProfileId,
+      qcProfileType: handover.qcProfile.profileType,
+      packingList: handover.packingList as unknown as PackingListItemDto[],
+      totalQty: handover.totalQty,
+      handedOverBy: handover.handedOverBy,
+      handedOverByName: handover.handedOverByUser.fullName,
+      handedOverAt: handover.handedOverAt.toISOString(),
+      notes: handover.notes,
+      orderStatus: handover.order.status,
+    };
   }
 }

@@ -374,4 +374,131 @@ describe('OrdersPage', () => {
       expect(submitBtn.disabled).toBe(true);
     });
   });
+
+  it('T5.3 (FR-18): opens defects modal and displays defects per bundle and inspection', async () => {
+    vi.spyOn(api, 'fetchOrderDefectsApi').mockResolvedValue([
+      {
+        id: 'def-1',
+        inspectionId: 'insp-1',
+        stepCode: 'SEWING',
+        stepName: 'May ráp',
+        bundleId: 'bun-1',
+        bundleCode: 'BUN-01',
+        size: '30',
+        defectType: 'SEAM_BURST',
+        qty: 3,
+        inspectorName: 'QC Inspector 1',
+        createdAt: new Date('2026-10-18T10:00:00Z').toISOString(),
+      },
+    ]);
+
+    renderWithClient(<OrdersPage />);
+
+    const defectBtn = await screen.findByRole('button', { name: /^Lỗi$/i });
+    fireEvent.click(defectBtn);
+
+    expect(
+      await screen.findByText(/Danh sách lỗi đơn hàng PO-2026-0001 \(FR-18\)/i),
+    ).toBeInTheDocument();
+    expect(await screen.findByText('May ráp (SEWING)')).toBeInTheDocument();
+    expect(screen.getByText('BUN-01')).toBeInTheDocument();
+    expect(screen.getByText('SEAM_BURST')).toBeInTheDocument();
+    expect(screen.getAllByText('3').length).toBeGreaterThanOrEqual(1);
+  });
+
+  describe('T5.4 Packing and Handover (FR-26)', () => {
+    it('blocks handover creation when FINAL_QC is not DONE', async () => {
+      const orderInProd: api.ProductionOrderItem = {
+        ...mockOrders[0]!,
+        id: 'order-in-prod-1',
+        orderNumber: 'PO-2026-0001',
+        status: 'IN_PRODUCTION',
+        skipCleanWash: false,
+        workflowInstance: {
+          stepInstances: [
+            {
+              stepDefinition: { code: 'FINAL_QC', name: 'Final QC' },
+              status: 'WAITING_QC',
+            },
+          ],
+        },
+      };
+      vi.spyOn(api, 'fetchOrdersApi').mockResolvedValue([orderInProd]);
+      vi.spyOn(api, 'fetchHandoverApi').mockResolvedValue(null);
+
+      renderWithClient(<OrdersPage />);
+
+      const handoverBtn = await screen.findByRole('button', { name: /^Bàn giao$/i });
+      fireEvent.click(handoverBtn);
+
+      expect(
+        await screen.findByText(
+          /Chưa thể bàn giao: Công đoạn kiểm tra chất lượng cuối cùng \(FINAL_QC\) chưa hoàn thành \(DONE\)/i,
+        ),
+      ).toBeInTheDocument();
+      expect(screen.getByText('FULL_PROCESS')).toBeInTheDocument();
+      const submitBtn = screen.getByRole('button', {
+        name: /Tạo biên bản bàn giao & Hoàn tất đơn/i,
+      }) as HTMLButtonElement;
+      expect(submitBtn.disabled).toBe(true);
+    });
+
+    it('creates handover record showing SKIP_CLEAN_WASH when FINAL_QC is DONE and skipCleanWash is true', async () => {
+      const orderDoneQc: api.ProductionOrderItem = {
+        ...mockOrders[0]!,
+        id: 'order-done-qc',
+        orderNumber: 'PO-2026-0002',
+        status: 'IN_PRODUCTION',
+        skipCleanWash: true,
+        workflowInstance: {
+          stepInstances: [
+            {
+              stepDefinition: { code: 'FINAL_QC', name: 'Final QC' },
+              status: 'DONE',
+            },
+          ],
+        },
+      };
+      vi.spyOn(api, 'fetchOrdersApi').mockResolvedValue([orderDoneQc]);
+      vi.spyOn(api, 'fetchHandoverApi').mockResolvedValue(null);
+      vi.spyOn(api, 'createHandoverApi').mockResolvedValue({
+        id: 'hand-1',
+        orderId: 'order-done-qc',
+        orderNumber: 'PO-2026-0002',
+        qcProfileId: 'prof-skip',
+        qcProfileType: 'SKIP_CLEAN_WASH',
+        packingList: [{ size: '29', plannedQty: 100, actualQty: 100 }],
+        totalQty: 100,
+        handedOverBy: 'user-planner',
+        handedOverByName: 'Planner User',
+        handedOverAt: new Date().toISOString(),
+        orderStatus: 'COMPLETED',
+      });
+
+      renderWithClient(<OrdersPage />);
+
+      const handoverBtn = await screen.findByRole('button', { name: /^Bàn giao$/i });
+      fireEvent.click(handoverBtn);
+
+      expect(await screen.findByText('SKIP_CLEAN_WASH')).toBeInTheDocument();
+      expect(
+        screen.queryByText(/Chưa thể bàn giao: Công đoạn kiểm tra chất lượng cuối cùng/i),
+      ).not.toBeInTheDocument();
+
+      const submitBtn = screen.getByRole('button', {
+        name: /Tạo biên bản bàn giao & Hoàn tất đơn/i,
+      }) as HTMLButtonElement;
+      expect(submitBtn.disabled).toBe(false);
+
+      fireEvent.click(submitBtn);
+
+      await waitFor(() => {
+        expect(api.createHandoverApi).toHaveBeenCalledWith(
+          'order-done-qc',
+          expect.anything(),
+          expect.anything(),
+        );
+      });
+    });
+  });
 });

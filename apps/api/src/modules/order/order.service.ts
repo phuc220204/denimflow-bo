@@ -1,7 +1,9 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type {
   AttachAcknowledgementDto,
+  CreateHandoverDto,
   CreateProductionOrderDto,
+  HandoverRecordResponseDto,
   ProductionOrderQueryDto,
   SelectFabricColorDto,
   UpdateProductionOrderDto,
@@ -64,5 +66,17 @@ export class OrderService {
 
   async confirmOrder(orderId: string, actorId: string) {
     return this.orderRepository.confirmOrder(orderId, actorId);
+  }
+
+  async createHandover(
+    orderId: string,
+    dto: CreateHandoverDto,
+    actorId: string,
+  ): Promise<HandoverRecordResponseDto> {
+    return this.orderRepository.createHandover(orderId, dto, actorId);
+  }
+
+  async getHandover(orderId: string): Promise<HandoverRecordResponseDto | null> {
+    return this.orderRepository.getHandover(orderId);
   }
 }

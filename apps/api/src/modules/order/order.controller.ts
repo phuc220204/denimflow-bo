@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import {
   attachAcknowledgementSchema,
+  createHandoverSchema,
   createProductionOrderSchema,
   productionOrderQuerySchema,
   selectFabricColorSchema,
@@ -111,5 +112,22 @@ export class OrderController {
   async confirmOrder(@Param('id') id: string, @Headers('authorization') authHeader?: string) {
     const actorId = await this.assertPlannerOrAdmin(authHeader);
     return this.orderService.confirmOrder(id, actorId);
+  }
+
+  @Post(':id/handover')
+  async createHandover(
+    @Param('id') id: string,
+    @Body() rawBody: unknown,
+    @Headers('authorization') authHeader?: string,
+  ) {
+    const actorId = await this.assertPlannerOrAdmin(authHeader);
+    const dto = createHandoverSchema.parse(rawBody ?? {});
+    return this.orderService.createHandover(id, dto, actorId);
+  }
+
+  @Get(':id/handover')
+  async getHandover(@Param('id') id: string, @Headers('authorization') authHeader?: string) {
+    await this.assertAuthenticated(authHeader);
+    return this.orderService.getHandover(id);
   }
 }

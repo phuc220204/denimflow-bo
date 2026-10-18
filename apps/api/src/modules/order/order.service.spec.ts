@@ -20,6 +20,8 @@ describe('OrderService', () => {
     getBomLines: ReturnType<typeof vi.fn>;
     attachCustomerAcknowledgement: ReturnType<typeof vi.fn>;
     confirmOrder: ReturnType<typeof vi.fn>;
+    createHandover: ReturnType<typeof vi.fn>;
+    getHandover: ReturnType<typeof vi.fn>;
   };
 
   const actorId = '11111111-1111-4111-8111-111111111111';
@@ -36,6 +38,8 @@ describe('OrderService', () => {
       getBomLines: vi.fn(),
       attachCustomerAcknowledgement: vi.fn(),
       confirmOrder: vi.fn(),
+      createHandover: vi.fn(),
+      getHandover: vi.fn(),
     };
     service = new OrderService(repository as unknown as OrderRepository);
   });
@@ -196,6 +200,42 @@ describe('OrderService', () => {
       expect(res.success).toBe(true);
       expect(res.status).toBe('CONFIRMED');
       expect(repository.confirmOrder).toHaveBeenCalledWith('order-1', actorId);
+    });
+  });
+
+  describe('createHandover', () => {
+    it('delegates to repository.createHandover', async () => {
+      const mockHandover = {
+        id: 'hand-1',
+        orderId: 'order-1',
+        orderNumber: 'PO-2026-0001',
+        qcProfileId: 'qc-prof-1',
+        qcProfileType: 'FULL_PROCESS',
+        packingList: [{ size: '30', plannedQty: 100, actualQty: 100 }],
+        totalQty: 100,
+        handedOverBy: actorId,
+        handedOverByName: 'Planner Name',
+        handedOverAt: new Date().toISOString(),
+        orderStatus: 'COMPLETED',
+      };
+      repository.createHandover.mockResolvedValue(mockHandover);
+
+      const res = await service.createHandover('order-1', { notes: 'Delivered' }, actorId);
+      expect(res).toEqual(mockHandover);
+      expect(repository.createHandover).toHaveBeenCalledWith(
+        'order-1',
+        { notes: 'Delivered' },
+        actorId,
+      );
+    });
+  });
+
+  describe('getHandover', () => {
+    it('delegates to repository.getHandover', async () => {
+      repository.getHandover.mockResolvedValue(null);
+      const res = await service.getHandover('order-1');
+      expect(res).toBeNull();
+      expect(repository.getHandover).toHaveBeenCalledWith('order-1');
     });
   });
 });
