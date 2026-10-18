@@ -10,13 +10,13 @@ Do: gate links in the order of `skills/add-engine-rule.md`; each link returns pa
 Acceptance:
 - [x] Tests per link and for the chain order; a SKIPPED predecessor counts as done.
 
-### T4.2 Worklist, Start and Complete   [agent]
+### T4.2 Worklist, Start and Complete   [Tran Hoang Phuc / agent]
 Branch: `feat/execution-worklist`
 FR/BR: FR-12, BR-11, BR-16
 Do: `GET /worklist` (steps in READY/IN_PROGRESS/REWORK for the user's station), `POST /steps/:id/start`, `POST /steps/:id/complete`; on complete: next state WAITING_QC or DONE by step config, then run readiness evaluation and open successors, all in one transaction with AuditLog. Operator UI optimized for few taps.
 Acceptance:
-- [ ] An operator sees only their station's steps.
-- [ ] Completing a step opens the next one; completing the last step is handled in S5.
+- [x] An operator sees only their station's steps.
+- [x] Completing a step opens the next one; completing the last step is handled in S5.
 
 ### T4.3 Quantity entry with conservation   [agent]
 Branch: `feat/execution-quantities`

@@ -25,7 +25,13 @@ import {
   type ConfirmOrderResponseDto,
   type CuttingGateResultDto,
   type RequestStatus,
+  type CompleteStepResponseDto,
+  type StartStepResponseDto,
+  type StepStatus,
+  type WorklistItemDto,
 } from '@denimflow/shared';
+
+export type { CompleteStepResponseDto, StartStepResponseDto, StepStatus, WorklistItemDto };
 
 export interface UserProfile {
   id: string;
@@ -1172,5 +1178,52 @@ export async function fetchCuttingGateApi(
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Không thể kiểm tra Gate cắt');
+  return data;
+}
+
+// ==========================================
+// WORKLIST / EXECUTION API CLIENT (T4.2, FR-12)
+// ==========================================
+
+export async function fetchWorklistApi(
+  token?: string | null,
+  query?: { stationType?: string; status?: StepStatus },
+): Promise<WorklistItemDto[]> {
+  const params = new URLSearchParams();
+  if (query?.stationType) params.append('stationType', query.stationType);
+  if (query?.status) params.append('status', query.status);
+
+  const qs = params.toString() ? `?${params.toString()}` : '';
+  const res = await fetch(`${API_BASE}/worklist${qs}`, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tải danh sách công việc');
+  return data;
+}
+
+export async function startStepApi(
+  stepId: string,
+  token?: string | null,
+): Promise<StartStepResponseDto> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/start`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể bắt đầu công đoạn');
+  return data;
+}
+
+export async function completeStepApi(
+  stepId: string,
+  token?: string | null,
+): Promise<CompleteStepResponseDto> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/complete`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể hoàn thành công đoạn');
   return data;
 }

@@ -110,7 +110,7 @@ MVP = 14 FRs from the Proposal. Items marked ◐ are **minimal slices** pulled i
 | FR-09 | Production Order | BOM, allocation, Material Request | MVP | ✔ | S3 T3.3–T3.4 | DONE |
 | FR-10 | Production Order | Hold, Resume, Cancel | High | — | post-MVP | DEFERRED |
 | FR-11 | Execution Engine | Instance from snapshot, open steps by Gate | MVP | ✔ | S2 T2.1, S3 T3.5, S4 T4.1 | DONE |
-| FR-12 | Execution Engine | Worklist by station, Start/Complete | MVP | ✔ | S4 T4.2 | TODO |
+| FR-12 | Execution Engine | Worklist by station, Start/Complete | MVP | ✔ | S4 T4.2 | DONE |
 | FR-13 | Execution Engine | Good/defect quantities per bundle, conservation | MVP | ✔ | S4 T4.3 | TODO |
 | FR-14 | Execution Engine | Evidence attachments | High | stretch | S4 T4.4 | TODO |
 | FR-15 | Execution Engine | Bundle generation and codes | High | ◐ at CUTTING | S4 T4.3 | TODO |

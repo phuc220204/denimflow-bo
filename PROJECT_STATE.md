@@ -7,8 +7,8 @@ Last updated: 2026-10-18
 
 **Sprint 3 completed** (`.agents/tasks/S3-order-confirm-snapshot.md`).
 **Sprint 4 in progress** (`.agents/tasks/S4-execution-gates-quantities.md`).
-Done: Sprint 1 (T1.1..T1.5); Sprint 2 (T2.1..T2.5); Sprint 3 (T3.1..T3.5); Sprint 4 T4.1 (Gate chain Chain of Responsibility).
-**Next:** T4.2 Worklist, Start and Complete.
+Done: Sprint 1 (T1.1..T1.5); Sprint 2 (T2.1..T2.5); Sprint 3 (T3.1..T3.5); Sprint 4 T4.1 (Gate chain), T4.2 (Worklist, Start and Complete).
+**Next:** T4.3 Quantity entry with conservation.
 Team: tasks are picked in `docs/TASK_BOARD.md`; onboarding guide `docs/<lang>/GETTING_STARTED.md`.
 
 ## Decisions (settled)

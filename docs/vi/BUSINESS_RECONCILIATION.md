@@ -110,7 +110,7 @@ MVP = 14 FR của Proposal. Mục đánh dấu ◐ là **phần tối thiểu** 
 | FR-09 | Production Order | BOM, phân bổ, Material Request | MVP | ✔ | S3 T3.3–T3.4 | XONG |
 | FR-10 | Production Order | Hold, Resume, Cancel | High | — | sau MVP | DEFERRED |
 | FR-11 | Execution Engine | Tạo instance từ snapshot, mở step theo Gate | MVP | ✔ | S2 T2.1, S3 T3.5, S4 T4.1 | XONG |
-| FR-12 | Execution Engine | Worklist theo trạm, Start/Complete | MVP | ✔ | S4 T4.2 | TODO |
+| FR-12 | Execution Engine | Worklist theo trạm, Start/Complete | MVP | ✔ | S4 T4.2 | XONG |
 | FR-13 | Execution Engine | Nhập số lượng đạt/lỗi theo bundle, bảo toàn số lượng | MVP | ✔ | S4 T4.3 | TODO |
 | FR-14 | Execution Engine | Đính kèm minh chứng | High | stretch | S4 T4.4 | TODO |
 | FR-15 | Execution Engine | Sinh bundle và mã bundle | High | ◐ tại CUTTING | S4 T4.3 | TODO |
