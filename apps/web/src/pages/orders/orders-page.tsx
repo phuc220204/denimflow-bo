@@ -5,6 +5,7 @@ import {
   Clock,
   Layers,
   Palette,
+  Calculator,
   Plus,
   Search,
   Trash2,
@@ -20,12 +21,15 @@ import type {
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import {
+  calculateBomApi,
   createOrderApi,
   fetchAllowedColors,
+  fetchBomLinesApi,
   fetchFabricTypes,
   fetchOrdersApi,
   fetchStyles,
   fetchWashTypes,
+  type BomLineItem,
   type ProductionOrderItem,
   selectFabricColorApi,
   updateOrderApi,
@@ -79,6 +83,10 @@ export const OrdersPage: React.FC = () => {
   const [fcModalColorId, setFcModalColorId] = useState<string>('');
   const [fcModalWashId, setFcModalWashId] = useState<string>('');
   const [fcModalError, setFcModalError] = useState<string | null>(null);
+
+  // Dedicated BOM modal state (FR-09)
+  const [bomModalOrder, setBomModalOrder] = useState<ProductionOrderItem | null>(null);
+  const [bomModalError, setBomModalError] = useState<string | null>(null);
 
   // Queries
   const { data: orders = [], isLoading: ordersLoading } = useQuery({
@@ -238,6 +246,30 @@ export const OrdersPage: React.FC = () => {
         washTypeId: fcModalWashId || null,
       },
     });
+  };
+
+  // Dedicated BOM handlers (FR-09)
+  const { data: bomLines = [], isLoading: bomLinesLoading } = useQuery<BomLineItem[]>({
+    queryKey: ['bomLines', bomModalOrder?.id],
+    queryFn: () =>
+      bomModalOrder ? fetchBomLinesApi(bomModalOrder.id, token) : Promise.resolve([]),
+    enabled: Boolean(bomModalOrder),
+  });
+
+  const calculateBomMutation = useMutation({
+    mutationFn: (orderId: string) => calculateBomApi(orderId, token),
+    onSuccess: (data) => {
+      queryClient.setQueryData(['bomLines', bomModalOrder?.id], data);
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+    },
+    onError: (err: Error) => {
+      setBomModalError(err.message || 'Không thể tính toán BOM');
+    },
+  });
+
+  const handleOpenBomModal = (order: ProductionOrderItem) => {
+    setBomModalOrder(order);
+    setBomModalError(null);
   };
 
   // Mutations
@@ -623,6 +655,18 @@ export const OrdersPage: React.FC = () => {
                             >
                               <Palette className="h-3.5 w-3.5 text-primary" />
                               <span>Vải & Màu</span>
+                            </Button>
+                          )}
+                          {isPlannerOrAdmin && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleOpenBomModal(order)}
+                              className="text-xs h-8 flex items-center gap-1"
+                              title="Định mức nguyên phụ liệu (BOM) (FR-09)"
+                            >
+                              <Calculator className="h-3.5 w-3.5 text-primary" />
+                              <span>BOM</span>
                             </Button>
                           )}
                           {isPlannerOrAdmin && isDraft && (
@@ -1199,6 +1243,147 @@ export const OrdersPage: React.FC = () => {
                 )}
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal BOM Calculation & View (FR-09) */}
+      {bomModalOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-surface rounded-xl border border-border shadow-xl max-w-2xl w-full my-8 overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/30">
+              <div className="flex items-center gap-2">
+                <Calculator className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-bold text-text">
+                  Định mức nguyên phụ liệu (BOM) — {bomModalOrder.orderNumber}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setBomModalOrder(null)}
+                className="text-text-muted hover:text-text"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-lg bg-muted/40 border border-border text-xs">
+                <div>
+                  <span className="text-text-muted">Kiểu dáng: </span>
+                  <span className="font-semibold text-text">
+                    {bomModalOrder.style?.styleCode} - {bomModalOrder.style?.name}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-text-muted">Tổng số lượng: </span>
+                  <span className="font-semibold text-primary">
+                    {bomModalOrder.sizeLines.reduce((s, l) => s + l.plannedQty, 0).toLocaleString()}{' '}
+                    chiếc
+                  </span>
+                </div>
+                {isPlannerOrAdmin && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={calculateBomMutation.isPending}
+                    onClick={() => calculateBomMutation.mutate(bomModalOrder.id)}
+                    className="text-xs bg-primary text-white hover:bg-primary/90 flex items-center gap-1.5"
+                  >
+                    <Calculator className="h-3.5 w-3.5" />
+                    <span>
+                      {calculateBomMutation.isPending ? 'Đang tính toán...' : 'Tính lại BOM'}
+                    </span>
+                  </Button>
+                )}
+              </div>
+
+              {bomModalError && (
+                <div className="flex items-center gap-2 p-3 text-xs text-red-700 bg-red-50 border border-red-200 rounded-md">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span>{bomModalError}</span>
+                </div>
+              )}
+
+              {bomLinesLoading ? (
+                <div className="py-8 text-center text-xs text-text-muted">
+                  Đang tải định mức vật tư...
+                </div>
+              ) : bomLines.length === 0 ? (
+                <div className="py-8 text-center space-y-3">
+                  <Layers className="h-10 w-10 text-text-muted mx-auto opacity-50" />
+                  <p className="text-xs text-text-muted max-w-md mx-auto">
+                    Chưa có định mức vật tư nào được tính toán cho đơn hàng này.
+                  </p>
+                  {isPlannerOrAdmin && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={calculateBomMutation.isPending}
+                      onClick={() => calculateBomMutation.mutate(bomModalOrder.id)}
+                      className="text-xs bg-primary text-white hover:bg-primary/90"
+                    >
+                      {calculateBomMutation.isPending ? 'Đang tính toán...' : 'Tính toán BOM ngay'}
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="border border-border rounded-lg overflow-hidden">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-muted/50 border-b border-border text-text-muted font-medium">
+                      <tr>
+                        <th className="py-2.5 px-3">Loại vật tư</th>
+                        <th className="py-2.5 px-3 text-right">Tổng nhu cầu</th>
+                        <th className="py-2.5 px-3">Đơn vị</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {bomLines.map((line) => {
+                        const materialNameMap: Record<string, string> = {
+                          FABRIC: 'Vải chính',
+                          THREAD: 'Chỉ may',
+                          BUTTON: 'Nút kim loại',
+                          RIVET: 'Đinh tán',
+                          ZIPPER: 'Khóa kéo',
+                          LABEL: 'Nhãn mác',
+                          PACKAGING: 'Bao bì đóng gói',
+                        };
+                        return (
+                          <tr key={line.id} className="hover:bg-muted/20">
+                            <td className="py-2.5 px-3 font-medium text-text">
+                              <span className="font-semibold">
+                                {materialNameMap[line.materialType] || line.materialType}
+                              </span>
+                              <span className="ml-1 text-[11px] text-text-muted font-mono">
+                                ({line.materialType})
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3 text-right font-mono font-semibold text-primary">
+                              {Number(line.requiredQty).toLocaleString(undefined, {
+                                minimumFractionDigits: 0,
+                                maximumFractionDigits: 2,
+                              })}
+                            </td>
+                            <td className="py-2.5 px-3 text-text-muted font-medium">{line.unit}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setBomModalOrder(null)}
+                  className="text-xs"
+                >
+                  Đóng
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       )}

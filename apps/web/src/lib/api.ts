@@ -9,6 +9,7 @@ import {
   type DyeSource,
   type HealthResponse,
   healthResponseSchema,
+  type MaterialType,
   type OrderStatus,
   type ProductionOrderQueryDto,
   type Role,
@@ -830,6 +831,18 @@ export interface OrderSizeLineItem {
   plannedQty: number;
 }
 
+export interface BomLineItem {
+  id: string;
+  orderId: string;
+  materialType: MaterialType;
+  requiredQty: number | string;
+  unit: string;
+  materialAllocations?: unknown[];
+  materialRequests?: unknown[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface ProductionOrderItem {
   id: string;
   orderNumber: string;
@@ -861,7 +874,7 @@ export interface ProductionOrderItem {
   qcProfile?: QcProfileItem | null;
   creator?: { id: string; fullName: string; email: string; role: Role };
   sizeLines: OrderSizeLineItem[];
-  bomLines?: unknown[];
+  bomLines?: BomLineItem[];
   materialRequests?: unknown[];
   customerAcknowledgements?: unknown[];
   workflowInstance?: unknown;
@@ -946,6 +959,35 @@ export async function selectFabricColorApi(
   const data = await res.json();
   if (!res.ok) {
     throw new Error(data.message || 'Không thể chọn chất liệu và màu sắc cho đơn hàng');
+  }
+  return data;
+}
+
+export async function calculateBomApi(
+  orderId: string,
+  token?: string | null,
+): Promise<BomLineItem[]> {
+  const res = await fetch(`${API_BASE}/orders/${orderId}/bom/calculate`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || 'Không thể tính toán BOM cho đơn hàng');
+  }
+  return data;
+}
+
+export async function fetchBomLinesApi(
+  orderId: string,
+  token?: string | null,
+): Promise<BomLineItem[]> {
+  const res = await fetch(`${API_BASE}/orders/${orderId}/bom`, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || 'Không thể tải danh sách định mức BOM');
   }
   return data;
 }

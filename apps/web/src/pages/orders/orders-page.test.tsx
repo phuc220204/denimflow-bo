@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -26,6 +26,7 @@ const mockUser: {
 vi.mock('../../lib/auth-context', () => ({
   useAuth: () => ({
     user: mockUser,
+    token: 'planner-token',
     isLoading: false,
     logout: vi.fn(),
   }),
@@ -91,6 +92,27 @@ const mockAllowedColors = [
   },
 ];
 
+const mockBomLines: api.BomLineItem[] = [
+  {
+    id: 'bom-1',
+    orderId: 'order-1',
+    materialType: 'FABRIC',
+    requiredQty: 382.5,
+    unit: 'METER',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'bom-2',
+    orderId: 'order-1',
+    materialType: 'BUTTON',
+    requiredQty: 250,
+    unit: 'PIECE',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+];
+
 function renderWithClient(ui: React.ReactElement) {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -118,6 +140,8 @@ describe('OrdersPage', () => {
     vi.spyOn(api, 'fetchFabricTypes').mockResolvedValue(mockFabrics);
     vi.spyOn(api, 'fetchAllowedColors').mockResolvedValue(mockAllowedColors);
     vi.spyOn(api, 'selectFabricColorApi').mockResolvedValue(mockOrders[0]!);
+    vi.spyOn(api, 'fetchBomLinesApi').mockResolvedValue(mockBomLines);
+    vi.spyOn(api, 'calculateBomApi').mockResolvedValue(mockBomLines);
   });
 
   it('renders orders list with order number and style', async () => {
@@ -184,5 +208,36 @@ describe('OrdersPage', () => {
     const fabricSelect = screen.getByLabelText(/Loại vải \(Fabric Type\)/i) as HTMLSelectElement;
     expect(fabricSelect.disabled).toBe(true);
     expect(screen.queryByRole('button', { name: /Lưu lựa chọn/i })).not.toBeInTheDocument();
+  });
+
+  it('FR-09: opens BOM modal and displays material lines', async () => {
+    renderWithClient(<OrdersPage />);
+
+    const bomBtn = await screen.findByRole('button', { name: /BOM/i });
+    fireEvent.click(bomBtn);
+
+    expect(
+      await screen.findByText(/Định mức nguyên phụ liệu \(BOM\) — PO-2026-0001/i),
+    ).toBeInTheDocument();
+    expect(await screen.findByText(/Vải chính/i)).toBeInTheDocument();
+    expect(screen.getByText('382.5')).toBeInTheDocument();
+    expect(screen.getByText('METER')).toBeInTheDocument();
+    expect(screen.getByText(/Nút kim loại/i)).toBeInTheDocument();
+    expect(screen.getByText('250')).toBeInTheDocument();
+    expect(screen.getByText('PIECE')).toBeInTheDocument();
+  });
+
+  it('FR-09: triggers BOM calculation when clicking recalculate', async () => {
+    renderWithClient(<OrdersPage />);
+
+    const bomBtn = await screen.findByRole('button', { name: /BOM/i });
+    fireEvent.click(bomBtn);
+
+    const recalcBtn = await screen.findByRole('button', { name: /Tính lại BOM/i });
+    fireEvent.click(recalcBtn);
+
+    await waitFor(() => {
+      expect(api.calculateBomApi).toHaveBeenCalledWith('order-1', 'planner-token');
+    });
   });
 });

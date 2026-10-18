@@ -1,6 +1,8 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BomCalculator, type BomNormInput, type OrderSizeLineInput } from '@denimflow/engine';
 import type {
   CreateProductionOrderDto,
+  MaterialType,
   ProductionOrderQueryDto,
   SelectFabricColorDto,
   UpdateProductionOrderDto,
@@ -383,6 +385,103 @@ export class OrderRepository {
       });
 
       return updated;
+    });
+  }
+
+  async calculateAndPersistBom(orderId: string, actorId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const order = await tx.productionOrder.findUnique({
+        where: { id: orderId },
+        include: {
+          sizeLines: true,
+          style: {
+            include: {
+              bomNorms: true,
+            },
+          },
+        },
+      });
+
+      if (!order) {
+        throw new NotFoundException(`Order with ID ${orderId} not found`);
+      }
+
+      if (order.sizeLines.length === 0) {
+        throw new BadRequestException('Đơn hàng chưa có dải cỡ (size lines) để tính BOM');
+      }
+
+      if (!order.style.bomNorms || order.style.bomNorms.length === 0) {
+        throw new BadRequestException(
+          `Kiểu dáng ${order.style.styleCode} chưa được cấu hình định mức BOM (BOM norms)`,
+        );
+      }
+
+      const norms: BomNormInput[] = order.style.bomNorms.map((n) => ({
+        size: n.size,
+        materialType: n.materialType as MaterialType,
+        qtyPerPiece: Number(n.qtyPerPiece),
+        unit: n.unit,
+        wastagePercent: Number(n.wastagePercent),
+      }));
+
+      const sizeLines: OrderSizeLineInput[] = order.sizeLines.map((l) => ({
+        size: l.size,
+        plannedQty: l.plannedQty,
+      }));
+
+      const calculator = new BomCalculator();
+      const calculatedLines = calculator.calculate({ sizeLines, norms });
+
+      // Delete existing bom_lines for this order
+      await tx.bomLine.deleteMany({
+        where: { orderId },
+      });
+
+      // Insert new bom_lines
+      await tx.bomLine.createMany({
+        data: calculatedLines.map((line) => ({
+          orderId,
+          materialType: line.materialType,
+          requiredQty: line.requiredQty,
+          unit: line.unit,
+        })),
+      });
+
+      const updatedBomLines = await tx.bomLine.findMany({
+        where: { orderId },
+        orderBy: { materialType: 'asc' },
+      });
+
+      // Write AuditLog (BR-16)
+      await tx.auditLog.create({
+        data: {
+          entityType: 'ProductionOrder',
+          entityId: orderId,
+          action: 'CALCULATE_BOM',
+          actorId,
+          newValue: updatedBomLines.map((b) => ({
+            materialType: b.materialType,
+            requiredQty: Number(b.requiredQty),
+            unit: b.unit,
+          })),
+        },
+      });
+
+      return updatedBomLines;
+    });
+  }
+
+  async getBomLines(orderId: string) {
+    const order = await this.prisma.productionOrder.findUnique({
+      where: { id: orderId },
+    });
+    if (!order) {
+      throw new NotFoundException(`Order with ID ${orderId} not found`);
+    }
+
+    return this.prisma.bomLine.findMany({
+      where: { orderId },
+      orderBy: { materialType: 'asc' },
     });
   }
 }

@@ -44,4 +44,12 @@ export class OrderService {
   async selectFabricColor(id: string, dto: SelectFabricColorDto, actorId: string) {
     return this.orderRepository.selectFabricColor(id, dto, actorId);
   }
+
+  async calculateAndPersistBom(orderId: string, actorId: string) {
+    return this.orderRepository.calculateAndPersistBom(orderId, actorId);
+  }
+
+  async getBomLines(orderId: string) {
+    return this.orderRepository.getBomLines(orderId);
+  }
 }

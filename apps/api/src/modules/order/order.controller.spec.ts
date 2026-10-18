@@ -12,6 +12,8 @@ describe('OrderController', () => {
     createDraftOrder: ReturnType<typeof vi.fn>;
     updateDraftOrder: ReturnType<typeof vi.fn>;
     selectFabricColor: ReturnType<typeof vi.fn>;
+    calculateAndPersistBom: ReturnType<typeof vi.fn>;
+    getBomLines: ReturnType<typeof vi.fn>;
   };
   let authService: {
     getMe: ReturnType<typeof vi.fn>;
@@ -40,6 +42,8 @@ describe('OrderController', () => {
       createDraftOrder: vi.fn(),
       updateDraftOrder: vi.fn(),
       selectFabricColor: vi.fn(),
+      calculateAndPersistBom: vi.fn(),
+      getBomLines: vi.fn(),
     };
     authService = {
       getMe: vi.fn(),
@@ -138,6 +142,39 @@ describe('OrderController', () => {
         ForbiddenException,
       );
       expect(orderService.selectFabricColor).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('BOM endpoints', () => {
+    it('allows planner to calculate BOM', async () => {
+      authService.getMe.mockResolvedValue(plannerUser);
+      orderService.calculateAndPersistBom.mockResolvedValue([
+        { id: 'bom-1', materialType: 'FABRIC', requiredQty: 100 },
+      ]);
+
+      const res = await controller.calculateBom('po-1', 'Bearer token');
+      expect(res).toHaveLength(1);
+      expect(orderService.calculateAndPersistBom).toHaveBeenCalledWith('po-1', plannerUser.id);
+    });
+
+    it('rejects operator from calculating BOM', async () => {
+      authService.getMe.mockResolvedValue(operatorUser);
+
+      await expect(controller.calculateBom('po-1', 'Bearer token')).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(orderService.calculateAndPersistBom).not.toHaveBeenCalled();
+    });
+
+    it('allows authenticated user to get BOM lines', async () => {
+      authService.getMe.mockResolvedValue(operatorUser);
+      orderService.getBomLines.mockResolvedValue([
+        { id: 'bom-1', materialType: 'THREAD', requiredQty: 500 },
+      ]);
+
+      const res = await controller.getBomLines('po-1', 'Bearer token');
+      expect(res).toHaveLength(1);
+      expect(orderService.getBomLines).toHaveBeenCalledWith('po-1');
     });
   });
 });

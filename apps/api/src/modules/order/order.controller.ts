@@ -82,4 +82,16 @@ export class OrderController {
     const dto = selectFabricColorSchema.parse(rawBody);
     return this.orderService.selectFabricColor(id, dto, actorId);
   }
+
+  @Post(':id/bom/calculate')
+  async calculateBom(@Param('id') id: string, @Headers('authorization') authHeader?: string) {
+    const actorId = await this.assertPlannerOrAdmin(authHeader);
+    return this.orderService.calculateAndPersistBom(id, actorId);
+  }
+
+  @Get(':id/bom')
+  async getBomLines(@Param('id') id: string, @Headers('authorization') authHeader?: string) {
+    await this.assertAuthenticated(authHeader);
+    return this.orderService.getBomLines(id);
+  }
 }

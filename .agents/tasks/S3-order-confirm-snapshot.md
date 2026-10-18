@@ -24,7 +24,7 @@ Branch: `feat/order-bom`
 FR/BR: FR-09
 Do: BOM strategy "by size norm" in the engine (norm table in seed: meters of fabric per size, thread, buttons, rivets, zipper, labels, packaging; wastage %). Persist `bom_lines`.
 Acceptance:
-- [ ] Deterministic test: known size run → known BOM.
+- [x] Deterministic test: known size run → known BOM.
 
 ### T3.4 Allocation and Material Request   [agent]
 Branch: `feat/inventory-allocation`

@@ -198,4 +198,161 @@ describe('OrderRepository', () => {
       );
     });
   });
+
+  describe('calculateAndPersistBom and getBomLines', () => {
+    const actorId = '11111111-1111-4111-8111-111111111111';
+    const orderId = 'order-bom-123';
+
+    it('calculates and persists BOM lines using size-norm strategy and creates AuditLog', async () => {
+      const order = {
+        id: orderId,
+        sizeLines: [
+          { size: '29', plannedQty: 100 },
+          { size: '30', plannedQty: 150 },
+        ],
+        style: {
+          styleCode: 'JS-01',
+          bomNorms: [
+            {
+              size: '29',
+              materialType: 'FABRIC',
+              qtyPerPiece: 1.35,
+              unit: 'meter',
+              wastagePercent: 5,
+            },
+            {
+              size: '30',
+              materialType: 'FABRIC',
+              qtyPerPiece: 1.4,
+              unit: 'meter',
+              wastagePercent: 5,
+            },
+            {
+              size: 'ALL',
+              materialType: 'BUTTON',
+              qtyPerPiece: 1,
+              unit: 'piece',
+              wastagePercent: 2,
+            },
+          ],
+        },
+      };
+
+      const persistedLines = [
+        { id: 'b-1', orderId, materialType: 'BUTTON', requiredQty: 255, unit: 'piece' },
+        { id: 'b-2', orderId, materialType: 'FABRIC', requiredQty: 362.25, unit: 'meter' },
+      ];
+
+      const txMock = {
+        productionOrder: {
+          findUnique: vi.fn().mockResolvedValue(order),
+        },
+        bomLine: {
+          deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+          createMany: vi.fn().mockResolvedValue({ count: 2 }),
+          findMany: vi.fn().mockResolvedValue(persistedLines),
+        },
+        auditLog: {
+          create: vi.fn().mockResolvedValue({ id: 'audit-1' }),
+        },
+      };
+
+      const mockPrisma = {
+        $transaction: vi.fn((cb: (tx: unknown) => unknown) => cb(txMock)),
+      };
+
+      const repo = new OrderRepository(mockPrisma as unknown as PrismaService);
+      const result = await repo.calculateAndPersistBom(orderId, actorId);
+
+      expect(result).toEqual(persistedLines);
+      expect(txMock.bomLine.deleteMany).toHaveBeenCalledWith({ where: { orderId } });
+      expect(txMock.bomLine.createMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.arrayContaining([
+            expect.objectContaining({ materialType: 'FABRIC', requiredQty: 362.25 }),
+            expect.objectContaining({ materialType: 'BUTTON', requiredQty: 255 }),
+          ]),
+        }),
+      );
+      expect(txMock.auditLog.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            action: 'CALCULATE_BOM',
+            actorId,
+          }),
+        }),
+      );
+    });
+
+    it('rejects BOM calculation if order has no size lines', async () => {
+      const order = {
+        id: orderId,
+        sizeLines: [],
+        style: {
+          styleCode: 'JS-01',
+          bomNorms: [{ size: '30', materialType: 'FABRIC', qtyPerPiece: 1.4, unit: 'meter' }],
+        },
+      };
+
+      const txMock = {
+        productionOrder: {
+          findUnique: vi.fn().mockResolvedValue(order),
+        },
+      };
+
+      const mockPrisma = {
+        $transaction: vi.fn((cb: (tx: unknown) => unknown) => cb(txMock)),
+      };
+
+      const repo = new OrderRepository(mockPrisma as unknown as PrismaService);
+      await expect(repo.calculateAndPersistBom(orderId, actorId)).rejects.toThrow(
+        'Đơn hàng chưa có dải cỡ (size lines) để tính BOM',
+      );
+    });
+
+    it('rejects BOM calculation if style has no BOM norms', async () => {
+      const order = {
+        id: orderId,
+        sizeLines: [{ size: '30', plannedQty: 100 }],
+        style: {
+          styleCode: 'JS-01',
+          bomNorms: [],
+        },
+      };
+
+      const txMock = {
+        productionOrder: {
+          findUnique: vi.fn().mockResolvedValue(order),
+        },
+      };
+
+      const mockPrisma = {
+        $transaction: vi.fn((cb: (tx: unknown) => unknown) => cb(txMock)),
+      };
+
+      const repo = new OrderRepository(mockPrisma as unknown as PrismaService);
+      await expect(repo.calculateAndPersistBom(orderId, actorId)).rejects.toThrow(
+        'chưa được cấu hình định mức BOM',
+      );
+    });
+
+    it('getBomLines returns persisted BOM lines for order', async () => {
+      const mockPrisma = {
+        productionOrder: {
+          findUnique: vi.fn().mockResolvedValue({ id: orderId }),
+        },
+        bomLine: {
+          findMany: vi.fn().mockResolvedValue([{ id: 'b-1', materialType: 'FABRIC' }]),
+        },
+      };
+
+      const repo = new OrderRepository(mockPrisma as unknown as PrismaService);
+      const lines = await repo.getBomLines(orderId);
+      expect(lines).toHaveLength(1);
+      expect(mockPrisma.bomLine.findMany).toHaveBeenCalledWith({
+        where: { orderId },
+        orderBy: { materialType: 'asc' },
+      });
+    });
+  });
 });

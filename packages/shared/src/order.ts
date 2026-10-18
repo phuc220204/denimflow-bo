@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { dyeModeSchema, dyeSourceSchema, orderStatusSchema } from './enums.js';
+import { dyeModeSchema, dyeSourceSchema, materialTypeSchema, orderStatusSchema } from './enums.js';
 
 export const orderSizeLineSchema = z
   .object({
@@ -162,3 +162,14 @@ export const selectFabricColorSchema = z
   })
   .strict();
 export type SelectFabricColorDto = z.infer<typeof selectFabricColorSchema>;
+
+export const bomLineDtoSchema = z.object({
+  id: z.string().uuid().optional(),
+  orderId: z.string().uuid(),
+  materialType: materialTypeSchema,
+  requiredQty: z.number().nonnegative(),
+  unit: z.string(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+});
+export type BomLineDto = z.infer<typeof bomLineDtoSchema>;

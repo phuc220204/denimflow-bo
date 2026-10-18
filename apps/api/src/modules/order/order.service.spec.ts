@@ -16,6 +16,8 @@ describe('OrderService', () => {
     createDraftOrder: ReturnType<typeof vi.fn>;
     updateDraftOrder: ReturnType<typeof vi.fn>;
     selectFabricColor: ReturnType<typeof vi.fn>;
+    calculateAndPersistBom: ReturnType<typeof vi.fn>;
+    getBomLines: ReturnType<typeof vi.fn>;
   };
 
   const actorId = '11111111-1111-4111-8111-111111111111';
@@ -28,6 +30,8 @@ describe('OrderService', () => {
       createDraftOrder: vi.fn(),
       updateDraftOrder: vi.fn(),
       selectFabricColor: vi.fn(),
+      calculateAndPersistBom: vi.fn(),
+      getBomLines: vi.fn(),
     };
     service = new OrderService(repository as unknown as OrderRepository);
   });
@@ -131,6 +135,26 @@ describe('OrderService', () => {
       const res = await service.selectFabricColor('order-1', dto, actorId);
       expect(res).toEqual(expect.objectContaining({ id: 'order-1' }));
       expect(repository.selectFabricColor).toHaveBeenCalledWith('order-1', dto, actorId);
+    });
+  });
+
+  describe('calculateAndPersistBom and getBomLines', () => {
+    it('delegates calculateAndPersistBom to repository', async () => {
+      repository.calculateAndPersistBom.mockResolvedValue([
+        { id: 'b-1', materialType: 'FABRIC', requiredQty: 150 },
+      ]);
+      const res = await service.calculateAndPersistBom('order-1', actorId);
+      expect(res).toHaveLength(1);
+      expect(repository.calculateAndPersistBom).toHaveBeenCalledWith('order-1', actorId);
+    });
+
+    it('delegates getBomLines to repository', async () => {
+      repository.getBomLines.mockResolvedValue([
+        { id: 'b-1', materialType: 'BUTTON', requiredQty: 50 },
+      ]);
+      const res = await service.getBomLines('order-1');
+      expect(res).toHaveLength(1);
+      expect(repository.getBomLines).toHaveBeenCalledWith('order-1');
     });
   });
 });
