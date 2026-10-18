@@ -1,16 +1,10 @@
-import { Body, Controller, Get, Headers, Post } from '@nestjs/common';
-import { loginSchema, registerSchema } from './auth.dto.js';
+import { Body, Controller, Get, Headers, Inject, Post } from '@nestjs/common';
+import { loginSchema } from './auth.dto.js';
 import { AuthService, type AuthResponse } from './auth.service.js';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
-
-  @Post('register')
-  async register(@Body() body: unknown): Promise<AuthResponse> {
-    const dto = registerSchema.parse(body);
-    return this.authService.register(dto);
-  }
+  constructor(@Inject(AuthService) private readonly authService: AuthService) {}
 
   @Post('login')
   async login(@Body() body: unknown): Promise<AuthResponse> {

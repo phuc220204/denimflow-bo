@@ -1,4 +1,3 @@
-import { Role } from '@denimflow/shared';
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
@@ -8,23 +7,12 @@ import { useAuth } from '../lib/auth-context';
 import { i18n } from '../lib/i18n/dictionary';
 
 export const LoginPage: React.FC = () => {
-  const { login, register, user } = useAuth();
+  const { login, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [mode, setMode] = useState<'login' | 'register'>('login');
-
-  // Login states
-  const [loginEmail, setLoginEmail] = useState('');
-  const [loginPassword, setLoginPassword] = useState('');
-
-  // Register states
-  const [regFullName, setRegFullName] = useState('');
-  const [regEmail, setRegEmail] = useState('');
-  const [regPassword, setRegPassword] = useState('');
-  const [regConfirmPassword, setRegConfirmPassword] = useState('');
-  const [regRole, setRegRole] = useState<Role>(Role.PRODUCTION_PLANNER);
-
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -38,49 +26,17 @@ export const LoginPage: React.FC = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!loginEmail) {
+    if (!email.trim()) {
       setError('Vui lòng nhập địa chỉ email');
       return;
     }
     setError(null);
     setIsSubmitting(true);
     try {
-      await login(loginEmail, loginPassword);
+      await login(email, password);
       navigate('/');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Đăng nhập không thành công');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!regFullName.trim()) {
-      setError('Vui lòng nhập họ và tên');
-      return;
-    }
-    if (!regEmail.trim()) {
-      setError('Vui lòng nhập địa chỉ email');
-      return;
-    }
-    if (regPassword && regConfirmPassword && regPassword !== regConfirmPassword) {
-      setError('Mật khẩu xác nhận không khớp');
-      return;
-    }
-
-    setError(null);
-    setIsSubmitting(true);
-    try {
-      await register({
-        fullName: regFullName,
-        email: regEmail,
-        password: regPassword,
-        role: regRole,
-      });
-      navigate('/');
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Đăng ký không thành công');
     } finally {
       setIsSubmitting(false);
     }
@@ -100,50 +56,10 @@ export const LoginPage: React.FC = () => {
 
         {/* Auth Card */}
         <Card className="border border-border bg-surface shadow-sm">
-          {/* Mode Switch Tabs */}
-          <div className="grid grid-cols-2 border-b border-border" role="tablist">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mode === 'login'}
-              onClick={() => {
-                setMode('login');
-                setError(null);
-              }}
-              className={`py-3 text-xs font-semibold transition-colors ${
-                mode === 'login'
-                  ? 'border-b-2 border-primary text-primary bg-surface'
-                  : 'text-text-muted hover:text-text bg-background/50'
-              }`}
-            >
-              Đăng nhập
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mode === 'register'}
-              onClick={() => {
-                setMode('register');
-                setError(null);
-              }}
-              className={`py-3 text-xs font-semibold transition-colors ${
-                mode === 'register'
-                  ? 'border-b-2 border-primary text-primary bg-surface'
-                  : 'text-text-muted hover:text-text bg-background/50'
-              }`}
-            >
-              Đăng ký
-            </button>
-          </div>
-
           <CardHeader className="pt-5 pb-3">
-            <CardTitle className="text-base">
-              {mode === 'login' ? 'Đăng nhập hệ thống' : 'Đăng ký tài khoản'}
-            </CardTitle>
+            <CardTitle className="text-base">Đăng nhập hệ thống</CardTitle>
             <CardDescription className="text-xs">
-              {mode === 'login'
-                ? 'Nhập email và mật khẩu để bắt đầu làm việc'
-                : 'Điền thông tin và chọn vị trí công tác trong xưởng'}
+              Nhập email và mật khẩu nội bộ để bắt đầu làm việc
             </CardDescription>
           </CardHeader>
 
@@ -154,118 +70,50 @@ export const LoginPage: React.FC = () => {
               </div>
             )}
 
-            {mode === 'login' ? (
-              /* Login Form */
-              <form onSubmit={handleLogin} className="space-y-3.5">
-                <Input
-                  label="Email làm việc"
-                  type="email"
-                  placeholder="nhanvien@xuoing.com"
-                  value={loginEmail}
-                  onChange={(e) => setLoginEmail(e.target.value)}
-                  disabled={isSubmitting}
-                  autoFocus
-                />
+            <form onSubmit={handleLogin} className="space-y-3.5">
+              <Input
+                label="Email làm việc"
+                type="email"
+                placeholder="nhanvien@xuoing.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={isSubmitting}
+                autoFocus
+              />
 
-                <Input
-                  label="Mật khẩu"
-                  type="password"
-                  placeholder="••••••••"
-                  value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
-                  disabled={isSubmitting}
-                />
+              <Input
+                label="Mật khẩu"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={isSubmitting}
+              />
 
-                <div className="flex items-center justify-between text-xs pt-1">
-                  <label className="flex items-center gap-1.5 text-text-muted cursor-pointer">
-                    <input
-                      type="checkbox"
-                      defaultChecked
-                      className="rounded border-border text-primary focus:ring-primary"
-                    />
-                    <span>Ghi nhớ đăng nhập</span>
-                  </label>
-                  <span className="text-text-muted hover:text-primary cursor-pointer">
-                    Quên mật khẩu?
-                  </span>
-                </div>
+              <div className="flex items-center justify-between text-xs pt-1">
+                <label className="flex items-center gap-1.5 text-text-muted cursor-pointer">
+                  <input
+                    type="checkbox"
+                    defaultChecked
+                    className="rounded border-border text-primary focus:ring-primary"
+                  />
+                  <span>Ghi nhớ đăng nhập</span>
+                </label>
+                <span className="text-text-muted hover:text-primary cursor-pointer">
+                  Quên mật khẩu?
+                </span>
+              </div>
 
-                <Button type="submit" className="w-full mt-2" disabled={isSubmitting}>
-                  {isSubmitting ? 'Đang đăng nhập...' : 'Đăng nhập'}
-                </Button>
-              </form>
-            ) : (
-              /* Register Form */
-              <form onSubmit={handleRegister} className="space-y-3.5">
-                <Input
-                  label="Họ và tên nhân viên"
-                  type="text"
-                  placeholder="Nguyễn Văn A"
-                  value={regFullName}
-                  onChange={(e) => setRegFullName(e.target.value)}
-                  disabled={isSubmitting}
-                  autoFocus
-                />
-
-                <Input
-                  label="Email làm việc"
-                  type="email"
-                  placeholder="nhanvien@xuoing.com"
-                  value={regEmail}
-                  onChange={(e) => setRegEmail(e.target.value)}
-                  disabled={isSubmitting}
-                />
-
-                <div className="space-y-1">
-                  <label htmlFor="role-select" className="block text-sm font-medium text-text">
-                    Vị trí công tác
-                  </label>
-                  <select
-                    id="role-select"
-                    value={regRole}
-                    onChange={(e) => setRegRole(e.target.value as Role)}
-                    disabled={isSubmitting}
-                    className="flex h-9 w-full rounded border border-border bg-surface px-3 py-1 text-sm text-text transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                  >
-                    <option value={Role.PRODUCTION_PLANNER}>Kế hoạch sản xuất</option>
-                    <option value={Role.PROCESS_ENGINEER}>Kỹ thuật chuyền / Công nghệ may</option>
-                    <option value={Role.QC_INSPECTOR}>Kiểm tra chất lượng (QC)</option>
-                    <option value={Role.STATION_OPERATOR}>Công nhân may / Công đoạn</option>
-                    <option value={Role.WAREHOUSE_KEEPER}>Quản lý kho nguyên phụ liệu</option>
-                    <option value={Role.MANAGER}>Quản lý xưởng</option>
-                    <option value={Role.ADMIN}>Quản trị viên hệ thống</option>
-                  </select>
-                </div>
-
-                <Input
-                  label="Mật khẩu"
-                  type="password"
-                  placeholder="Tối thiểu 6 ký tự"
-                  value={regPassword}
-                  onChange={(e) => setRegPassword(e.target.value)}
-                  disabled={isSubmitting}
-                />
-
-                <Input
-                  label="Xác nhận mật khẩu"
-                  type="password"
-                  placeholder="Nhập lại mật khẩu"
-                  value={regConfirmPassword}
-                  onChange={(e) => setRegConfirmPassword(e.target.value)}
-                  disabled={isSubmitting}
-                />
-
-                <Button type="submit" className="w-full mt-2" disabled={isSubmitting}>
-                  {isSubmitting ? 'Đang tạo tài khoản...' : 'Tạo tài khoản'}
-                </Button>
-              </form>
-            )}
+              <Button type="submit" className="w-full mt-2" disabled={isSubmitting}>
+                {isSubmitting ? 'Đang đăng nhập...' : 'Đăng nhập'}
+              </Button>
+            </form>
           </CardContent>
         </Card>
 
         {/* Footer info */}
         <p className="text-center text-xs text-text-muted">
-          Hệ thống Quản lý Phân Xưởng May &bull; DenimFlow
+          Hệ thống Quản lý Phân Xưởng May &bull; DenimFlow BO
         </p>
       </div>
     </div>

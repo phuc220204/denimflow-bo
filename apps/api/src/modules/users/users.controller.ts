@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   Get,
   Headers,
+  Inject,
   Param,
   Patch,
   Post,
@@ -19,8 +20,8 @@ import { UsersService } from './users.service.js';
 @Controller('users')
 export class UsersController {
   constructor(
-    private readonly usersService: UsersService,
-    private readonly authService: AuthService,
+    @Inject(UsersService) private readonly usersService: UsersService,
+    @Inject(AuthService) private readonly authService: AuthService,
   ) {}
 
   private async assertAdmin(authHeader?: string): Promise<string> {

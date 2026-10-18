@@ -48,29 +48,6 @@ export async function loginApi(email: string, password: string): Promise<AuthApi
   return data as AuthApiResponse;
 }
 
-export async function registerApi(dto: {
-  email: string;
-  password: string;
-  fullName: string;
-  role: Role;
-}): Promise<AuthApiResponse> {
-  const res = await fetch(`${API_BASE}/auth/register`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify(dto),
-  });
-
-  const data = await res.json();
-  if (!res.ok) {
-    throw new Error(data.message || 'Đăng ký không thành công');
-  }
-
-  return data as AuthApiResponse;
-}
-
 export async function fetchMe(token?: string | null): Promise<UserProfile> {
   const headers: HeadersInit = {
     Accept: 'application/json',

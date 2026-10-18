@@ -5,6 +5,7 @@ import {
   ForbiddenException,
   Get,
   Headers,
+  Inject,
   Param,
   Post,
   Put,
@@ -30,8 +31,8 @@ import { CatalogService } from './catalog.service.js';
 @Controller('catalog')
 export class CatalogController {
   constructor(
-    private readonly catalogService: CatalogService,
-    private readonly authService: AuthService,
+    @Inject(CatalogService) private readonly catalogService: CatalogService,
+    @Inject(AuthService) private readonly authService: AuthService,
   ) {}
 
   private async assertAdmin(authHeader?: string): Promise<string> {

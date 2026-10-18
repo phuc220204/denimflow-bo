@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
@@ -7,7 +7,7 @@ import { i18n } from '../lib/i18n/dictionary';
 import { LoginPage } from './login';
 
 describe('LoginPage', () => {
-  it('renders standard login and register tabs', async () => {
+  it('renders standard login form with email and password fields', async () => {
     await act(async () => {
       render(
         <AuthProvider>
@@ -26,15 +26,5 @@ describe('LoginPage', () => {
     expect(screen.getByLabelText('Email làm việc')).toBeInTheDocument();
     expect(screen.getByLabelText('Mật khẩu')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Đăng nhập' })).toBeInTheDocument();
-
-    // Switch to Register Tab
-    const registerTab = screen.getByRole('tab', { name: 'Đăng ký' });
-    fireEvent.click(registerTab);
-
-    // Assert register fields
-    expect(screen.getByText('Đăng ký tài khoản')).toBeInTheDocument();
-    expect(screen.getByLabelText('Họ và tên nhân viên')).toBeInTheDocument();
-    expect(screen.getByLabelText('Vị trí công tác')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Tạo tài khoản' })).toBeInTheDocument();
   });
 });

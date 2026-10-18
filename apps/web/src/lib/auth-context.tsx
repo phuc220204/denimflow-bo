@@ -1,20 +1,11 @@
-import { Role } from '@denimflow/shared';
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { type UserProfile, fetchMe, loginApi, registerApi } from './api';
-
-interface RegisterData {
-  fullName: string;
-  email: string;
-  password?: string;
-  role?: Role;
-}
+import { type UserProfile, fetchMe, loginApi } from './api';
 
 interface AuthContextType {
   user: UserProfile | null;
   token: string | null;
   isLoading: boolean;
   login: (email: string, password?: string) => Promise<void>;
-  register: (data: RegisterData) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -71,29 +62,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const register = async ({
-    fullName,
-    email,
-    password = '',
-    role = Role.PRODUCTION_PLANNER,
-  }: RegisterData) => {
-    setIsLoading(true);
-    try {
-      const response = await registerApi({
-        fullName,
-        email,
-        password,
-        role,
-      });
-      setUser(response.user);
-      setToken(response.accessToken);
-      localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(response.user));
-      localStorage.setItem(LOCAL_STORAGE_TOKEN_KEY, response.accessToken);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const logout = async () => {
     setUser(null);
     setToken(null);
@@ -102,7 +70,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
