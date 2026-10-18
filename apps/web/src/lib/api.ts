@@ -26,12 +26,23 @@ import {
   type CuttingGateResultDto,
   type RequestStatus,
   type CompleteStepResponseDto,
+  type RecordQuantityEntryDto,
   type StartStepResponseDto,
+  type StepQuantityEntryDto,
+  type StepQuantityPanelDto,
   type StepStatus,
   type WorklistItemDto,
 } from '@denimflow/shared';
 
-export type { CompleteStepResponseDto, StartStepResponseDto, StepStatus, WorklistItemDto };
+export type {
+  CompleteStepResponseDto,
+  RecordQuantityEntryDto,
+  StartStepResponseDto,
+  StepQuantityEntryDto,
+  StepQuantityPanelDto,
+  StepStatus,
+  WorklistItemDto,
+};
 
 export interface UserProfile {
   id: string;
@@ -120,6 +131,8 @@ export interface StyleItem {
   name: string;
   fitType?: string | null;
   hasEmbroidery: boolean;
+  // BR-07: the cut may exceed the plan by this percentage (R-19)
+  cutTolerancePercent?: number;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -1225,5 +1238,52 @@ export async function completeStepApi(
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Không thể hoàn thành công đoạn');
+  return data;
+}
+
+// ==========================================
+// QUANTITY ENTRY API CLIENT (T4.3, FR-13)
+// ==========================================
+
+export async function fetchQuantityPanelApi(
+  stepId: string,
+  token?: string | null,
+): Promise<StepQuantityPanelDto> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/quantities`, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tải số lượng của công đoạn');
+  return data;
+}
+
+export async function recordQuantityApi(
+  stepId: string,
+  body: RecordQuantityEntryDto,
+  token?: string | null,
+): Promise<StepQuantityEntryDto> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/quantities`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể ghi nhận số lượng');
+  return data;
+}
+
+export async function reverseQuantityApi(
+  stepId: string,
+  entryId: string,
+  reason: string,
+  token?: string | null,
+): Promise<StepQuantityEntryDto> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/quantities/${entryId}/reverse`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify({ reason }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể huỷ dòng nhập');
   return data;
 }

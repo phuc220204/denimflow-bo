@@ -22,9 +22,9 @@ Status values: `TODO`, `IN PROGRESS`, `DONE`, `DEFERRED` (outside MVP, deliberat
 | BR-04 | Only colors listed in the Fabric–Color Matrix for the selected fabric type may be chosen | A, D (data), W (filter) | order, catalog | S1 data / S3 | DONE |
 | BR-05 | Once CUTTING starts, fabric–color–wash is locked. Changing it needs BR-13 or cancelling the order | A | order | S3 (lock enforced from S4) | DONE |
 | BR-06 | CUTTING may not start unless fabric is fully allocated per the BOM | E (Gate) | inventory, execution | S3–S4 | DONE |
-| BR-07 | Total cut quantity per size may not exceed plan + configured tolerance | E, A | execution | S4 | TODO |
-| BR-08 | Quantity conservation: quantity entering the next step ≤ good quantity of the previous step; the difference must match recorded defects or wastage | E, A, D (row lock + CHECK) | execution | S4 | TODO |
-| BR-09 | Outsourced wash/dye: quantity received must be reconciled with quantity sent; a mismatch needs a recorded reason | A | execution | S4 | TODO |
+| BR-07 | Total cut quantity per size may not exceed plan + configured tolerance | E, A | execution | S4 | DONE |
+| BR-08 | Quantity conservation: quantity entering the next step ≤ good quantity of the previous step; the difference must match recorded defects or wastage | E, A, D (row lock + CHECK) | execution | S4 | DONE |
+| BR-09 | Outsourced wash/dye: quantity received must be reconciled with quantity sent; a mismatch needs a recorded reason | A | execution | S4 | DONE |
 | BR-10 | QC Fail/Rework must select a step to return to and record a reason. Beyond the max rework loops, the order goes to the Planner | E, A | quality | S5 | TODO |
 | BR-11 | Separation of duties: whoever performed a step may not approve QC of that step; the Process Engineer may not confirm completion of production steps | A | execution, quality | S4 / S5 | PARTIAL (T4.2: Process Engineer blocked from production steps; self-approval of QC in T4.5) |
 | BR-12 | Cancelling needs a reason. Before CUTTING release all allocations; from CUTTING onward record cut fabric and cost | A | order | post-MVP (FR-10) | DEFERRED |
@@ -111,9 +111,9 @@ MVP = 14 FRs from the Proposal. Items marked ◐ are **minimal slices** pulled i
 | FR-10 | Production Order | Hold, Resume, Cancel | High | — | post-MVP | DEFERRED |
 | FR-11 | Execution Engine | Instance from snapshot, open steps by Gate | MVP | ✔ | S2 T2.1, S3 T3.5, S4 T4.1 | DONE |
 | FR-12 | Execution Engine | Worklist by station, Start/Complete | MVP | ✔ | S4 T4.2 | DONE |
-| FR-13 | Execution Engine | Good/defect quantities per bundle, conservation | MVP | ✔ | S4 T4.3 | TODO |
+| FR-13 | Execution Engine | Good/defect quantities per bundle, conservation | MVP | ✔ | S4 T4.3 | DONE |
 | FR-14 | Execution Engine | Evidence attachments | High | stretch | S4 T4.4 | TODO |
-| FR-15 | Execution Engine | Bundle generation and codes | High | ◐ at CUTTING | S4 T4.3 | TODO |
+| FR-15 | Execution Engine | Bundle generation and codes | High | ◐ at CUTTING | S4 T4.3 | DONE (◐ slice) |
 | FR-16 | QC & Rework | QC by checklist/AQL, Pass/Rework/Reject | MVP | ✔ | S5 T5.1 | TODO |
 | FR-17 | QC & Rework | Rework routing, loop limit | MVP | ✔ | S5 T5.2 | TODO |
 | FR-18 | QC & Rework | Defects by bundle | High | optional | S5 T5.3 | TODO |
@@ -175,5 +175,9 @@ Add a row whenever the implementation interprets or departs from the Proposal. N
 | R-16 | 2026-10-16 | Extra tables | Added `handover_records` (FR-26), `bom_norms` (BOM strategy data), `wash_types` | Needed to implement the listed FRs | Proposed |
 | R-17 | 2026-10-19 | Skipped predecessors (BR-14) | Readiness looks through a SKIPPED step to the step before it, which must be DONE (or skipped in turn) | Read literally, "SKIPPED counts as done" opened SEWING while CUTTING was still pending whenever EMBROIDERY was skipped | Proposed |
 | R-18 | 2026-10-19 | Who may start/complete a step (FR-12) | The step's `responsibleRole` (operators also only at a station of the step's `stationType`); Planner and QC steps of the template use the same endpoints | The PRD matrix lists only operators, but the template assigns Planner and QC steps (R-07) | Proposed |
+| R-19 | 2026-10-19 | BR-07 tolerance | `styles.cut_tolerance_percent`, default 5 %, edited by the Admin; limit per size = floor(plan × (100 + tolerance) / 100), counting good + defect | BR-07 says "configured" without a number | Agreed (owner) |
+| R-20 | 2026-10-19 | Bundles (FR-15) | Created when CUTTING completes, from the good pieces cut per size, 50 per bundle, codes `{orderNumber}-B001` running across sizes; cutting needs at least one entry to complete | Bundles from the plan would not match the real cut | Agreed (owner) |
+| R-21 | 2026-10-19 | Outsourced steps (BR-09) | An entry is outsourced when the operator's station has `is_outsourced`; it records sent and received, good + defect = received, received ≤ sent, a mismatch needs a reason; the step takes in what was sent | Steps carry a station type, not a station | Agreed (owner) |
+| R-22 | 2026-10-19 | Quantity entry lifecycle | Operators enter quantities only while the step is IN_PROGRESS; cutting per size, later steps per bundle; completing a step needs everything handed over accounted for (BR-08 second half); a mistake is cancelled with a reversal row (negated values, reason required, once per entry) | Keeps R-03 append-only while allowing corrections | Proposed (reversal agreed by owner) |
 
 "Proposed" rows await the owner's confirmation; change to "Agreed" or rewrite.

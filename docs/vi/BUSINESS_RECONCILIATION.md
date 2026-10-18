@@ -22,9 +22,9 @@ Giá trị trạng thái: `TODO`, `IN PROGRESS`, `DONE`, `DEFERRED` (ngoài MVP,
 | BR-04 | Chỉ được chọn màu nằm trong Fabric–Color Matrix của loại vải đã chọn | A, D (dữ liệu), W (lọc) | order, catalog | S1 dữ liệu / S3 | XONG |
 | BR-05 | Khi step CUTTING bắt đầu, vải–màu–wash bị khoá. Muốn đổi cần BR-13 hoặc huỷ đơn | A | order | S3 (khoá có hiệu lực từ S4) | XONG |
 | BR-06 | Không được bắt đầu CUTTING nếu vải chưa được phân bổ đủ theo BOM | E (Gate) | inventory, execution | S3–S4 | XONG |
-| BR-07 | Tổng số lượng cắt theo từng size không vượt kế hoạch + dung sai đã cấu hình | E, A | execution | S4 | TODO |
-| BR-08 | Bảo toàn số lượng: số lượng vào step sau ≤ số lượng đạt của step trước; phần chênh lệch phải khớp với lỗi hoặc hao hụt đã ghi nhận | E, A, D (row lock + CHECK) | execution | S4 | TODO |
-| BR-09 | Nhuộm/wash thuê ngoài: số lượng nhận về phải đối soát với số lượng gửi đi; lệch thì phải có lý do | A | execution | S4 | TODO |
+| BR-07 | Tổng số lượng cắt theo từng size không vượt kế hoạch + dung sai đã cấu hình | E, A | execution | S4 | XONG |
+| BR-08 | Bảo toàn số lượng: số lượng vào step sau ≤ số lượng đạt của step trước; phần chênh lệch phải khớp với lỗi hoặc hao hụt đã ghi nhận | E, A, D (row lock + CHECK) | execution | S4 | XONG |
+| BR-09 | Nhuộm/wash thuê ngoài: số lượng nhận về phải đối soát với số lượng gửi đi; lệch thì phải có lý do | A | execution | S4 | XONG |
 | BR-10 | QC Fail/Rework phải chọn step quay về và ghi lý do. Vượt số vòng rework tối đa thì giao cho Planner | E, A | quality | S5 | TODO |
 | BR-11 | Phân tách nhiệm vụ: người thực hiện step không được duyệt QC của step đó; Process Engineer không được xác nhận hoàn thành các step sản xuất | A | execution, quality | S4 / S5 | MỘT PHẦN (T4.2: chặn Process Engineer làm step sản xuất; tự duyệt QC ở T4.5) |
 | BR-12 | Huỷ đơn cần lý do. Trước CUTTING thì giải phóng mọi allocation; từ CUTTING trở đi phải ghi nhận vải đã cắt và chi phí | A | order | sau MVP (FR-10) | DEFERRED |
@@ -111,9 +111,9 @@ MVP = 14 FR của Proposal. Mục đánh dấu ◐ là **phần tối thiểu** 
 | FR-10 | Production Order | Hold, Resume, Cancel | High | — | sau MVP | DEFERRED |
 | FR-11 | Execution Engine | Tạo instance từ snapshot, mở step theo Gate | MVP | ✔ | S2 T2.1, S3 T3.5, S4 T4.1 | XONG |
 | FR-12 | Execution Engine | Worklist theo trạm, Start/Complete | MVP | ✔ | S4 T4.2 | XONG |
-| FR-13 | Execution Engine | Nhập số lượng đạt/lỗi theo bundle, bảo toàn số lượng | MVP | ✔ | S4 T4.3 | TODO |
+| FR-13 | Execution Engine | Nhập số lượng đạt/lỗi theo bundle, bảo toàn số lượng | MVP | ✔ | S4 T4.3 | XONG |
 | FR-14 | Execution Engine | Đính kèm minh chứng | High | stretch | S4 T4.4 | TODO |
-| FR-15 | Execution Engine | Sinh bundle và mã bundle | High | ◐ tại CUTTING | S4 T4.3 | TODO |
+| FR-15 | Execution Engine | Sinh bundle và mã bundle | High | ◐ tại CUTTING | S4 T4.3 | XONG (phần ◐) |
 | FR-16 | QC & Rework | QC theo checklist/AQL, kết quả Pass/Rework/Reject | MVP | ✔ | S5 T5.1 | TODO |
 | FR-17 | QC & Rework | Điều hướng rework, giới hạn vòng lặp | MVP | ✔ | S5 T5.2 | TODO |
 | FR-18 | QC & Rework | Ghi nhận lỗi theo bundle | High | tuỳ chọn | S5 T5.3 | TODO |
@@ -175,5 +175,9 @@ Thêm một dòng mỗi khi triển khai diễn giải hoặc khác Proposal. Kh
 | R-16 | 2026-10-16 | Bảng bổ sung | Thêm `handover_records` (FR-26), `bom_norms` (dữ liệu cho BOM strategy), `wash_types` | Cần để triển khai các FR đã liệt kê | Proposed |
 | R-17 | 2026-10-19 | Step trước bị bỏ qua (BR-14) | Khi xét READY, engine nhìn xuyên qua step SKIPPED tới step trước nó; step đó phải DONE (hoặc cũng bị bỏ qua) | Hiểu theo nghĩa đen "SKIPPED tính như đã xong" thì khi bỏ EMBROIDERY, SEWING được mở dù CUTTING chưa xong | Proposed |
 | R-18 | 2026-10-19 | Ai được Start/Complete step (FR-12) | Đúng `responsibleRole` của step (operator thì thêm điều kiện trạm cùng `stationType`); step của Planner và QC trong template dùng chung endpoint | Ma trận trong PRD chỉ ghi operator, nhưng template giao step cho Planner và QC (R-07) | Proposed |
+| R-19 | 2026-10-19 | Dung sai BR-07 | `styles.cut_tolerance_percent`, mặc định 5 %, Admin chỉnh; giới hạn mỗi size = floor(kế hoạch × (100 + dung sai) / 100), tính cả đạt lẫn lỗi | BR-07 ghi "đã cấu hình" nhưng không có con số | Agreed (owner) |
+| R-20 | 2026-10-19 | Bó hàng (FR-15) | Tạo khi CUTTING hoàn thành, từ số đạt đã cắt theo từng size, mỗi bó 50, mã `{orderNumber}-B001` chạy liên tục qua các size; bước cắt phải có ít nhất một lần nhập mới hoàn thành được | Tạo bó theo kế hoạch sẽ không khớp số cắt thật | Agreed (owner) |
+| R-21 | 2026-10-19 | Gia công ngoài (BR-09) | Một lần nhập là gia công ngoài khi trạm của operator có `is_outsourced`; ghi số gửi và số nhận, đạt + lỗi = nhận, nhận ≤ gửi, lệch thì phải có lý do; step tính là đã nhận số gửi đi | Step chỉ mang loại trạm, không mang trạm cụ thể | Agreed (owner) |
+| R-22 | 2026-10-19 | Vòng đời lần nhập số lượng | Operator chỉ nhập khi step IN_PROGRESS; bước cắt theo size, các bước sau theo bó; hoàn thành step cần đối soát đủ số đã nhận (vế hai BR-08); nhập nhầm thì huỷ bằng một dòng bù (giá trị âm, bắt buộc lý do, mỗi dòng huỷ một lần) | Giữ R-03 append-only mà vẫn sửa được nhầm lẫn | Proposed (owner đã đồng ý cách huỷ dòng) |
 
 Các dòng "Proposed" chờ owner xác nhận; đổi thành "Agreed" hoặc viết lại.

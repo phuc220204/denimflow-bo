@@ -267,6 +267,7 @@ export const CatalogPage: React.FC = () => {
         name: String(formData.get('name') || ''),
         fitType: String(formData.get('fitType') || '') || null,
         hasEmbroidery: formData.get('hasEmbroidery') === 'on',
+        cutTolerancePercent: Number(formData.get('cutTolerancePercent') || 5),
         isActive: formData.get('isActive') === 'on',
       };
       styleMutation.mutate({ id: editingItem?.id, dto });
@@ -479,6 +480,7 @@ export const CatalogPage: React.FC = () => {
                         <th className="py-3 px-4">Tên sản phẩm</th>
                         <th className="py-3 px-4">Dáng quần (Fit)</th>
                         <th className="py-3 px-4">Thêu / In ấn</th>
+                        <th className="py-3 px-4 text-right">Dung sai cắt</th>
                         <th className="py-3 px-4">Trạng thái</th>
                         {isAdmin && <th className="py-3 px-4 text-right">Thao tác</th>}
                       </tr>
@@ -486,7 +488,7 @@ export const CatalogPage: React.FC = () => {
                     <tbody className="divide-y divide-border">
                       {filteredStyles.length === 0 ? (
                         <tr>
-                          <td colSpan={6} className="text-center py-8 text-text-muted text-sm">
+                          <td colSpan={7} className="text-center py-8 text-text-muted text-sm">
                             Chưa có mã hàng Jeans nào phù hợp.
                           </td>
                         </tr>
@@ -506,6 +508,9 @@ export const CatalogPage: React.FC = () => {
                               ) : (
                                 <span className="text-text-muted text-xs">Không thêu</span>
                               )}
+                            </td>
+                            <td className="py-3 px-4 text-right tabular-nums text-text">
+                              {item.cutTolerancePercent ?? 5}%
                             </td>
                             <td className="py-3 px-4">
                               {item.isActive ? (
@@ -843,6 +848,20 @@ export const CatalogPage: React.FC = () => {
                       name="fitType"
                       defaultValue={(editingItem as StyleItem | null)?.fitType || ''}
                       placeholder="VD: Slim, Regular, Baggy"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-text-muted mb-1">
+                      Dung sai cắt (%)
+                    </label>
+                    <Input
+                      name="cutTolerancePercent"
+                      type="number"
+                      min={0}
+                      max={100}
+                      step={0.01}
+                      defaultValue={(editingItem as StyleItem | null)?.cutTolerancePercent ?? 5}
+                      helperText="Được cắt vượt kế hoạch mỗi size tối đa bao nhiêu phần trăm (BR-07)."
                     />
                   </div>
                   <div className="flex items-center gap-6 pt-2">
