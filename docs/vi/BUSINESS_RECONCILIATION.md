@@ -26,7 +26,7 @@ Giá trị trạng thái: `TODO`, `IN PROGRESS`, `DONE`, `DEFERRED` (ngoài MVP,
 | BR-08 | Bảo toàn số lượng: số lượng vào step sau ≤ số lượng đạt của step trước; phần chênh lệch phải khớp với lỗi hoặc hao hụt đã ghi nhận | E, A, D (row lock + CHECK) | execution | S4 | TODO |
 | BR-09 | Nhuộm/wash thuê ngoài: số lượng nhận về phải đối soát với số lượng gửi đi; lệch thì phải có lý do | A | execution | S4 | TODO |
 | BR-10 | QC Fail/Rework phải chọn step quay về và ghi lý do. Vượt số vòng rework tối đa thì giao cho Planner | E, A | quality | S5 | TODO |
-| BR-11 | Phân tách nhiệm vụ: người thực hiện step không được duyệt QC của step đó; Process Engineer không được xác nhận hoàn thành các step sản xuất | A | execution, quality | S4 / S5 | TODO |
+| BR-11 | Phân tách nhiệm vụ: người thực hiện step không được duyệt QC của step đó; Process Engineer không được xác nhận hoàn thành các step sản xuất | A | execution, quality | S4 / S5 | MỘT PHẦN (T4.2: chặn Process Engineer làm step sản xuất; tự duyệt QC ở T4.5) |
 | BR-12 | Huỷ đơn cần lý do. Trước CUTTING thì giải phóng mọi allocation; từ CUTTING trở đi phải ghi nhận vải đã cắt và chi phí | A | order | sau MVP (FR-10) | DEFERRED |
 | BR-13 | Đổi workflow khi đang chạy: chỉ được chèn/bỏ qua step chưa bắt đầu, không được bỏ step bắt buộc, cần Process Engineer duyệt | E, A | workflow, execution | sau MVP (FR-19/20) | DEFERRED |
 | BR-14 | Gatekeeper: một step chỉ mở khi mọi step trước đã hoàn thành và các Gate đều đạt | E | execution | S4 | XONG |
@@ -89,7 +89,7 @@ MVP triển khai DRAFT → CONFIRMED → IN_PRODUCTION → COMPLETED. ON_HOLD v�
 | WAITING_QC | Chờ QC Inspector | DONE (đạt), REWORK (fail/rework, BR-10) |
 | REWORK | Đang làm lại | IN_PROGRESS; vượt `maxRework` thì Planner xử lý |
 | DONE | Hoàn thành | mở các step tiếp theo |
-| SKIPPED | Bỏ qua | được tính là đã xong khi đánh giá Gate |
+| SKIPPED | Bỏ qua | được tính là đã xong khi đánh giá Gate, nhưng chỉ là "đi xuyên qua": step trước nó vẫn phải hoàn thành (R-17) |
 
 Diễn giải cho step loại QC (R-06): với `stepType = QC`, quyết định của đợt kiểm *chính là* việc hoàn thành step. PASS ⇒ DONE. REWORK ⇒ step đích được chọn chuyển sang REWORK (`reworkCount` + 1), step QC quay về PENDING và chạy lại sau khi step đích hoàn thành. REJECT ⇒ đơn được gắn cờ cho Planner.
 
@@ -110,7 +110,7 @@ MVP = 14 FR của Proposal. Mục đánh dấu ◐ là **phần tối thiểu** 
 | FR-09 | Production Order | BOM, phân bổ, Material Request | MVP | ✔ | S3 T3.3–T3.4 | XONG |
 | FR-10 | Production Order | Hold, Resume, Cancel | High | — | sau MVP | DEFERRED |
 | FR-11 | Execution Engine | Tạo instance từ snapshot, mở step theo Gate | MVP | ✔ | S2 T2.1, S3 T3.5, S4 T4.1 | XONG |
-| FR-12 | Execution Engine | Worklist theo trạm, Start/Complete | MVP | ✔ | S4 T4.2 | TODO |
+| FR-12 | Execution Engine | Worklist theo trạm, Start/Complete | MVP | ✔ | S4 T4.2 | XONG |
 | FR-13 | Execution Engine | Nhập số lượng đạt/lỗi theo bundle, bảo toàn số lượng | MVP | ✔ | S4 T4.3 | TODO |
 | FR-14 | Execution Engine | Đính kèm minh chứng | High | stretch | S4 T4.4 | TODO |
 | FR-15 | Execution Engine | Sinh bundle và mã bundle | High | ◐ tại CUTTING | S4 T4.3 | TODO |
@@ -173,5 +173,7 @@ Thêm một dòng mỗi khi triển khai diễn giải hoặc khác Proposal. Kh
 | R-14 | 2026-10-16 | Ngưỡng QC (Q19) | Seed số placeholder để demo, gắn nhãn "demo" trên UI | Số thật phụ thuộc loại vải và thực tế xưởng | Open |
 | R-15 | 2026-10-16 | Tham chiếu file | Các trường `fileUrl` (giấy xác nhận, minh chứng) lưu **path** trong Storage private (`file_path`), cấp qua signed URL | URL công khai trong bucket của repo public sẽ làm lộ tài liệu | Agreed |
 | R-16 | 2026-10-16 | Bảng bổ sung | Thêm `handover_records` (FR-26), `bom_norms` (dữ liệu cho BOM strategy), `wash_types` | Cần để triển khai các FR đã liệt kê | Proposed |
+| R-17 | 2026-10-19 | Step trước bị bỏ qua (BR-14) | Khi xét READY, engine nhìn xuyên qua step SKIPPED tới step trước nó; step đó phải DONE (hoặc cũng bị bỏ qua) | Hiểu theo nghĩa đen "SKIPPED tính như đã xong" thì khi bỏ EMBROIDERY, SEWING được mở dù CUTTING chưa xong | Proposed |
+| R-18 | 2026-10-19 | Ai được Start/Complete step (FR-12) | Đúng `responsibleRole` của step (operator thì thêm điều kiện trạm cùng `stationType`); step của Planner và QC trong template dùng chung endpoint | Ma trận trong PRD chỉ ghi operator, nhưng template giao step cho Planner và QC (R-07) | Proposed |
 
 Các dòng "Proposed" chờ owner xác nhận; đổi thành "Agreed" hoặc viết lại.

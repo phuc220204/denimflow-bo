@@ -31,7 +31,7 @@ Cập nhật 2026-10-18: Sprint 1–3 và T4.1 đã vào `main` qua #26 (gộp, 
 | [T0.7](../.agents/tasks/S0-scaffold-and-pipeline.md) 👤 | Deploy lần đầu (Render, Cloudflare, ADR Pages/Workers) | Owner, sau T0.1 |
 | [T0.8](../.agents/tasks/S0-scaffold-and-pipeline.md) 👤 | Thêm `CODEOWNERS` (check `CI` bắt buộc đã bật) | Owner |
 
-> **Lưu ý về PR đang mở:** #27 (T4.2) và #29 (T4.3) đang bị request changes; #30–#34 (T4.4, T4.5, T5.1–T5.3) đều xếp chồng trên #27. Tác giả nên **sửa #27 trước**, merge, rồi rebase các PR sau thay vì mở thêm PR mới chồng lên. T4.2 nên dùng lại cách dựng context điều kiện của bước Confirm (`apps/api/src/modules/order/order.repository.ts`).
+> **Lưu ý về PR đang mở:** owner làm lại #27, #29–#34 thành **từng PR mới từ `main`, lần lượt, không xếp chồng** (giữ ghi công `Co-authored-by: tmdzvkl`). T4.2 (thay #27) đã có PR; T4.3 chỉ bắt đầu sau khi PR T4.2 merge. Đừng mở thêm PR chồng lên #27–#34.
 
 ## Bảng đầy đủ
 
@@ -84,7 +84,7 @@ Cập nhật 2026-10-18: Sprint 1–3 và T4.1 đã vào `main` qua #26 (gộp, 
 | Mã | Việc | FR/BR | Phụ thuộc | Mức | Người nhận | Trạng thái | PR |
 |---|---|---|---|---|---|---|---|
 | [T4.1](../.agents/tasks/S4-execution-gates-quantities.md) | Engine: chuỗi Gate (Chain of Responsibility) | FR-11, BR-14, BR-06, BR-08, BR-15 | T2.1, T3.4 | MVP | tmdzvkl | ✅ Đã merge (#26, chưa review) | #26 |
-| [T4.2](../.agents/tasks/S4-execution-gates-quantities.md) | Worklist, Start và Complete bước | FR-12, BR-11, BR-16 | T3.5, T4.1 | MVP | tmdzvkl | 🔄 PR mở, request changes | #27 |
+| [T4.2](../.agents/tasks/S4-execution-gates-quantities.md) | Worklist, Start và Complete bước | FR-12, BR-11, BR-16 | T3.5, T4.1 | MVP | phuc220204 (làm lại từ #27 của tmdzvkl) | 🔄 PR mới từ `main`, chờ review | thay #27 |
 | [T4.3](../.agents/tasks/S4-execution-gates-quantities.md) | Nhập số lượng, bảo toàn số lượng (có test đồng thời) | FR-13, BR-07, BR-08, BR-09 | T4.2 | MVP | tmdzvkl | 🔄 PR mở, request changes, chồng trên #27 | #29 |
 | [T4.4](../.agents/tasks/S4-execution-gates-quantities.md) | Bằng chứng (ảnh/file) cho bước | FR-14, BR-15 | T4.2 | Tuỳ chọn ☁️ | tmdzvkl | 🔄 PR mở, chồng trên #27 | #30 |
 | [T4.5](../.agents/tasks/S4-execution-gates-quantities.md) | Tách biệt nhiệm vụ (người làm không tự duyệt) | BR-11 | T4.2 | MVP | tmdzvkl | 🔄 PR mở, chồng trên #27 | #31 |

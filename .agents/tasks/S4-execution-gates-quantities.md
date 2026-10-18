@@ -15,8 +15,8 @@ Branch: `feat/execution-worklist`
 FR/BR: FR-12, BR-11, BR-16
 Do: `GET /worklist` (steps in READY/IN_PROGRESS/REWORK for the user's station), `POST /steps/:id/start`, `POST /steps/:id/complete`; on complete: next state WAITING_QC or DONE by step config, then run readiness evaluation and open successors, all in one transaction with AuditLog. Operator UI optimized for few taps.
 Acceptance:
-- [ ] An operator sees only their station's steps.
-- [ ] Completing a step opens the next one; completing the last step is handled in S5.
+- [x] An operator sees only their station's steps.
+- [x] Completing a step opens the next one; completing the last step is handled in S5.
 
 ### T4.3 Quantity entry with conservation   [agent]
 Branch: `feat/execution-quantities`
