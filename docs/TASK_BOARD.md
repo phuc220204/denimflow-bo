@@ -57,20 +57,20 @@ Ký hiệu: ✅ xong · 🟢 làm được ngay · ⏳ chờ task khác · 👤 
 | Mã | Việc | FR/BR | Phụ thuộc | Mức | Người nhận | Trạng thái | PR |
 |---|---|---|---|---|---|---|---|
 | [T2.1](../.agents/tasks/S2-workflow-engine-and-designer.md) | Engine: domain model + State machine | FR-11 | T0.3 | MVP | nht2k4 | Đang làm | |
-| [T2.2](../.agents/tasks/S2-workflow-engine-and-designer.md) | Engine: điều kiện (Strategy) + JSON AST | FR-04 | T0.3 | MVP | | 🟢 | |
-| [T2.3](../.agents/tasks/S2-workflow-engine-and-designer.md) | Engine: kiểm tra template hợp lệ | FR-05, BR-01 | T2.1 | MVP | | ⏳ | |
-| [T2.4](../.agents/tasks/S2-workflow-engine-and-designer.md) | Lưu template/version vào DB + publish, seed "Jean Standard" | FR-04, FR-05, BR-01, BR-02 | T2.3, T1.3 | MVP | | ⏳ | |
-| [T2.5](../.agents/tasks/S2-workflow-engine-and-designer.md) | Web: trình thiết kế workflow (form + đồ thị React Flow chỉ xem) | FR-04, FR-05 | T2.4, T1.2 | MVP | | ⏳ | |
+| [T2.2](../.agents/tasks/S2-workflow-engine-and-designer.md) | Engine: điều kiện (Strategy) + JSON AST | FR-04 | T0.3 | MVP | tmdzvkl | ✅ Xong | #16 |
+| [T2.3](../.agents/tasks/S2-workflow-engine-and-designer.md) | Engine: kiểm tra template hợp lệ | FR-05, BR-01 | T2.1 | MVP | tmdzvkl | ✅ Xong | #17 |
+| [T2.4](../.agents/tasks/S2-workflow-engine-and-designer.md) | Lưu template/version vào DB + publish, seed "Jean Standard" | FR-04, FR-05, BR-01, BR-02 | T2.3, T1.3 | MVP | tmdzvkl | ✅ Xong | #18 |
+| [T2.5](../.agents/tasks/S2-workflow-engine-and-designer.md) | Web: trình thiết kế workflow (form + đồ thị React Flow chỉ xem) | FR-04, FR-05 | T2.4, T1.2 | MVP | tmdzvkl | ✅ Xong | #19 |
 
 ### Sprint 3 — Đơn hàng, Confirm, snapshot
 
 | Mã | Việc | FR/BR | Phụ thuộc | Mức | Người nhận | Trạng thái | PR |
 |---|---|---|---|---|---|---|---|
-| [T3.1](../.agents/tasks/S3-order-confirm-snapshot.md) | Đơn nháp và các dòng size | FR-07 | T1.3 | MVP | | ⏳ | |
-| [T3.2](../.agents/tasks/S3-order-confirm-snapshot.md) | Chọn vải và màu (kiểm tra ma trận) | FR-08, BR-04, BR-05 | T3.1, T1.4 | MVP | | ⏳ | |
-| [T3.3](../.agents/tasks/S3-order-confirm-snapshot.md) | Tính BOM (Strategy) | FR-09 | T3.1 | MVP | | ⏳ | |
-| [T3.4](../.agents/tasks/S3-order-confirm-snapshot.md) | Phân bổ vải và Material Request | FR-09, BR-06 | T3.3 | MVP | | ⏳ | |
-| [T3.5](../.agents/tasks/S3-order-confirm-snapshot.md) | Confirm đơn (snapshot trong một transaction) | FR-07, FR-11, BR-03, BR-16, BR-18, BR-19 | T3.2, T3.4, T2.4, T1.5 | MVP | | ⏳ | |
+| [T3.1](../.agents/tasks/S3-order-confirm-snapshot.md) | Đơn nháp và các dòng size | FR-07 | T1.3 | MVP | tmdzvkl | 🟢 Làm ngay | |
+| [T3.2](../.agents/tasks/S3-order-confirm-snapshot.md) | Chọn vải và màu (kiểm tra ma trận) | FR-08, BR-04, BR-05 | T3.1, T1.4 | MVP | tmdzvkl | ⏳ Chờ T3.1 | |
+| [T3.3](../.agents/tasks/S3-order-confirm-snapshot.md) | Tính BOM (Strategy) | FR-09 | T3.1 | MVP | tmdzvkl | ⏳ Chờ T3.1 | |
+| [T3.4](../.agents/tasks/S3-order-confirm-snapshot.md) | Phân bổ vải và Material Request | FR-09, BR-06 | T3.3 | MVP | tmdzvkl | ⏳ Chờ T3.3 | |
+| [T3.5](../.agents/tasks/S3-order-confirm-snapshot.md) | Confirm đơn (snapshot trong một transaction) | FR-07, FR-11, BR-03, BR-16, BR-18, BR-19 | T3.2, T3.4, T2.4, T1.5 | MVP | tmdzvkl | ⏳ Chờ T3.2..T3.4 | |
 
 ### Sprint 4 — Thực thi, Gate, số lượng
 
