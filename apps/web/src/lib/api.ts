@@ -43,6 +43,7 @@ import {
   type OrderDefectItemDto,
   type CreateHandoverDto,
   type HandoverRecordResponseDto,
+  type DashboardWipSummaryDto,
 } from '@denimflow/shared';
 
 export type {
@@ -1438,5 +1439,15 @@ export async function fetchHandoverApi(
   if (res.status === 404) return null;
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Không thể tải thông tin biên bản bàn giao');
+  return data;
+}
+
+// 9. Dashboard WIP (Sprint 5, FR-21)
+export async function fetchDashboardWipApi(token?: string | null): Promise<DashboardWipSummaryDto> {
+  const res = await fetch(`${API_BASE}/dashboard/wip`, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tải số liệu WIP phân xưởng');
   return data;
 }

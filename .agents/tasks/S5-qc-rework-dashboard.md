@@ -39,7 +39,7 @@ Branch: `feat/dashboard-wip`
 FR/BR: FR-21
 Do: Manager/Planner dashboard: orders by status, WIP count per step, good/defect/rework totals, orders waiting on QC. Recharts. Read-only endpoints with efficient queries (indexes from `DATABASE_DESIGN.md` §6).
 Acceptance:
-- [ ] Numbers match the database for the demo data (test with a fixture).
+- [x] Numbers match the database for the demo data (test with a fixture).
 
 ### T5.6 AuditLog viewer (FR-25, optional)   [agent]
 Admin screen with filters by entity, actor, date. Append-only trigger already blocks edits.
