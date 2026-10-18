@@ -66,17 +66,17 @@ Ký hiệu: ✅ xong · 🟢 làm được ngay · ⏳ chờ task khác · 👤 
 
 | Mã | Việc | FR/BR | Phụ thuộc | Mức | Người nhận | Trạng thái | PR |
 |---|---|---|---|---|---|---|---|
-| [T3.1](../.agents/tasks/S3-order-confirm-snapshot.md) | Đơn nháp và các dòng size | FR-07 | T1.3 | MVP | | ⏳ | |
-| [T3.2](../.agents/tasks/S3-order-confirm-snapshot.md) | Chọn vải và màu (kiểm tra ma trận) | FR-08, BR-04, BR-05 | T3.1, T1.4 | MVP | | ⏳ | |
-| [T3.3](../.agents/tasks/S3-order-confirm-snapshot.md) | Tính BOM (Strategy) | FR-09 | T3.1 | MVP | | ⏳ | |
-| [T3.4](../.agents/tasks/S3-order-confirm-snapshot.md) | Phân bổ vải và Material Request | FR-09, BR-06 | T3.3 | MVP | | ⏳ | |
-| [T3.5](../.agents/tasks/S3-order-confirm-snapshot.md) | Confirm đơn (snapshot trong một transaction) | FR-07, FR-11, BR-03, BR-16, BR-18, BR-19 | T3.2, T3.4, T2.4, T1.5 | MVP | | ⏳ | |
+| [T3.1](../.agents/tasks/S3-order-confirm-snapshot.md) | Đơn nháp và các dòng size | FR-07 | T1.3 | MVP | Tran Hoang Phuc | ✅ Xong | #21 |
+| [T3.2](../.agents/tasks/S3-order-confirm-snapshot.md) | Chọn vải và màu (kiểm tra ma trận) | FR-08, BR-04, BR-05 | T3.1, T1.4 | MVP | Tran Hoang Phuc | ✅ Xong | #22 |
+| [T3.3](../.agents/tasks/S3-order-confirm-snapshot.md) | Tính BOM (Strategy) | FR-09 | T3.1 | MVP | Tran Hoang Phuc | ✅ Xong | #23 |
+| [T3.4](../.agents/tasks/S3-order-confirm-snapshot.md) | Phân bổ vải và Material Request | FR-09, BR-06 | T3.3 | MVP | Tran Hoang Phuc | ✅ Xong | #24 |
+| [T3.5](../.agents/tasks/S3-order-confirm-snapshot.md) | Confirm đơn (snapshot trong một transaction) | FR-07, FR-11, BR-03, BR-16, BR-18, BR-19 | T3.2, T3.4, T2.4, T1.5 | MVP | Tran Hoang Phuc | ✅ Xong | #25 |
 
 ### Sprint 4 — Thực thi, Gate, số lượng
 
 | Mã | Việc | FR/BR | Phụ thuộc | Mức | Người nhận | Trạng thái | PR |
 |---|---|---|---|---|---|---|---|
-| [T4.1](../.agents/tasks/S4-execution-gates-quantities.md) | Engine: chuỗi Gate (Chain of Responsibility) | FR-11, BR-14, BR-06, BR-08, BR-15 | T2.1, T3.4 | MVP | | ⏳ | |
+| [T4.1](../.agents/tasks/S4-execution-gates-quantities.md) | Engine: chuỗi Gate (Chain of Responsibility) | FR-11, BR-14, BR-06, BR-08, BR-15 | T2.1, T3.4 | MVP | Tran Hoang Phuc | ✅ Xong | #26 |
 | [T4.2](../.agents/tasks/S4-execution-gates-quantities.md) | Worklist, Start và Complete bước | FR-12, BR-11, BR-16 | T3.5, T4.1 | MVP | | ⏳ | |
 | [T4.3](../.agents/tasks/S4-execution-gates-quantities.md) | Nhập số lượng, bảo toàn số lượng (có test đồng thời) | FR-13, BR-07, BR-08, BR-09 | T4.2 | MVP | | ⏳ | |
 | [T4.4](../.agents/tasks/S4-execution-gates-quantities.md) | Bằng chứng (ảnh/file) cho bước | FR-14, BR-15 | T4.2 | Tuỳ chọn ☁️ | | ⏳ | |

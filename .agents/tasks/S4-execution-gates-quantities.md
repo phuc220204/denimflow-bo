@@ -3,12 +3,12 @@
 Goal: station operators work orders through the steps; the engine opens steps only when Gates pass; quantities are conserved even under concurrency.
 Read: `BUSINESS_RECONCILIATION.md` BR-07, BR-08, BR-09, BR-11, BR-14, BR-15, BR-16, §4; `DATABASE_DESIGN.md` §4.4, §7.2.
 
-### T4.1 Gate chain (Chain of Responsibility)   [agent]
+### T4.1 Gate chain (Chain of Responsibility)   [Tran Hoang Phuc / agent]
 Branch: `feat/engine-gate-chain`
 FR/BR: FR-11, BR-14, BR-06, BR-08, BR-15
 Do: gate links in the order of `skills/add-engine-rule.md`; each link returns pass/block with a BR id. Engine function `evaluateStepReadiness(instanceSnapshot)` returns which PENDING steps become READY or SKIPPED.
 Acceptance:
-- [ ] Tests per link and for the chain order; a SKIPPED predecessor counts as done.
+- [x] Tests per link and for the chain order; a SKIPPED predecessor counts as done.
 
 ### T4.2 Worklist, Start and Complete   [agent]
 Branch: `feat/execution-worklist`

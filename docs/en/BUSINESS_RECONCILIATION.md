@@ -29,7 +29,7 @@ Status values: `TODO`, `IN PROGRESS`, `DONE`, `DEFERRED` (outside MVP, deliberat
 | BR-11 | Separation of duties: whoever performed a step may not approve QC of that step; the Process Engineer may not confirm completion of production steps | A | execution, quality | S4 / S5 | TODO |
 | BR-12 | Cancelling needs a reason. Before CUTTING release all allocations; from CUTTING onward record cut fabric and cost | A | order | post-MVP (FR-10) | DEFERRED |
 | BR-13 | Changing a running workflow: only unstarted steps may be inserted/skipped, mandatory steps cannot be skipped, Process Engineer approval required | E, A | workflow, execution | post-MVP (FR-19/20) | DEFERRED |
-| BR-14 | Gatekeeper: a step opens only when all predecessors are complete and their Gates pass | E | execution | S4 | TODO |
+| BR-14 | Gatekeeper: a step opens only when all predecessors are complete and their Gates pass | E | execution | S4 | DONE |
 | BR-15 | A step configured "evidence required" cannot complete without ≥ 1 attachment | E (Gate), A | execution | S4 (with FR-14, stretch) | TODO |
 | BR-16 | Every state transition, workflow change and quantity entry writes an AuditLog (who, when, old, new) that cannot be edited or deleted | A (same transaction), D (append-only trigger) | audit | S0 foundation, every sprint | DONE |
 | BR-17 | An order with a custom request passes CUSTOM_REVIEW: feasibility check (reject if infeasible); if feasible, clone the nearest template into a dedicated workflow, validate (BR-01), approve (Process Engineer), replace the snapshot; sample approval mandatory before cutting | A, E | workflow, order | post-MVP (FR-27) | DEFERRED (see R-04) |
@@ -109,7 +109,7 @@ MVP = 14 FRs from the Proposal. Items marked ◐ are **minimal slices** pulled i
 | FR-08 | Production Order | Fabric–color selection filtered by matrix | MVP | ✔ | S3 T3.2 | DONE |
 | FR-09 | Production Order | BOM, allocation, Material Request | MVP | ✔ | S3 T3.3–T3.4 | DONE |
 | FR-10 | Production Order | Hold, Resume, Cancel | High | — | post-MVP | DEFERRED |
-| FR-11 | Execution Engine | Instance from snapshot, open steps by Gate | MVP | ✔ | S2 T2.1, S3 T3.5, S4 T4.1 | PARTIAL (S2 engine + S3 snapshot DONE) |
+| FR-11 | Execution Engine | Instance from snapshot, open steps by Gate | MVP | ✔ | S2 T2.1, S3 T3.5, S4 T4.1 | DONE |
 | FR-12 | Execution Engine | Worklist by station, Start/Complete | MVP | ✔ | S4 T4.2 | TODO |
 | FR-13 | Execution Engine | Good/defect quantities per bundle, conservation | MVP | ✔ | S4 T4.3 | TODO |
 | FR-14 | Execution Engine | Evidence attachments | High | stretch | S4 T4.4 | TODO |
