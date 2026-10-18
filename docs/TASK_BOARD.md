@@ -2,7 +2,7 @@
 
 Bảng này để **chia việc**: mỗi thành viên tự chọn task, điền tên mình vào. Chi tiết từng task (cần làm gì, tiêu chí nghiệm thu) nằm trong các file `.agents/tasks/S*.md`, link ở cột **Mã**. Khi bảng này và task file lệch nhau, task file là chuẩn.
 
-Cập nhật: 2026-10-17 (sau PR #8).
+Cập nhật: 2026-10-18 (sau PR #28).
 
 ## Cách nhận task
 
@@ -17,14 +17,21 @@ Ký hiệu: ✅ xong · 🟢 làm được ngay · ⏳ chờ task khác · 👤 
 
 ## Làm được ngay
 
+Cập nhật 2026-10-18: Sprint 1–3 và T4.1 đã vào `main` qua #26 (gộp, chưa review). Việc ưu tiên bây giờ là **trả nợ kỹ thuật** của #26 và các task còn trống. Ưu tiên các bạn chưa có task (nht2k4, fongcuten, khoaSE18); mỗi người tối đa 2 task.
+
 | Mã | Việc | Ghi chú |
 |---|---|---|
-| [T0.4B](../.agents/tasks/S0-scaffold-and-pipeline.md) | Auth cho API: `JwtAuthGuard`, `RolesGuard`, `GET /me`, seed 7 user | Test dùng khoá và JWKS giả, không cần Supabase. Supabase dev đã có: xin owner giá trị `.env` để seed và thử `/me` bằng token thật |
-| [T0.5](../.agents/tasks/S0-scaffold-and-pipeline.md) | Web skeleton: Vite + React + Tailwind + shadcn/ui, trang Login, Home hiện `/me` và `/health` | UI tiếng Việt (D8), đọc `docs/design/DESIGN.md`. Supabase dev đã có: xin owner `VITE_SUPABASE_URL` và publishable key để đăng nhập thật |
-| [T2.1](../.agents/tasks/S2-workflow-engine-and-designer.md) | Engine: domain model và State machine cho Order, StepInstance | TypeScript thuần trong `packages/engine`, không cần DB |
-| [T2.2](../.agents/tasks/S2-workflow-engine-and-designer.md) | Engine: bộ đánh giá điều kiện (Strategy) + JSON AST, Zod schema trong `shared` | TypeScript thuần, không cần DB |
-| [T0.1](../.agents/tasks/S0-scaffold-and-pipeline.md) 👤 | Tạo project Supabase `denimflow-prod` (`denimflow-dev` đã xong) | Owner |
-| [T0.8](../.agents/tasks/S0-scaffold-and-pipeline.md) 👤 | Bật "Require status checks" (check `CI`) trong ruleset `protect-main`, thêm CODEOWNERS | Owner |
+| D1 | Migration mới: đổi các `ON DELETE CASCADE` sang `RESTRICT` (order, workflow instance, allocation, acknowledgement...), thêm trigger append-only cho `step_quantity_entries` | Không sửa migration đã merge, tạo migration mới. Xem DATABASE_DESIGN §2, §4 (R-03) |
+| D2 | Chuyển các `assertAdmin` / `assertPlannerOrAdmin` / `assertAuthenticated` còn lại (users, catalog ghi, order, inventory) sang `@UseGuards(AuthGuard)` + `@Roles(...)` | Guard có sẵn từ #28; rule 01 |
+| D3 | Workflow: truyền id người thao tác vào `createTemplate` / `publishVersion` / `assignTemplateToStyle` để `created_by` và audit log không bị null | BR-16 |
+| D4 | Review lại code đã merge qua #26 theo module (catalog, order, inventory, web), mỗi người một module; ghi lỗi tìm được thành task hoặc PR nhỏ | Dùng checklist trong `.agents/rules/` |
+| [T5.5](../.agents/tasks/S5-qc-rework-dashboard.md) | Dashboard WIP | Phụ thuộc T3.5 đã có trên `main` |
+| [T5.6](../.agents/tasks/S5-qc-rework-dashboard.md) | Xem AuditLog (tuỳ chọn) | Phụ thuộc T0.4A đã có |
+| [T0.1](../.agents/tasks/S0-scaffold-and-pipeline.md) 👤 | Tạo project Supabase `denimflow-prod` | Owner |
+| [T0.7](../.agents/tasks/S0-scaffold-and-pipeline.md) 👤 | Deploy lần đầu (Render, Cloudflare, ADR Pages/Workers) | Owner, sau T0.1 |
+| [T0.8](../.agents/tasks/S0-scaffold-and-pipeline.md) 👤 | Thêm `CODEOWNERS` (check `CI` bắt buộc đã bật) | Owner |
+
+> **Lưu ý về PR đang mở:** #27 (T4.2) và #29 (T4.3) đang bị request changes; #30–#34 (T4.4, T4.5, T5.1–T5.3) đều xếp chồng trên #27. Tác giả nên **sửa #27 trước**, merge, rồi rebase các PR sau thay vì mở thêm PR mới chồng lên. T4.2 nên dùng lại cách dựng context điều kiện của bước Confirm (`apps/api/src/modules/order/order.repository.ts`).
 
 ## Bảng đầy đủ
 
@@ -36,8 +43,8 @@ Ký hiệu: ✅ xong · 🟢 làm được ngay · ⏳ chờ task khác · 👤 
 | [T0.2](../.agents/tasks/S0-scaffold-and-pipeline.md) | Monorepo root (pnpm, TS, ESLint, Prettier, Husky) | — | — | MVP | | ✅ | #3 |
 | [T0.3](../.agents/tasks/S0-scaffold-and-pipeline.md) | Skeleton `shared` + `engine` (build ESM + CJS) | — | T0.2 | MVP | | ✅ | #4 |
 | [T0.4A](../.agents/tasks/S0-scaffold-and-pipeline.md) | API skeleton: NestJS, Prisma, `/health`, migration đầu | BR-16 | T0.3 | MVP | | ✅ (đã kiểm tra trên Supabase dev) | #6 |
-| [T0.4B](../.agents/tasks/S0-scaffold-and-pipeline.md) | API auth: JWT guard, roles, `/me`, seed 7 user | — | T0.4A | MVP ☁️ | | 🟢 | |
-| [T0.5](../.agents/tasks/S0-scaffold-and-pipeline.md) | Web skeleton: Login, layout bảo vệ, Home | — | T0.3 | MVP ☁️ | tmdzvkl | Đang làm | |
+| [T0.4B](../.agents/tasks/S0-scaffold-and-pipeline.md) | API auth: JWT guard, roles, `/me`, seed 7 user | — | T0.4A | MVP ☁️ | tmdzvkl | ✅ Đã merge (#26, chưa review) | #26 |
+| [T0.5](../.agents/tasks/S0-scaffold-and-pipeline.md) | Web skeleton: Login, layout bảo vệ, Home | — | T0.3 | MVP ☁️ | tmdzvkl | ✅ Đã merge (#26, chưa review) | #26 |
 | [T0.6](../.agents/tasks/S0-scaffold-and-pipeline.md) | CI + keep-alive (GitHub Actions) | — | T0.2 | MVP | | ✅ | #7 |
 | [T0.7](../.agents/tasks/S0-scaffold-and-pipeline.md) 👤 | Deploy lần đầu: Render (API), Cloudflare (web), migrate prod, ADR Pages/Workers | — | T0.1, T0.4B, T0.5 | MVP ☁️ | Owner | ⏳ | |
 | [T0.8](../.agents/tasks/S0-scaffold-and-pipeline.md) 👤 | Bắt buộc check `CI` trước khi merge, CODEOWNERS | — | T0.6 | MVP | Owner | 🟢 | |
@@ -46,52 +53,52 @@ Ký hiệu: ✅ xong · 🟢 làm được ngay · ⏳ chờ task khác · 👤 
 
 | Mã | Việc | FR/BR | Phụ thuộc | Mức | Người nhận | Trạng thái | PR |
 |---|---|---|---|---|---|---|---|
-| [T1.1](../.agents/tasks/S1-auth-rbac-master-data.md) | Admin quản lý user: tạo, khoá, liệt kê (seed đã làm ở T0.4B) | FR-01 | T0.4B | MVP ☁️ | | ✅ Xong | |
-| [T1.2](../.agents/tasks/S1-auth-rbac-master-data.md) | Web: menu theo role, chặn route, trang 403 | FR-01 | T0.5, T1.1 | MVP | | ✅ Xong | |
-| [T1.3](../.agents/tasks/S1-auth-rbac-master-data.md) | Danh mục: Style, FabricType, ColorOption, WashType, Station (bảng + CRUD + màn hình) | FR-02 | T0.4B | MVP | | ✅ Xong | |
-| [T1.4](../.agents/tasks/S1-auth-rbac-master-data.md) | Ma trận vải–màu (Fabric–Color Matrix) | FR-02, BR-04 | T1.3 | MVP | | ✅ Xong | |
-| [T1.5](../.agents/tasks/S1-auth-rbac-master-data.md) | Cấu hình QC Profile (chỉ dữ liệu) | FR-28, BR-19 | T1.3 | MVP | | ✅ Xong | |
+| [T1.1](../.agents/tasks/S1-auth-rbac-master-data.md) | Admin quản lý user: tạo, khoá, liệt kê (seed đã làm ở T0.4B) | FR-01 | T0.4B | MVP ☁️ | tmdzvkl | ✅ Đã merge (#26, chưa review) | #26 |
+| [T1.2](../.agents/tasks/S1-auth-rbac-master-data.md) | Web: menu theo role, chặn route, trang 403 | FR-01 | T0.5, T1.1 | MVP | tmdzvkl | ✅ Đã merge (#26, chưa review) | #26 |
+| [T1.3](../.agents/tasks/S1-auth-rbac-master-data.md) | Danh mục: Style, FabricType, ColorOption, WashType, Station (bảng + CRUD + màn hình) | FR-02 | T0.4B | MVP | tmdzvkl | ✅ Đã merge (#26, chưa review) | #26 |
+| [T1.4](../.agents/tasks/S1-auth-rbac-master-data.md) | Ma trận vải–màu (Fabric–Color Matrix) | FR-02, BR-04 | T1.3 | MVP | tmdzvkl | ✅ Đã merge (#26, chưa review) | #26 |
+| [T1.5](../.agents/tasks/S1-auth-rbac-master-data.md) | Cấu hình QC Profile (chỉ dữ liệu) | FR-28, BR-19 | T1.3 | MVP | tmdzvkl | ✅ Đã merge (#26, chưa review) | #26 |
 
 ### Sprint 2 — Workflow engine và trình thiết kế
 
 | Mã | Việc | FR/BR | Phụ thuộc | Mức | Người nhận | Trạng thái | PR |
 |---|---|---|---|---|---|---|---|
 | [T2.1](../.agents/tasks/S2-workflow-engine-and-designer.md) | Engine: domain model + State machine | FR-11 | T0.3 | MVP | nht2k4 | Đang làm | |
-| [T2.2](../.agents/tasks/S2-workflow-engine-and-designer.md) | Engine: điều kiện (Strategy) + JSON AST | FR-04 | T0.3 | MVP | tmdzvkl | ✅ Xong | #16 |
-| [T2.3](../.agents/tasks/S2-workflow-engine-and-designer.md) | Engine: kiểm tra template hợp lệ | FR-05, BR-01 | T2.1 | MVP | tmdzvkl | ✅ Xong | #17 |
-| [T2.4](../.agents/tasks/S2-workflow-engine-and-designer.md) | Lưu template/version vào DB + publish, seed "Jean Standard" | FR-04, FR-05, BR-01, BR-02 | T2.3, T1.3 | MVP | tmdzvkl | ✅ Xong | #18 |
-| [T2.5](../.agents/tasks/S2-workflow-engine-and-designer.md) | Web: trình thiết kế workflow (form + đồ thị React Flow chỉ xem) | FR-04, FR-05 | T2.4, T1.2 | MVP | tmdzvkl | ✅ Xong | #19 |
+| [T2.2](../.agents/tasks/S2-workflow-engine-and-designer.md) | Engine: điều kiện (Strategy) + JSON AST | FR-04 | T0.3 | MVP | tmdzvkl | ✅ Đã merge (#26, chưa review) | #26 |
+| [T2.3](../.agents/tasks/S2-workflow-engine-and-designer.md) | Engine: kiểm tra template hợp lệ | FR-05, BR-01 | T2.1 | MVP | tmdzvkl | ✅ Đã merge (#26, chưa review) | #26 |
+| [T2.4](../.agents/tasks/S2-workflow-engine-and-designer.md) | Lưu template/version vào DB + publish, seed "Jean Standard" | FR-04, FR-05, BR-01, BR-02 | T2.3, T1.3 | MVP | tmdzvkl | ✅ Đã merge (#26, chưa review); seed sửa ở #35 | #26, #35 |
+| [T2.5](../.agents/tasks/S2-workflow-engine-and-designer.md) | Web: trình thiết kế workflow (form + đồ thị React Flow chỉ xem) | FR-04, FR-05 | T2.4, T1.2 | MVP | tmdzvkl | ✅ Đã merge (#26, chưa review) | #26 |
 
 ### Sprint 3 — Đơn hàng, Confirm, snapshot
 
 | Mã | Việc | FR/BR | Phụ thuộc | Mức | Người nhận | Trạng thái | PR |
 |---|---|---|---|---|---|---|---|
-| [T3.1](../.agents/tasks/S3-order-confirm-snapshot.md) | Đơn nháp và các dòng size | FR-07 | T1.3 | MVP | Tran Hoang Phuc | ✅ Xong | #21 |
-| [T3.2](../.agents/tasks/S3-order-confirm-snapshot.md) | Chọn vải và màu (kiểm tra ma trận) | FR-08, BR-04, BR-05 | T3.1, T1.4 | MVP | Tran Hoang Phuc | ✅ Xong | #22 |
-| [T3.3](../.agents/tasks/S3-order-confirm-snapshot.md) | Tính BOM (Strategy) | FR-09 | T3.1 | MVP | Tran Hoang Phuc | ✅ Xong | #23 |
-| [T3.4](../.agents/tasks/S3-order-confirm-snapshot.md) | Phân bổ vải và Material Request | FR-09, BR-06 | T3.3 | MVP | Tran Hoang Phuc | ✅ Xong | #24 |
-| [T3.5](../.agents/tasks/S3-order-confirm-snapshot.md) | Confirm đơn (snapshot trong một transaction) | FR-07, FR-11, BR-03, BR-16, BR-18, BR-19 | T3.2, T3.4, T2.4, T1.5 | MVP | Tran Hoang Phuc | ✅ Xong | #25 |
+| [T3.1](../.agents/tasks/S3-order-confirm-snapshot.md) | Đơn nháp và các dòng size | FR-07 | T1.3 | MVP | tmdzvkl | ✅ Đã merge (#26, chưa review) | #26 |
+| [T3.2](../.agents/tasks/S3-order-confirm-snapshot.md) | Chọn vải và màu (kiểm tra ma trận) | FR-08, BR-04, BR-05 | T3.1, T1.4 | MVP | tmdzvkl | ✅ Đã merge (#26, chưa review) | #26 |
+| [T3.3](../.agents/tasks/S3-order-confirm-snapshot.md) | Tính BOM (Strategy) | FR-09 | T3.1 | MVP | tmdzvkl | ✅ Đã merge (#26, chưa review) | #26 |
+| [T3.4](../.agents/tasks/S3-order-confirm-snapshot.md) | Phân bổ vải và Material Request | FR-09, BR-06 | T3.3 | MVP | tmdzvkl | ✅ Đã merge (#26, chưa review) | #26 |
+| [T3.5](../.agents/tasks/S3-order-confirm-snapshot.md) | Confirm đơn (snapshot trong một transaction) | FR-07, FR-11, BR-03, BR-16, BR-18, BR-19 | T3.2, T3.4, T2.4, T1.5 | MVP | tmdzvkl | ✅ Đã merge (#26, chưa review) | #26 |
 
 ### Sprint 4 — Thực thi, Gate, số lượng
 
 | Mã | Việc | FR/BR | Phụ thuộc | Mức | Người nhận | Trạng thái | PR |
 |---|---|---|---|---|---|---|---|
-| [T4.1](../.agents/tasks/S4-execution-gates-quantities.md) | Engine: chuỗi Gate (Chain of Responsibility) | FR-11, BR-14, BR-06, BR-08, BR-15 | T2.1, T3.4 | MVP | Tran Hoang Phuc | ✅ Xong | #26 |
-| [T4.2](../.agents/tasks/S4-execution-gates-quantities.md) | Worklist, Start và Complete bước | FR-12, BR-11, BR-16 | T3.5, T4.1 | MVP | | ⏳ | |
-| [T4.3](../.agents/tasks/S4-execution-gates-quantities.md) | Nhập số lượng, bảo toàn số lượng (có test đồng thời) | FR-13, BR-07, BR-08, BR-09 | T4.2 | MVP | | ⏳ | |
-| [T4.4](../.agents/tasks/S4-execution-gates-quantities.md) | Bằng chứng (ảnh/file) cho bước | FR-14, BR-15 | T4.2 | Tuỳ chọn ☁️ | | ⏳ | |
-| [T4.5](../.agents/tasks/S4-execution-gates-quantities.md) | Tách biệt nhiệm vụ (người làm không tự duyệt) | BR-11 | T4.2 | MVP | | ⏳ | |
+| [T4.1](../.agents/tasks/S4-execution-gates-quantities.md) | Engine: chuỗi Gate (Chain of Responsibility) | FR-11, BR-14, BR-06, BR-08, BR-15 | T2.1, T3.4 | MVP | tmdzvkl | ✅ Đã merge (#26, chưa review) | #26 |
+| [T4.2](../.agents/tasks/S4-execution-gates-quantities.md) | Worklist, Start và Complete bước | FR-12, BR-11, BR-16 | T3.5, T4.1 | MVP | tmdzvkl | 🔄 PR mở, request changes | #27 |
+| [T4.3](../.agents/tasks/S4-execution-gates-quantities.md) | Nhập số lượng, bảo toàn số lượng (có test đồng thời) | FR-13, BR-07, BR-08, BR-09 | T4.2 | MVP | tmdzvkl | 🔄 PR mở, request changes, chồng trên #27 | #29 |
+| [T4.4](../.agents/tasks/S4-execution-gates-quantities.md) | Bằng chứng (ảnh/file) cho bước | FR-14, BR-15 | T4.2 | Tuỳ chọn ☁️ | tmdzvkl | 🔄 PR mở, chồng trên #27 | #30 |
+| [T4.5](../.agents/tasks/S4-execution-gates-quantities.md) | Tách biệt nhiệm vụ (người làm không tự duyệt) | BR-11 | T4.2 | MVP | tmdzvkl | 🔄 PR mở, chồng trên #27 | #31 |
 
 ### Sprint 5 — QC, làm lại, dashboard, bàn giao
 
 | Mã | Việc | FR/BR | Phụ thuộc | Mức | Người nhận | Trạng thái | PR |
 |---|---|---|---|---|---|---|---|
-| [T5.1](../.agents/tasks/S5-qc-rework-dashboard.md) | Kiểm tra QC theo QC Profile | FR-16, BR-11, BR-19 | T4.2, T1.5 | MVP | | ⏳ | |
-| [T5.2](../.agents/tasks/S5-qc-rework-dashboard.md) | Định tuyến làm lại (rework), giới hạn số vòng | FR-17, BR-10 | T5.1 | MVP | | ⏳ | |
-| [T5.3](../.agents/tasks/S5-qc-rework-dashboard.md) | Ghi nhận lỗi (defects) | FR-18 | T5.1 | Tuỳ chọn | | ⏳ | |
+| [T5.1](../.agents/tasks/S5-qc-rework-dashboard.md) | Kiểm tra QC theo QC Profile | FR-16, BR-11, BR-19 | T4.2, T1.5 | MVP | tmdzvkl | 🔄 PR mở, chồng trên #27 | #32 |
+| [T5.2](../.agents/tasks/S5-qc-rework-dashboard.md) | Định tuyến làm lại (rework), giới hạn số vòng | FR-17, BR-10 | T5.1 | MVP | tmdzvkl | 🔄 PR mở, chồng trên #27 | #33 |
+| [T5.3](../.agents/tasks/S5-qc-rework-dashboard.md) | Ghi nhận lỗi (defects) | FR-18 | T5.1 | Tuỳ chọn | tmdzvkl | 🔄 PR mở, chồng trên #27 | #34 |
 | [T5.4](../.agents/tasks/S5-qc-rework-dashboard.md) | Đóng gói và bàn giao | FR-26 | T5.1 | MVP | | ⏳ | |
-| [T5.5](../.agents/tasks/S5-qc-rework-dashboard.md) | Dashboard WIP | FR-21 | T3.5 | MVP | | ⏳ | |
-| [T5.6](../.agents/tasks/S5-qc-rework-dashboard.md) | Xem AuditLog | FR-25 | T0.4A | Tuỳ chọn | | ⏳ | |
+| [T5.5](../.agents/tasks/S5-qc-rework-dashboard.md) | Dashboard WIP | FR-21 | T3.5 | MVP | | 🟢 | |
+| [T5.6](../.agents/tasks/S5-qc-rework-dashboard.md) | Xem AuditLog | FR-25 | T0.4A | Tuỳ chọn | | 🟢 | |
 | [T5.7](../.agents/tasks/S5-qc-rework-dashboard.md) | E2E kịch bản demo và hoàn thiện | — | tất cả, T0.7 | MVP ☁️ | | ⏳ | |
 
 ## Sơ đồ phụ thuộc
