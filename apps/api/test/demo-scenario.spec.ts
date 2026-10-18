@@ -5,21 +5,29 @@ import request from 'supertest';
 import { AppModule } from '../src/app.module.js';
 import { setupApp } from '../src/app.setup.js';
 import { AuthService } from '../src/modules/auth/auth.service.js';
+import { PrismaService } from '../src/infrastructure/prisma/prisma.service.js';
+import type { Role } from '../src/generated/prisma/client.js';
 
-const users: Record<string, { id: string; role: string }> = {
-  'Bearer pe-token': { id: '00000000-0000-0000-0000-0000000000a1', role: 'PROCESS_ENGINEER' },
+const users: Record<string, { id: string; role: Role }> = {
+  'Bearer pe-token': {
+    id: '00000000-0000-0000-0000-0000000000a1',
+    role: 'PROCESS_ENGINEER' as Role,
+  },
   'Bearer planner-token': {
     id: '00000000-0000-0000-0000-0000000000a2',
-    role: 'PRODUCTION_PLANNER',
+    role: 'PRODUCTION_PLANNER' as Role,
   },
   'Bearer warehouse-token': {
     id: '00000000-0000-0000-0000-0000000000a3',
-    role: 'WAREHOUSE_KEEPER',
+    role: 'WAREHOUSE_KEEPER' as Role,
   },
-  'Bearer operator-token': { id: '00000000-0000-0000-0000-0000000000a4', role: 'STATION_OPERATOR' },
-  'Bearer qc-token': { id: '00000000-0000-0000-0000-0000000000a5', role: 'QC_INSPECTOR' },
-  'Bearer manager-token': { id: '00000000-0000-0000-0000-0000000000a6', role: 'MANAGER' },
-  'Bearer admin-token': { id: '00000000-0000-0000-0000-0000000000a7', role: 'ADMIN' },
+  'Bearer operator-token': {
+    id: '00000000-0000-0000-0000-0000000000a4',
+    role: 'STATION_OPERATOR' as Role,
+  },
+  'Bearer qc-token': { id: '00000000-0000-0000-0000-0000000000a5', role: 'QC_INSPECTOR' as Role },
+  'Bearer manager-token': { id: '00000000-0000-0000-0000-0000000000a6', role: 'MANAGER' as Role },
+  'Bearer admin-token': { id: '00000000-0000-0000-0000-0000000000a7', role: 'ADMIN' as Role },
 };
 
 const fakeAuthService = {
@@ -51,9 +59,46 @@ describe('E2E Demo Scenario API Suite (T5.7, PRD §6)', () => {
     app = moduleRef.createNestApplication();
     setupApp(app);
     await app.init();
+
+    const prisma = app.get(PrismaService);
+    const station = await prisma.station.upsert({
+      where: { code: 'DEMO-CUT-01' },
+      update: {},
+      create: {
+        code: 'DEMO-CUT-01',
+        name: 'Demo Cutting Station',
+        stationType: 'CUTTING',
+      },
+    });
+
+    for (const user of Object.values(users)) {
+      await prisma.profile.upsert({
+        where: { id: user.id },
+        update: {
+          role: user.role,
+          stationId: user.role === 'STATION_OPERATOR' ? station.id : null,
+        },
+        create: {
+          id: user.id,
+          fullName: 'Demo Test Actor',
+          email: `${user.role.toLowerCase()}-demo@denimflow.test`,
+          role: user.role,
+          stationId: user.role === 'STATION_OPERATOR' ? station.id : null,
+          isActive: true,
+        },
+      });
+    }
   });
 
   afterAll(async () => {
+    try {
+      const prisma = app.get(PrismaService);
+      const userIds = Object.values(users).map((u) => u.id);
+      await prisma.profile.deleteMany({ where: { id: { in: userIds } } });
+      await prisma.station.deleteMany({ where: { code: 'DEMO-CUT-01' } });
+    } catch {
+      // ignore cleanup error
+    }
     await app.close();
   });
 
