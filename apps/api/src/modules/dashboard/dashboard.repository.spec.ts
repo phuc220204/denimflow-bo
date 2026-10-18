@@ -58,7 +58,7 @@ describe('DashboardRepository (T5.5, FR-21)', () => {
             id: 'ord-1111-1111-1111-111111111111',
             orderNumber: 'ORD-2026-001',
             style: {
-              code: 'JN-SLIM-01',
+              styleCode: 'JN-SLIM-01',
             },
           },
         },
