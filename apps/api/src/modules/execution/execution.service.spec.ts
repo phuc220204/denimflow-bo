@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BusinessRuleViolation } from '../../common/errors/business-rule-violation.js';
 import type { ExecutionRepository } from './execution.repository.js';
 import { ExecutionService } from './execution.service.js';
+import type { QuantityService } from './quantity.service.js';
 
 type User = { id: string; email: string; fullName: string; role: string; isActive: boolean };
 
@@ -70,11 +71,16 @@ const createRepo = () => ({
 
 describe('ExecutionService', () => {
   let repo: ReturnType<typeof createRepo>;
+  let quantities: { closeOnComplete: ReturnType<typeof vi.fn> };
   let service: ExecutionService;
 
   beforeEach(() => {
     repo = createRepo();
-    service = new ExecutionService(repo as unknown as ExecutionRepository);
+    quantities = { closeOnComplete: vi.fn().mockResolvedValue(undefined) };
+    service = new ExecutionService(
+      repo as unknown as ExecutionRepository,
+      quantities as unknown as QuantityService,
+    );
   });
 
   const operatorAt = (stationType: string | null) =>
@@ -196,6 +202,29 @@ describe('ExecutionService', () => {
 
       expect(result).toMatchObject({ status: 'WAITING_QC', newlyReadyStepCodes: [] });
       expect(repo.findInstanceForReadiness).not.toHaveBeenCalled();
+    });
+
+    it('closes the quantities (BR-08 balance, bundles) before changing the status', async () => {
+      repo.findStepForTransition.mockResolvedValue(stepForTransition('SEWING', 'IN_PROGRESS'));
+      operatorAt('SEWING');
+      repo.findInstanceForReadiness.mockResolvedValue({
+        id: 'instance-1',
+        order: order(),
+        stepInstances: [],
+      });
+      quantities.closeOnComplete.mockRejectedValue(
+        new BusinessRuleViolation('BR-08', 'BR-08: thiếu'),
+      );
+
+      await expect(service.completeStep('step-SEWING', user('STATION_OPERATOR'))).rejects.toThrow(
+        BusinessRuleViolation,
+      );
+      expect(quantities.closeOnComplete).toHaveBeenCalledWith(
+        {},
+        'step-SEWING',
+        'user-station_operator',
+      );
+      expect(repo.transitionStep).not.toHaveBeenCalled();
     });
 
     it('rejects a step that is not IN_PROGRESS', async () => {

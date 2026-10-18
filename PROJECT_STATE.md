@@ -9,9 +9,9 @@ Last updated: 2026-10-19
 - Sprint 1–3 and T4.1 reached `main` in one self-merged PR (#26, +25k lines, **no review**, while the ruleset was disabled). Treat them as merged but unreviewed.
 - `protect-main` is enabled again: 1 approval + required `CI` check. Security hotfix #28 (no local-token / password-less login, login required on workflow and catalog, roles via `AuthGuard` + `@Roles()`, 422 on invalid input).
 - Supabase dev: all migrations applied, RLS on all 24 tables, 7 demo roles log in and pass 42/42 permission checks. `db:seed` fixed in #35 (template "Jean Standard" not yet seeded on dev until #35 merges and the owner runs it).
-- #27, #29–#34 are being rebuilt by the owner as one PR per task from `main` (no stacking). T4.2 rebuilt (replaces #27): atomic start/complete, role + station checks, shared condition context with Confirm, engine fix R-17.
+- #27, #29–#34 are being rebuilt by the owner as one PR per task from `main` (no stacking). T4.2 merged (#43). T4.3 rebuilt (replaces #29): quantity entries with row locks, BR-07/08/09, bundles at cutting completion, reversal rows (R-19..R-22). Its migration is not yet applied on Supabase dev.
 
-**Next:** review/merge the T4.2 PR, then rebuild T4.3 (#29), T4.4, T4.5, T5.1–T5.3 in turn; technical debt D1–D4 in `docs/TASK_BOARD.md` (cascade → restrict, guards, audit actor, module reviews); T5.5 dashboard.
+**Next:** review/merge the T4.3 PR and apply its migration on dev, then rebuild T4.4, T4.5, T5.1–T5.3 in turn; technical debt D1–D4 in `docs/TASK_BOARD.md` (cascade → restrict, guards, audit actor, module reviews); T5.5 dashboard.
 Team: tasks are picked in `docs/TASK_BOARD.md` (max 2 per person); onboarding guide `docs/<lang>/GETTING_STARTED.md`.
 
 ## Decisions (settled)
@@ -46,7 +46,7 @@ Team: tasks are picked in `docs/TASK_BOARD.md` (max 2 per person); onboarding gu
 | S1 | Auth + RBAC + master data | merged via #26, unreviewed; hotfix #28 |
 | S2 | Workflow engine core + designer MVP | merged via #26, unreviewed; seed fix #35 |
 | S3 | Order create / Confirm / snapshot | merged via #26, unreviewed |
-| S4 | Worklist, quantities, Gates | T4.1 merged (#26); T4.2 rebuilt in a new PR; T4.3–T4.5 to rebuild (#29–#31) |
+| S4 | Worklist, quantities, Gates | T4.1 (#26) and T4.2 (#43) merged; T4.3 rebuilt in a new PR; T4.4–T4.5 to rebuild (#30–#31) |
 | S5 | QC, rework, QC Profile, dashboard, handover, polish | T5.1–T5.3 in PRs #32–#34 (stacked); T5.5, T5.6 free |
 
 ## Known risks

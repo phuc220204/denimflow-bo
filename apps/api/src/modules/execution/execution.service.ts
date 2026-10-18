@@ -1,10 +1,4 @@
-import {
-  ConflictException,
-  ForbiddenException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
   evaluateStepReadiness,
   type StepInstanceSnapshot,
@@ -18,7 +12,6 @@ import {
   type WorklistItemDto,
   type WorklistQueryDto,
 } from '@denimflow/shared';
-import { BusinessRuleViolation } from '../../common/errors/business-rule-violation.js';
 import type { Prisma } from '../../generated/prisma/client.js';
 import type { AuthResponse } from '../auth/auth.service.js';
 import {
@@ -28,6 +21,8 @@ import {
   type Tx,
   type WorklistStep,
 } from './execution.repository.js';
+import { QuantityService } from './quantity.service.js';
+import { assertMayWork } from './step-access.js';
 
 type CurrentUser = AuthResponse['user'];
 
@@ -38,6 +33,7 @@ const OPEN_FOR_WORK: StepStatus[] = ['READY', 'IN_PROGRESS', 'REWORK'];
 export class ExecutionService {
   constructor(
     @Inject(ExecutionRepository) private readonly executionRepository: ExecutionRepository,
+    @Inject(QuantityService) private readonly quantityService: QuantityService,
   ) {}
 
   // FR-12: an operator sees only the steps of their own station type; a QC inspector sees QC
@@ -75,7 +71,7 @@ export class ExecutionService {
   async startStep(stepId: string, user: CurrentUser): Promise<StartStepResponseDto> {
     return this.executionRepository.runInTransaction(async (tx) => {
       const step = await this.loadStep(tx, stepId);
-      await this.assertMayWork(tx, step, user);
+      await assertMayWork(this.executionRepository, tx, step.stepDefinition, user);
 
       if (!STARTABLE.includes(step.status)) {
         throw new ConflictException(
@@ -131,13 +127,16 @@ export class ExecutionService {
   async completeStep(stepId: string, user: CurrentUser): Promise<CompleteStepResponseDto> {
     return this.executionRepository.runInTransaction(async (tx) => {
       const step = await this.loadStep(tx, stepId);
-      await this.assertMayWork(tx, step, user);
+      await assertMayWork(this.executionRepository, tx, step.stepDefinition, user);
 
       if (step.status !== 'IN_PROGRESS') {
         throw new ConflictException(
           `Bước ${step.stepDefinition.code} đang ở trạng thái ${step.status}, chỉ hoàn thành được khi IN_PROGRESS`,
         );
       }
+
+      // FR-13: quantity steps must balance (BR-08); cutting also creates the bundles (FR-15).
+      await this.quantityService.closeOnComplete(tx, stepId, user.id);
 
       const nextStatus: StepStatus = step.stepDefinition.requiresQc ? 'WAITING_QC' : 'DONE';
       const completedAt = nextStatus === 'DONE' ? new Date() : null;
@@ -180,31 +179,6 @@ export class ExecutionService {
       throw new NotFoundException('Không tìm thấy bước sản xuất');
     }
     return step;
-  }
-
-  // Only the role the template assigns to the step may work it; an operator only at a station of
-  // the step's type. BR-11: the Process Engineer never executes production steps.
-  private async assertMayWork(tx: Tx, step: StepForTransition, user: CurrentUser): Promise<void> {
-    const definition = step.stepDefinition;
-    if (user.role === 'PROCESS_ENGINEER' && definition.stepType === 'PRODUCTION') {
-      throw new BusinessRuleViolation(
-        'BR-11',
-        'BR-11: Kỹ sư quy trình không được thực hiện bước sản xuất',
-      );
-    }
-    if (user.role !== definition.responsibleRole) {
-      throw new ForbiddenException(
-        `Bước ${definition.code} do vai trò ${definition.responsibleRole} thực hiện`,
-      );
-    }
-    if (user.role === 'STATION_OPERATOR' && definition.stationType) {
-      const profile = await this.executionRepository.findProfileWithStation(user.id, tx);
-      if (profile?.station?.stationType !== definition.stationType) {
-        throw new ForbiddenException(
-          `Bước ${definition.code} thuộc trạm ${definition.stationType}, không phải trạm của bạn`,
-        );
-      }
-    }
   }
 
   // Runs the engine's readiness evaluation (conditions + Gate chain) and applies the result.

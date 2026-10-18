@@ -82,7 +82,7 @@ Notation: `PK`, `FK → table`, `UQ`, `NN` (not null), `CK` (check). Unlisted co
 |---|---|
 | `profiles` | `id uuid PK` (= Supabase `auth.users.id`), `full_name NN`, `email NN UQ`, `role Role NN`, `station_id FK → stations NULL`, `is_active NN default true`. Implementation: `station_id` is added in Sprint 1 together with `stations`; no FK to `auth.users`, so migrations also run on plain Postgres (tests, CI) |
 | `stations` | `id PK`, `code NN UQ`, `name NN`, `station_type StationType NN`, `is_outsourced NN default false` |
-| `styles` | `id PK`, `style_code NN UQ`, `name NN`, `fit_type`, `default_template_id FK → workflow_templates NULL`, `has_embroidery NN default false`, `is_active NN` |
+| `styles` | `id PK`, `style_code NN UQ`, `name NN`, `fit_type`, `default_template_id FK → workflow_templates NULL`, `has_embroidery NN default false`, `cut_tolerance_percent numeric(5,2) NN default 5 CK 0..100` (BR-07, R-19), `is_active NN` |
 | `fabric_types` | `id PK`, `code NN UQ`, `weight_oz numeric(4,1)`, `composition`, `stretch_type StretchType NN` |
 | `color_options` | `id PK`, `code NN UQ`, `name NN`, `color_family` |
 | `fabric_color_rules` | `id PK`, `fabric_type_id FK NN`, `color_id FK NN`, `is_allowed NN`; **UQ(fabric_type_id, color_id)** |
@@ -119,9 +119,9 @@ Notation: `PK`, `FK → table`, `UQ`, `NN` (not null), `CK` (check). Unlisted co
 | Table | Columns |
 |---|---|
 | `workflow_instances` | `id PK`, `order_id FK NN UQ`, `version_id FK NN`, `status InstanceStatus NN` |
-| `step_instances` | `id PK`, `instance_id FK NN`, `step_definition_id FK NN`, `status StepStatus NN default PENDING`, `assigned_to FK NULL`, `performed_by FK NULL`, `started_at`, `completed_at`, `qty_in int NULL`, `qty_good int NULL`, `qty_defect int NULL`, `rework_count smallint NN default 0`; **UQ(instance_id, step_definition_id)**; **CK** quantities ≥ 0 |
-| `bundles` | `id PK`, `order_id FK NN`, `bundle_code NN`, `size NN`, `qty int NN CK > 0`, `current_step_instance_id FK NULL`; **UQ(order_id, bundle_code)** |
-| `step_quantity_entries` | `id PK`, `step_instance_id FK NN`, `bundle_id FK NULL`, `size NULL`, `qty_good int NN CK ≥ 0`, `qty_defect int NN CK ≥ 0`, `note`, `entered_by FK NN`, `entered_at NN` — append-only (R-03) |
+| `step_instances` | `id PK`, `instance_id FK NN`, `step_definition_id FK NN`, `status StepStatus NN default PENDING`, `assigned_to FK NULL`, `performed_by FK NULL`, `started_at`, `completed_at`, `qty_in int NULL`, `qty_good int NULL`, `qty_defect int NULL`, `rework_count smallint NN default 0`; **UQ(instance_id, step_definition_id)**; **CK** quantities ≥ 0; **CK** `qty_good + qty_defect ≤ qty_in` (BR-08) |
+| `bundles` | `id PK`, `order_id FK NN RESTRICT`, `bundle_code NN`, `size NN`, `qty int NN CK > 0`, `created_at`; **UQ(order_id, bundle_code)**. Created from the good pieces cut per size when CUTTING completes, 50 per bundle (R-20). No `current_step_instance_id`: WIP per bundle is derived from the entries |
+| `step_quantity_entries` | `id PK`, `step_instance_id FK NN`, `bundle_id FK NULL`, `size NULL` (exactly one of the two: size at cutting, bundle later), `qty_good int NN`, `qty_defect int NN`, `qty_sent int NULL`, `qty_received int NULL`, `mismatch_reason`, `note`, `reverses_entry_id FK NULL UQ`, `entered_by FK NN`, `entered_at NN`; all FKs RESTRICT. **CK**: normal rows ≥ 0 and count at least one piece; a reversal row (R-22) is ≤ 0 and needs `note`; sent/received both or neither, `qty_good + qty_defect = qty_received`, received ≤ sent, mismatch needs `mismatch_reason` (BR-09). Append-only via trigger (R-03): a mistake is cancelled with a reversal row |
 | `evidence` | `id PK`, `step_instance_id FK NN`, `file_path NN`, `note`, `uploaded_by FK NN`, `uploaded_at NN` |
 | `qc_inspections` | `id PK`, `step_instance_id FK NN`, `inspector_id FK NN`, `qc_profile_id FK NULL`, `sample_size int NN`, `measured_shrinkage_percent numeric(5,2) NULL`, `measured_color_fading_level smallint NULL`, `result QcResult NN`, `rework_target_step_id FK → step_instances NULL`, `reason`, `notes` |
 | `defects` | `id PK`, `inspection_id FK NN`, `bundle_id FK NULL`, `defect_type NN`, `qty int NN CK > 0` |
@@ -193,13 +193,16 @@ COMMIT                                                          -- any error ⇒
 
 ```
 BEGIN
- 1. SELECT ... FROM step_instances WHERE id = :id FOR UPDATE    -- serializes entries on the same step
-    (lock the previous step row too, always in ascending id order to avoid deadlocks)
- 2. engine.validateQuantityEntry(current, previous, entry, tolerance)
- 3. INSERT step_quantity_entries; UPDATE step_instances aggregates
- 4. INSERT audit_logs
+ 1. SELECT ... FROM step_instances WHERE id = ANY(:current, :previous) ORDER BY id FOR UPDATE
+    -- serializes entries on the same steps; ascending id order avoids deadlocks
+ 2. re-read status and aggregates of both rows (values read before the lock may be stale)
+ 3. engine.validateQuantityEntry(entry, { isOutsourced, limit })   -- BR-07 per size, BR-08 per bundle and step, BR-09
+ 4. INSERT step_quantity_entries; UPDATE step_instances aggregates
+ 5. INSERT audit_logs
 COMMIT
 ```
+
+Completing a quantity step locks the same rows first. CUTTING then needs at least one entry and creates the bundles from the good pieces per size (FR-15, R-20); other steps must have taken in exactly the good quantity of the previous step (BR-08, engine `checkStepBalance`). "Previous step" is the nearest earlier quantity step that was not skipped.
 
 | Approach | Pros | Cons |
 |---|---|---|
@@ -236,7 +239,8 @@ Run with `pnpm --filter @denimflow/api db:seed` (builds, then runs `dist/seed/in
 |---|---|---|
 | `User` with `passwordHash` | `profiles` linked to Supabase Auth | R-01 |
 | (none) | `material_requests` | R-02 |
-| Quantities only on `StepInstance` | plus append-only `step_quantity_entries` | R-03 |
+| Quantities only on `StepInstance` | plus append-only `step_quantity_entries` with reversal rows | R-03, R-22 |
+| `Bundle.currentStep` | not stored; derived from the entries | R-20 |
 | `stationType` on step | plus `responsible_role`, `requires_qc`, `seq`, `is_start`, `is_end`; `station_type` nullable | R-07 |
 | `washType` attribute | `wash_types` catalog + `wash_type_id`; new order flags `embroidery_required`, `fabric_inspect_required`, `pp_sample_required` | R-08 |
 | `conditionExpr` as expression | JSON AST in `jsonb` | R-09 |

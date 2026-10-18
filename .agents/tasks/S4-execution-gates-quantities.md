@@ -23,8 +23,8 @@ Branch: `feat/execution-quantities`
 FR/BR: FR-13, BR-07, BR-08, BR-09
 Do: `step_quantity_entries`; bundles created at CUTTING (codes `PO-…-B001`); entry endpoint locks the step row (`FOR UPDATE`), validates BR-08 (qtyIn ≤ previous good) and BR-07 (cut ≤ plan + tolerance), writes aggregates on `step_instances`. For outsourced DYEING/WASH, record sent/received and require a reason on mismatch (BR-09).
 Acceptance:
-- [ ] **Concurrency test:** two parallel entries cannot jointly exceed the allowed quantity.
-- [ ] Differences between steps must be explained by recorded defects/wastage.
+- [x] **Concurrency test:** two parallel entries cannot jointly exceed the allowed quantity.
+- [x] Differences between steps must be explained by recorded defects/wastage.
 
 ### T4.4 Evidence (FR-14, only if time)   [agent]
 Branch: `feat/execution-evidence`

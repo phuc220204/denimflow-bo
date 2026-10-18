@@ -1,5 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertCircle, CheckCircle2, Clock, Filter, Play, RefreshCw } from 'lucide-react';
+import {
+  AlertCircle,
+  CheckCircle2,
+  ClipboardList,
+  Clock,
+  Filter,
+  Play,
+  RefreshCw,
+} from 'lucide-react';
 import React, { useState } from 'react';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
@@ -13,6 +21,7 @@ import {
 import { completeStepApi, fetchWorklistApi, startStepApi } from '../../lib/api';
 import { useAuth } from '../../lib/auth-context';
 import type { StepStatus, WorklistItemDto } from '@denimflow/shared';
+import { QuantityPanel } from './quantity-panel';
 
 const STATUS_CONFIG: Record<
   string,
@@ -32,6 +41,7 @@ export const WorklistPage: React.FC = () => {
   const [stationFilter, setStationFilter] = useState<string>('ALL');
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  const [quantityStepId, setQuantityStepId] = useState<string | null>(null);
 
   const {
     data: worklist = [],
@@ -100,6 +110,9 @@ export const WorklistPage: React.FC = () => {
   // Only the step's responsible role may start or complete it; others (Admin, Manager) only view.
   // The API re-checks role and station.
   const canWork = (item: WorklistItemDto) => user?.role === item.responsibleRole;
+  // FR-13: steps worked by station operators track quantities.
+  const tracksQuantities = (item: WorklistItemDto) =>
+    item.responsibleRole === 'STATION_OPERATOR' && Boolean(item.stationType);
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
@@ -211,11 +224,14 @@ export const WorklistPage: React.FC = () => {
             };
 
             const isPendingAction = startMutation.isPending || completeMutation.isPending;
+            const showQuantities = quantityStepId === item.id;
 
             return (
               <Card
                 key={item.id}
-                className="flex flex-col justify-between border border-border shadow-sm hover:shadow transition-shadow"
+                className={`flex flex-col justify-between border border-border shadow-sm hover:shadow transition-shadow ${
+                  showQuantities ? 'md:col-span-2 lg:col-span-3' : ''
+                }`}
               >
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between gap-2">
@@ -245,6 +261,13 @@ export const WorklistPage: React.FC = () => {
                       <span className="font-semibold text-text">{item.totalPlannedQty} cái</span>
                     </div>
                   </div>
+
+                  {tracksQuantities(item) && item.qtyIn !== null && item.qtyIn !== undefined && (
+                    <div className="tabular-nums text-text">
+                      Đã nhận {item.qtyIn} · Số lượng đạt {item.qtyGood ?? 0} · Số lượng lỗi{' '}
+                      {item.qtyDefect ?? 0}
+                    </div>
+                  )}
 
                   {item.startedAt && (
                     <div className="flex items-center gap-1.5 text-text-muted">
@@ -279,6 +302,18 @@ export const WorklistPage: React.FC = () => {
                       </Button>
                     )}
 
+                    {tracksQuantities(item) && item.status === 'IN_PROGRESS' && (
+                      <Button
+                        variant="outline"
+                        className="w-full mb-2 flex items-center justify-center gap-2"
+                        size="sm"
+                        onClick={() => setQuantityStepId(showQuantities ? null : item.id)}
+                      >
+                        <ClipboardList className="h-4 w-4" />
+                        {showQuantities ? 'Đóng nhập số lượng' : 'Nhập số lượng'}
+                      </Button>
+                    )}
+
                     {canWork(item) && item.status === 'IN_PROGRESS' && (
                       <Button
                         variant="primary"
@@ -298,6 +333,10 @@ export const WorklistPage: React.FC = () => {
                       </div>
                     )}
                   </div>
+
+                  {showQuantities && (
+                    <QuantityPanel stepId={item.id} token={token} canEdit={canWork(item)} />
+                  )}
                 </CardContent>
               </Card>
             );

@@ -51,3 +51,85 @@ export const completeStepResponseSchema = z.object({
   newlySkippedStepCodes: z.array(z.string()),
 });
 export type CompleteStepResponseDto = z.infer<typeof completeStepResponseSchema>;
+
+// T4.3 quantity entry (FR-13). Cutting entries name a size, later steps a bundle; the service
+// checks which one the step needs. Outsourced stations add sent/received (BR-09).
+export const recordQuantityEntrySchema = z
+  .object({
+    size: z.string().trim().min(1).optional(),
+    bundleId: z.string().uuid().optional(),
+    qtyGood: z.number().int().min(0),
+    qtyDefect: z.number().int().min(0).default(0),
+    qtySent: z.number().int().min(0).optional(),
+    qtyReceived: z.number().int().min(0).optional(),
+    mismatchReason: z.string().trim().max(500).optional(),
+    note: z.string().trim().max(500).optional(),
+  })
+  .strict()
+  .refine((entry) => (entry.size === undefined) !== (entry.bundleId === undefined), {
+    message: 'Chọn đúng một: size (bước cắt) hoặc bó (các bước sau)',
+    path: ['bundleId'],
+  })
+  .refine((entry) => entry.qtyGood + entry.qtyDefect > 0 || (entry.qtySent ?? 0) > 0, {
+    message: 'Lần nhập phải có ít nhất 1 sản phẩm',
+    path: ['qtyGood'],
+  });
+export type RecordQuantityEntryDto = z.infer<typeof recordQuantityEntrySchema>;
+
+// A reversal cancels one earlier entry with negated values (R-22).
+export const reverseQuantityEntrySchema = z
+  .object({ reason: z.string().trim().min(1, 'Phải ghi lý do huỷ dòng nhập').max(500) })
+  .strict();
+export type ReverseQuantityEntryDto = z.infer<typeof reverseQuantityEntrySchema>;
+
+export const stepQuantityEntrySchema = z.object({
+  id: z.string().uuid(),
+  stepInstanceId: z.string().uuid(),
+  bundleId: z.string().uuid().nullable(),
+  bundleCode: z.string().nullable(),
+  size: z.string().nullable(),
+  qtyGood: z.number().int(),
+  qtyDefect: z.number().int(),
+  qtySent: z.number().int().nullable(),
+  qtyReceived: z.number().int().nullable(),
+  mismatchReason: z.string().nullable(),
+  note: z.string().nullable(),
+  reversesEntryId: z.string().uuid().nullable(),
+  isReversed: z.boolean(),
+  enteredBy: z.string(),
+  enteredAt: z.string(),
+});
+export type StepQuantityEntryDto = z.infer<typeof stepQuantityEntrySchema>;
+
+// Everything the quantity form of one step needs.
+export const stepQuantityPanelSchema = z.object({
+  stepId: z.string().uuid(),
+  stepCode: z.string(),
+  status: stepStatusSchema,
+  mode: z.enum(['CUTTING', 'BUNDLE']),
+  isOutsourced: z.boolean(),
+  qtyIn: z.number().int(),
+  qtyGood: z.number().int(),
+  qtyDefect: z.number().int(),
+  // Good pieces the previous step handed over (BUNDLE mode); completion needs qtyIn to match (BR-08).
+  previousGood: z.number().int().nullable(),
+  sizes: z.array(
+    z.object({
+      size: z.string(),
+      plannedQty: z.number().int(),
+      maxQty: z.number().int(),
+      cutQty: z.number().int(),
+    }),
+  ),
+  bundles: z.array(
+    z.object({
+      id: z.string().uuid(),
+      bundleCode: z.string(),
+      size: z.string(),
+      availableQty: z.number().int(),
+      takenQty: z.number().int(),
+    }),
+  ),
+  entries: z.array(stepQuantityEntrySchema),
+});
+export type StepQuantityPanelDto = z.infer<typeof stepQuantityPanelSchema>;

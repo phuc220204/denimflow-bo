@@ -29,6 +29,35 @@ const worklistInclude = {
 
 export type WorklistStep = Prisma.StepInstanceGetPayload<{ include: typeof worklistInclude }>;
 
+const stepForQuantityInclude = {
+  stepDefinition: true,
+  instance: {
+    include: {
+      order: { include: { style: true, sizeLines: true } },
+      stepInstances: { include: { stepDefinition: true } },
+    },
+  },
+} satisfies Prisma.StepInstanceInclude;
+
+export type StepForQuantity = Prisma.StepInstanceGetPayload<{
+  include: typeof stepForQuantityInclude;
+}>;
+
+const quantityEntryInclude = {
+  bundle: { select: { bundleCode: true } },
+  reversedBy: { select: { id: true } },
+} satisfies Prisma.StepQuantityEntryInclude;
+
+export type QuantityEntry = Prisma.StepQuantityEntryGetPayload<{
+  include: typeof quantityEntryInclude;
+}>;
+
+export interface StepQuantities {
+  qtyIn: number;
+  qtyGood: number;
+  qtyDefect: number;
+}
+
 export interface AuditEntry {
   entityType: string;
   entityId: string;
@@ -96,5 +125,66 @@ export class ExecutionRepository {
 
   async recordAudit(tx: Tx, entry: AuditEntry): Promise<void> {
     await tx.auditLog.create({ data: entry });
+  }
+
+  findStepForQuantity(
+    stepId: string,
+    tx: Tx | PrismaService = this.prisma,
+  ): Promise<StepForQuantity | null> {
+    return tx.stepInstance.findUnique({ where: { id: stepId }, include: stepForQuantityInclude });
+  }
+
+  // SELECT ... FOR UPDATE in ascending id order (DATABASE_DESIGN.md §7.2): entries on the same
+  // steps then run one after another, and the fixed order avoids deadlocks.
+  async lockSteps(tx: Tx, stepIds: string[]): Promise<void> {
+    const ids = [...new Set(stepIds)].sort();
+    await tx.$queryRaw`SELECT id FROM step_instances WHERE id = ANY(${ids}::uuid[]) ORDER BY id FOR UPDATE`;
+  }
+
+  // Re-read after lockSteps: values read before the lock may already be stale.
+  findStepsByIds(tx: Tx, stepIds: string[]) {
+    return tx.stepInstance.findMany({
+      where: { id: { in: stepIds } },
+      select: { id: true, status: true, qtyIn: true, qtyGood: true, qtyDefect: true },
+    });
+  }
+
+  findEntries(stepId: string, tx: Tx | PrismaService = this.prisma): Promise<QuantityEntry[]> {
+    return tx.stepQuantityEntry.findMany({
+      where: { stepInstanceId: stepId },
+      include: quantityEntryInclude,
+      orderBy: { enteredAt: 'asc' },
+    });
+  }
+
+  findEntry(tx: Tx, entryId: string): Promise<QuantityEntry | null> {
+    return tx.stepQuantityEntry.findUnique({
+      where: { id: entryId },
+      include: quantityEntryInclude,
+    });
+  }
+
+  createEntry(tx: Tx, data: Prisma.StepQuantityEntryUncheckedCreateInput): Promise<QuantityEntry> {
+    return tx.stepQuantityEntry.create({ data, include: quantityEntryInclude });
+  }
+
+  async setStepQuantities(tx: Tx, stepId: string, totals: StepQuantities): Promise<void> {
+    await tx.stepInstance.update({ where: { id: stepId }, data: totals });
+  }
+
+  findBundles(orderId: string, tx: Tx | PrismaService = this.prisma) {
+    return tx.bundle.findMany({ where: { orderId }, orderBy: { bundleCode: 'asc' } });
+  }
+
+  findBundle(tx: Tx, bundleId: string) {
+    return tx.bundle.findUnique({ where: { id: bundleId } });
+  }
+
+  async createBundles(
+    tx: Tx,
+    orderId: string,
+    bundles: Array<{ bundleCode: string; size: string; qty: number }>,
+  ): Promise<void> {
+    await tx.bundle.createMany({ data: bundles.map((bundle) => ({ ...bundle, orderId })) });
   }
 }

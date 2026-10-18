@@ -82,7 +82,7 @@ Ký hiệu: `PK`, `FK → bảng`, `UQ`, `NN` (not null), `CK` (check). Cột `c
 |---|---|
 | `profiles` | `id uuid PK` (= `auth.users.id` của Supabase), `full_name NN`, `email NN UQ`, `role Role NN`, `station_id FK → stations NULL`, `is_active NN default true`. Triển khai: `station_id` được thêm ở Sprint 1 cùng bảng `stations`; không có FK sang `auth.users`, để migration chạy được trên Postgres thường (test, CI) |
 | `stations` | `id PK`, `code NN UQ`, `name NN`, `station_type StationType NN`, `is_outsourced NN default false` |
-| `styles` | `id PK`, `style_code NN UQ`, `name NN`, `fit_type`, `default_template_id FK → workflow_templates NULL`, `has_embroidery NN default false`, `is_active NN` |
+| `styles` | `id PK`, `style_code NN UQ`, `name NN`, `fit_type`, `default_template_id FK → workflow_templates NULL`, `has_embroidery NN default false`, `cut_tolerance_percent numeric(5,2) NN default 5 CK 0..100` (BR-07, R-19), `is_active NN` |
 | `fabric_types` | `id PK`, `code NN UQ`, `weight_oz numeric(4,1)`, `composition`, `stretch_type StretchType NN` |
 | `color_options` | `id PK`, `code NN UQ`, `name NN`, `color_family` |
 | `fabric_color_rules` | `id PK`, `fabric_type_id FK NN`, `color_id FK NN`, `is_allowed NN`; **UQ(fabric_type_id, color_id)** |
@@ -119,9 +119,9 @@ Ví dụ `condition_expr` (kiểm bằng Zod trong `packages/shared`): `{"op":"e
 | Bảng | Cột |
 |---|---|
 | `workflow_instances` | `id PK`, `order_id FK NN UQ`, `version_id FK NN`, `status InstanceStatus NN` |
-| `step_instances` | `id PK`, `instance_id FK NN`, `step_definition_id FK NN`, `status StepStatus NN default PENDING`, `assigned_to FK NULL`, `performed_by FK NULL`, `started_at`, `completed_at`, `qty_in int NULL`, `qty_good int NULL`, `qty_defect int NULL`, `rework_count smallint NN default 0`; **UQ(instance_id, step_definition_id)**; **CK** số lượng ≥ 0 |
-| `bundles` | `id PK`, `order_id FK NN`, `bundle_code NN`, `size NN`, `qty int NN CK > 0`, `current_step_instance_id FK NULL`; **UQ(order_id, bundle_code)** |
-| `step_quantity_entries` | `id PK`, `step_instance_id FK NN`, `bundle_id FK NULL`, `size NULL`, `qty_good int NN CK ≥ 0`, `qty_defect int NN CK ≥ 0`, `note`, `entered_by FK NN`, `entered_at NN` — append-only (R-03) |
+| `step_instances` | `id PK`, `instance_id FK NN`, `step_definition_id FK NN`, `status StepStatus NN default PENDING`, `assigned_to FK NULL`, `performed_by FK NULL`, `started_at`, `completed_at`, `qty_in int NULL`, `qty_good int NULL`, `qty_defect int NULL`, `rework_count smallint NN default 0`; **UQ(instance_id, step_definition_id)**; **CK** số lượng ≥ 0; **CK** `qty_good + qty_defect ≤ qty_in` (BR-08) |
+| `bundles` | `id PK`, `order_id FK NN RESTRICT`, `bundle_code NN`, `size NN`, `qty int NN CK > 0`, `created_at`; **UQ(order_id, bundle_code)**. Tạo từ số đạt đã cắt theo từng size khi CUTTING hoàn thành, mỗi bó 50 (R-20). Không có `current_step_instance_id`: WIP theo bó suy ra từ các lần nhập |
+| `step_quantity_entries` | `id PK`, `step_instance_id FK NN`, `bundle_id FK NULL`, `size NULL` (có đúng một trong hai: size ở bước cắt, bó ở các bước sau), `qty_good int NN`, `qty_defect int NN`, `qty_sent int NULL`, `qty_received int NULL`, `mismatch_reason`, `note`, `reverses_entry_id FK NULL UQ`, `entered_by FK NN`, `entered_at NN`; mọi FK là RESTRICT. **CK**: dòng thường ≥ 0 và có ít nhất 1 sản phẩm; dòng huỷ (R-22) ≤ 0 và bắt buộc `note`; gửi/nhận cùng có hoặc cùng không, `qty_good + qty_defect = qty_received`, nhận ≤ gửi, lệch thì phải có `mismatch_reason` (BR-09). Append-only bằng trigger (R-03): nhập nhầm thì huỷ bằng một dòng bù |
 | `evidence` | `id PK`, `step_instance_id FK NN`, `file_path NN`, `note`, `uploaded_by FK NN`, `uploaded_at NN` |
 | `qc_inspections` | `id PK`, `step_instance_id FK NN`, `inspector_id FK NN`, `qc_profile_id FK NULL`, `sample_size int NN`, `measured_shrinkage_percent numeric(5,2) NULL`, `measured_color_fading_level smallint NULL`, `result QcResult NN`, `rework_target_step_id FK → step_instances NULL`, `reason`, `notes` |
 | `defects` | `id PK`, `inspection_id FK NN`, `bundle_id FK NULL`, `defect_type NN`, `qty int NN CK > 0` |
@@ -193,13 +193,16 @@ COMMIT                                                          -- lỗi bất k
 
 ```
 BEGIN
- 1. SELECT ... FROM step_instances WHERE id = :id FOR UPDATE    -- tuần tự hoá các lần nhập trên cùng một step
-    (khoá cả dòng step trước, luôn theo thứ tự id tăng dần để tránh deadlock)
- 2. engine.validateQuantityEntry(current, previous, entry, tolerance)
- 3. INSERT step_quantity_entries; UPDATE số tổng trên step_instances
- 4. INSERT audit_logs
+ 1. SELECT ... FROM step_instances WHERE id = ANY(:current, :previous) ORDER BY id FOR UPDATE
+    -- tuần tự hoá các lần nhập trên cùng các step; thứ tự id tăng dần để tránh deadlock
+ 2. đọc lại trạng thái và số tổng của cả hai dòng (giá trị đọc trước khi khoá có thể đã cũ)
+ 3. engine.validateQuantityEntry(entry, { isOutsourced, limit })   -- BR-07 theo size, BR-08 theo bó và theo step, BR-09
+ 4. INSERT step_quantity_entries; UPDATE số tổng trên step_instances
+ 5. INSERT audit_logs
 COMMIT
 ```
+
+Khi hoàn thành một step có số lượng cũng khoá các dòng này trước. CUTTING phải có ít nhất một lần nhập và tạo bó từ số đạt theo từng size (FR-15, R-20); các step khác phải nhận đúng bằng số đạt của step trước (BR-08, hàm `checkStepBalance` của engine). "Step trước" là step có số lượng gần nhất phía trước và không bị bỏ qua.
 
 | Cách tiếp cận | Ưu | Nhược |
 |---|---|---|
@@ -236,7 +239,8 @@ Chạy bằng `pnpm --filter @denimflow/api db:seed` (build rồi chạy `dist/s
 |---|---|---|
 | `User` có `passwordHash` | `profiles` liên kết với Supabase Auth | R-01 |
 | (không có) | `material_requests` | R-02 |
-| Số lượng chỉ trên `StepInstance` | thêm `step_quantity_entries` append-only | R-03 |
+| Số lượng chỉ trên `StepInstance` | thêm `step_quantity_entries` append-only, có dòng huỷ | R-03, R-22 |
+| `Bundle.currentStep` | không lưu; suy ra từ các lần nhập | R-20 |
 | `stationType` trên step | thêm `responsible_role`, `requires_qc`, `seq`, `is_start`, `is_end`; `station_type` cho phép null | R-07 |
 | thuộc tính `washType` | catalog `wash_types` + `wash_type_id`; cờ mới của đơn `embroidery_required`, `fabric_inspect_required`, `pp_sample_required` | R-08 |
 | `conditionExpr` dạng biểu thức | JSON AST trong `jsonb` | R-09 |
