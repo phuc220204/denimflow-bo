@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertCircle,
+  AlertTriangle,
   Calendar,
   Check,
   CheckCircle2,
@@ -33,6 +34,7 @@ import {
   fetchAllowedColors,
   fetchBomLinesApi,
   fetchFabricTypes,
+  fetchOrderDefectsApi,
   fetchOrdersApi,
   fetchStyles,
   fetchWashTypes,
@@ -101,6 +103,15 @@ export const OrdersPage: React.FC = () => {
   const [confirmResult, setConfirmResult] = useState<ConfirmOrderResponseDto | null>(null);
   const [ackCustomerName, setAckCustomerName] = useState<string>('');
   const [ackFilePath, setAckFilePath] = useState<string>('');
+
+  // Dedicated Defects modal state (T5.3, FR-18)
+  const [defectsModalOrder, setDefectsModalOrder] = useState<ProductionOrderItem | null>(null);
+
+  const { data: orderDefects = [], isLoading: isLoadingDefects } = useQuery({
+    queryKey: ['order-defects', defectsModalOrder?.id],
+    queryFn: () => fetchOrderDefectsApi(defectsModalOrder!.id, token),
+    enabled: Boolean(defectsModalOrder?.id),
+  });
 
   // Queries
   const { data: orders = [], isLoading: ordersLoading } = useQuery({
@@ -770,6 +781,16 @@ export const OrdersPage: React.FC = () => {
                               <span>Xác nhận</span>
                             </Button>
                           )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setDefectsModalOrder(order)}
+                            className="text-xs h-8 flex items-center gap-1 text-amber-700 hover:text-amber-800 border-amber-200 hover:bg-amber-50"
+                            title="Xem danh sách lỗi theo kiện và công đoạn (FR-18)"
+                          >
+                            <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
+                            <span>Lỗi</span>
+                          </Button>
                           {isPlannerOrAdmin && isDraft && (
                             <Button
                               size="sm"
@@ -1733,6 +1754,120 @@ export const OrdersPage: React.FC = () => {
                 </div>
               </form>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal View Defects per Bundle/Inspection (T5.3, FR-18) */}
+      {defectsModalOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-surface rounded-xl border border-border shadow-xl max-w-3xl w-full my-8 overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/30">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-amber-600" />
+                <h2 className="text-base font-bold text-text">
+                  Danh sách lỗi đơn hàng {defectsModalOrder.orderNumber} (FR-18)
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDefectsModalOrder(null)}
+                className="text-text-muted hover:text-text"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-muted/40 rounded-lg text-xs">
+                <div>
+                  <span className="text-text-muted">Style: </span>
+                  <span className="font-semibold text-text">
+                    {defectsModalOrder.style?.styleCode} - {defectsModalOrder.style?.name}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-text-muted">Tổng số bản ghi lỗi: </span>
+                  <span className="font-bold text-amber-700">{orderDefects.length}</span>
+                </div>
+                <div>
+                  <span className="text-text-muted">Tổng số lượng sản phẩm lỗi: </span>
+                  <span className="font-bold text-red-600">
+                    {orderDefects.reduce((acc, d) => acc + d.qty, 0)}
+                  </span>
+                </div>
+              </div>
+
+              {isLoadingDefects ? (
+                <div className="py-8 text-center text-xs text-text-muted">
+                  Đang tải danh sách lỗi...
+                </div>
+              ) : orderDefects.length === 0 ? (
+                <div className="py-8 text-center text-xs text-text-muted border border-dashed border-border rounded-lg">
+                  Chưa ghi nhận lỗi nào cho đơn hàng này.
+                </div>
+              ) : (
+                <div className="border border-border rounded-lg overflow-hidden max-h-96 overflow-y-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="border-b border-border bg-muted/50 text-text-muted uppercase text-[10px] tracking-wider">
+                        <th className="py-2.5 px-3">Công đoạn</th>
+                        <th className="py-2.5 px-3">Mã kiện (Bundle)</th>
+                        <th className="py-2.5 px-3">Size</th>
+                        <th className="py-2.5 px-3">Loại lỗi</th>
+                        <th className="py-2.5 px-3 text-right">Số lượng lỗi</th>
+                        <th className="py-2.5 px-3">Người kiểm tra</th>
+                        <th className="py-2.5 px-3">Thời gian</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {orderDefects.map((defect) => (
+                        <tr key={defect.id} className="hover:bg-muted/20">
+                          <td className="py-2 px-3 font-medium text-text">
+                            {defect.stepName} ({defect.stepCode})
+                          </td>
+                          <td className="py-2 px-3 text-text font-mono">
+                            {defect.bundleCode || 'Toàn bộ'}
+                          </td>
+                          <td className="py-2 px-3 text-text">
+                            {defect.size ? (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-muted border border-border">
+                                {defect.size}
+                              </span>
+                            ) : (
+                              '—'
+                            )}
+                          </td>
+                          <td className="py-2 px-3 text-red-700 font-medium">
+                            {defect.defectType}
+                          </td>
+                          <td className="py-2 px-3 text-right font-bold text-red-600">
+                            {defect.qty}
+                          </td>
+                          <td className="py-2 px-3 text-text-muted">
+                            {defect.inspectorName || 'QC Inspector'}
+                          </td>
+                          <td className="py-2 px-3 text-text-muted text-[11px]">
+                            {new Date(defect.createdAt).toLocaleString('vi-VN')}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              <div className="flex justify-end pt-3 border-t border-border">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setDefectsModalOrder(null)}
+                  className="text-xs"
+                >
+                  Đóng
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       )}

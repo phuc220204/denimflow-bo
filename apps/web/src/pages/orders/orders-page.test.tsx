@@ -374,4 +374,35 @@ describe('OrdersPage', () => {
       expect(submitBtn.disabled).toBe(true);
     });
   });
+
+  it('T5.3 (FR-18): opens defects modal and displays defects per bundle and inspection', async () => {
+    vi.spyOn(api, 'fetchOrderDefectsApi').mockResolvedValue([
+      {
+        id: 'def-1',
+        inspectionId: 'insp-1',
+        stepCode: 'SEWING',
+        stepName: 'May ráp',
+        bundleId: 'bun-1',
+        bundleCode: 'BUN-01',
+        size: '30',
+        defectType: 'SEAM_BURST',
+        qty: 3,
+        inspectorName: 'QC Inspector 1',
+        createdAt: new Date('2026-10-18T10:00:00Z').toISOString(),
+      },
+    ]);
+
+    renderWithClient(<OrdersPage />);
+
+    const defectBtn = await screen.findByRole('button', { name: /^Lỗi$/i });
+    fireEvent.click(defectBtn);
+
+    expect(
+      await screen.findByText(/Danh sách lỗi đơn hàng PO-2026-0001 \(FR-18\)/i),
+    ).toBeInTheDocument();
+    expect(await screen.findByText('May ráp (SEWING)')).toBeInTheDocument();
+    expect(screen.getByText('BUN-01')).toBeInTheDocument();
+    expect(screen.getByText('SEAM_BURST')).toBeInTheDocument();
+    expect(screen.getAllByText('3').length).toBeGreaterThanOrEqual(1);
+  });
 });

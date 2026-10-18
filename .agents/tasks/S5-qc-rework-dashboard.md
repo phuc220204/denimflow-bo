@@ -22,6 +22,9 @@ Acceptance:
 Branch: `feat/quality-defects`
 FR/BR: FR-18 (High, optional)
 Do: defect records per inspection and bundle; simple list.
+Acceptance:
+- [x] Query defect list per inspection and bundle for an order.
+- [x] Order management UI provides inspection defect history modal.
 
 ### T5.4 Packing and handover   [agent]
 Branch: `feat/order-handover`

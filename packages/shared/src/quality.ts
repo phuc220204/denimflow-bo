@@ -79,3 +79,18 @@ export const reworkTargetSchema = z.object({
   maxRework: z.number().int(),
 });
 export type ReworkTargetDto = z.infer<typeof reworkTargetSchema>;
+
+export const orderDefectItemSchema = z.object({
+  id: z.string().uuid(),
+  inspectionId: z.string().uuid(),
+  stepCode: z.string(),
+  stepName: z.string(),
+  bundleId: z.string().uuid().nullable().optional(),
+  bundleCode: z.string().nullable().optional(),
+  size: z.string().nullable().optional(),
+  defectType: z.string(),
+  qty: z.number().int(),
+  inspectorName: z.string().nullable().optional(),
+  createdAt: z.string(),
+});
+export type OrderDefectItemDto = z.infer<typeof orderDefectItemSchema>;

@@ -10,6 +10,7 @@ describe('QualityController', () => {
     recordInspection: ReturnType<typeof vi.fn>;
     getInspections: ReturnType<typeof vi.fn>;
     getReworkTargets: ReturnType<typeof vi.fn>;
+    getOrderDefects: ReturnType<typeof vi.fn>;
   };
   let authService: {
     getMe: ReturnType<typeof vi.fn>;
@@ -29,6 +30,7 @@ describe('QualityController', () => {
       recordInspection: vi.fn(),
       getInspections: vi.fn(),
       getReworkTargets: vi.fn(),
+      getOrderDefects: vi.fn(),
     };
     authService = {
       getMe: vi.fn(),
@@ -118,6 +120,16 @@ describe('QualityController', () => {
     const res = await controller.getReworkTargets('step-1', 'Bearer token');
     expect(authService.getMe).toHaveBeenCalledWith('Bearer token');
     expect(qualityService.getReworkTargets).toHaveBeenCalledWith('step-1');
+    expect(res).toEqual([]);
+  });
+
+  it('getOrderDefects delegates to qualityService', async () => {
+    authService.getMe.mockResolvedValue(qcUser);
+    qualityService.getOrderDefects.mockResolvedValue([]);
+
+    const res = await controller.getOrderDefects('ord-1', 'Bearer token');
+    expect(authService.getMe).toHaveBeenCalledWith('Bearer token');
+    expect(qualityService.getOrderDefects).toHaveBeenCalledWith('ord-1');
     expect(res).toEqual([]);
   });
 });

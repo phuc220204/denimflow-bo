@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type {
   EvaluateQcInspectionInputDto,
+  OrderDefectItemDto,
   QcEvaluationOutputDto,
   QcInspectionResponseDto,
   RecordQcInspectionDto,
@@ -33,5 +34,9 @@ export class QualityService {
 
   async getReworkTargets(stepInstanceId: string): Promise<ReworkTargetDto[]> {
     return this.qualityRepository.getReworkTargets(stepInstanceId);
+  }
+
+  async getOrderDefects(orderId: string): Promise<OrderDefectItemDto[]> {
+    return this.qualityRepository.getOrderDefects(orderId);
   }
 }

@@ -45,4 +45,13 @@ export class QualityController {
     await this.authService.getMe(authHeader);
     return this.qualityService.getReworkTargets(stepInstanceId);
   }
+
+  @Get('orders/:orderId/defects')
+  async getOrderDefects(
+    @Param('orderId') orderId: string,
+    @Headers('authorization') authHeader?: string,
+  ) {
+    await this.authService.getMe(authHeader);
+    return this.qualityService.getOrderDefects(orderId);
+  }
 }

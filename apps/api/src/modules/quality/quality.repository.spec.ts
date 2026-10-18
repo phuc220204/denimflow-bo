@@ -19,6 +19,7 @@ describe('QualityRepository (T5.1, FR-16, BR-11, BR-19)', () => {
     };
     defect: {
       create: ReturnType<typeof vi.fn>;
+      findMany: ReturnType<typeof vi.fn>;
     };
     auditLog: {
       create: ReturnType<typeof vi.fn>;
@@ -91,6 +92,7 @@ describe('QualityRepository (T5.1, FR-16, BR-11, BR-19)', () => {
       },
       defect: {
         create: vi.fn(),
+        findMany: vi.fn(),
       },
       auditLog: {
         create: vi.fn(),
@@ -506,6 +508,65 @@ describe('QualityRepository (T5.1, FR-16, BR-11, BR-19)', () => {
       expect(targets[0]!.code).toBe('SEWING');
       expect(targets[0]!.reworkCount).toBe(1);
       expect(targets[1]!.code).toBe('FINAL_QC');
+    });
+  });
+
+  describe('getOrderDefects (FR-18)', () => {
+    it('returns defect list per inspection and bundle for an order', async () => {
+      prisma.defect.findMany.mockResolvedValue([
+        {
+          id: 'def-1',
+          inspectionId: 'insp-1',
+          bundleId: 'bun-1',
+          defectType: 'SEAM_BURST',
+          qty: 3,
+          createdAt: new Date('2026-10-18T10:00:00Z'),
+          inspection: {
+            stepInstance: {
+              stepDefinition: {
+                code: 'SEWING',
+                name: 'May ráp',
+              },
+            },
+            inspector: {
+              fullName: 'QC Inspector 1',
+            },
+          },
+          bundle: {
+            bundleCode: 'BUN-01',
+            size: '30',
+          },
+        },
+      ]);
+
+      const defects = await repository.getOrderDefects('ord-1');
+      expect(defects).toHaveLength(1);
+      expect(defects[0]).toEqual({
+        id: 'def-1',
+        inspectionId: 'insp-1',
+        stepCode: 'SEWING',
+        stepName: 'May ráp',
+        bundleId: 'bun-1',
+        bundleCode: 'BUN-01',
+        size: '30',
+        defectType: 'SEAM_BURST',
+        qty: 3,
+        inspectorName: 'QC Inspector 1',
+        createdAt: '2026-10-18T10:00:00.000Z',
+      });
+      expect(prisma.defect.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            inspection: {
+              stepInstance: {
+                instance: {
+                  orderId: 'ord-1',
+                },
+              },
+            },
+          },
+        }),
+      );
     });
   });
 });

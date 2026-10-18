@@ -9,6 +9,7 @@ describe('QualityService', () => {
     recordInspection: ReturnType<typeof vi.fn>;
     getInspections: ReturnType<typeof vi.fn>;
     getReworkTargets: ReturnType<typeof vi.fn>;
+    getOrderDefects: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(() => {
@@ -17,6 +18,7 @@ describe('QualityService', () => {
       recordInspection: vi.fn(),
       getInspections: vi.fn(),
       getReworkTargets: vi.fn(),
+      getOrderDefects: vi.fn(),
     };
     service = new QualityService(repository as unknown as QualityRepository);
   });
@@ -72,6 +74,13 @@ describe('QualityService', () => {
     repository.getReworkTargets.mockResolvedValue([]);
     const res = await service.getReworkTargets('step-1');
     expect(repository.getReworkTargets).toHaveBeenCalledWith('step-1');
+    expect(res).toEqual([]);
+  });
+
+  it('delegates getOrderDefects to repository', async () => {
+    repository.getOrderDefects.mockResolvedValue([]);
+    const res = await service.getOrderDefects('ord-1');
+    expect(repository.getOrderDefects).toHaveBeenCalledWith('ord-1');
     expect(res).toEqual([]);
   });
 });

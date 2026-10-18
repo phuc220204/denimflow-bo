@@ -40,6 +40,7 @@ import {
   type RecordQcInspectionDto,
   type QcInspectionResponseDto,
   type ReworkTargetDto,
+  type OrderDefectItemDto,
 } from '@denimflow/shared';
 
 export type {
@@ -1394,5 +1395,17 @@ export async function fetchReworkTargetsApi(
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Không thể tải danh sách công đoạn làm lại');
+  return data;
+}
+
+export async function fetchOrderDefectsApi(
+  orderId: string,
+  token?: string | null,
+): Promise<OrderDefectItemDto[]> {
+  const res = await fetch(`${API_BASE}/quality/orders/${orderId}/defects`, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tải danh sách lỗi của đơn hàng');
   return data;
 }

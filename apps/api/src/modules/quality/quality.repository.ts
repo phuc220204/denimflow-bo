@@ -15,6 +15,7 @@ import {
 } from '@denimflow/engine';
 import {
   type EvaluateQcInspectionInputDto,
+  type OrderDefectItemDto,
   type QcEvaluationOutputDto,
   type QcInspectionResponseDto,
   type RecordQcInspectionDto,
@@ -564,5 +565,49 @@ export class QualityRepository {
         reworkCount: s.reworkCount,
         maxRework: s.stepDefinition.maxRework ?? 2,
       }));
+  }
+
+  async getOrderDefects(orderId: string): Promise<OrderDefectItemDto[]> {
+    const defects = await this.prisma.defect.findMany({
+      where: {
+        inspection: {
+          stepInstance: {
+            instance: {
+              orderId,
+            },
+          },
+        },
+      },
+      include: {
+        inspection: {
+          include: {
+            stepInstance: {
+              include: {
+                stepDefinition: true,
+              },
+            },
+            inspector: true,
+          },
+        },
+        bundle: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    return defects.map((d) => ({
+      id: d.id,
+      inspectionId: d.inspectionId,
+      stepCode: d.inspection.stepInstance.stepDefinition.code,
+      stepName: d.inspection.stepInstance.stepDefinition.name,
+      bundleId: d.bundleId,
+      bundleCode: d.bundle?.bundleCode ?? null,
+      size: d.bundle?.size ?? null,
+      defectType: d.defectType,
+      qty: d.qty,
+      inspectorName: d.inspection.inspector.fullName,
+      createdAt: d.createdAt.toISOString(),
+    }));
   }
 }
