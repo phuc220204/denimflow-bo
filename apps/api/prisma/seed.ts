@@ -199,6 +199,7 @@ async function main() {
         isStart: false,
         isEnd: false,
         isMandatory: true,
+        requiresEvidence: true,
         maxRework: 2,
       },
       {

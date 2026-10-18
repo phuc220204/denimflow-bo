@@ -8,20 +8,23 @@ Branch: `feat/quality-inspection`
 FR/BR: FR-16, BR-11, BR-19
 Do: QC Inspector screen for steps in WAITING_QC: sample size, defect counts by type/bundle, measured shrinkage % and color-fading level; the engine picks thresholds via the order's QC Profile (Strategy) and proposes PASS/REWORK/REJECT; inspector confirms. Final QC stores `qcProfileId` in the inspection.
 Acceptance:
-- [ ] Same measured values pass under SKIP_CLEAN_WASH and fail under FULL_PROCESS when thresholds differ (test with fixtures).
-- [ ] The inspector cannot approve QC for a step they performed (BR-11).
+- [x] Same measured values pass under SKIP_CLEAN_WASH and fail under FULL_PROCESS when thresholds differ (test with fixtures).
+- [x] The inspector cannot approve QC for a step they performed (BR-11).
 
 ### T5.2 Rework routing   [agent]
 Branch: `feat/quality-rework`
 FR/BR: FR-17, BR-10
 Do: REWORK/REJECT requires a target step and a reason; transition kind REWORK; `reworkCount` increments; above `maxRework`, mark for Planner exception handling (order stays visible, flagged).
 Acceptance:
-- [ ] Loop limit enforced; reason mandatory; audit rows written.
+- [x] Loop limit enforced; reason mandatory; audit rows written.
 
 ### T5.3 Defects   [agent]
 Branch: `feat/quality-defects`
 FR/BR: FR-18 (High, optional)
 Do: defect records per inspection and bundle; simple list.
+Acceptance:
+- [x] Query defect list per inspection and bundle for an order.
+- [x] Order management UI provides inspection defect history modal.
 
 ### T5.4 Packing and handover   [agent]
 Branch: `feat/order-handover`

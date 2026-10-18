@@ -147,6 +147,9 @@ model Profile {
   recordedAcknowledgements CustomerAcknowledgement[]
   assignedStepInstances    StepInstance[]            @relation("AssignedStepInstances")
   performedStepInstances   StepInstance[]            @relation("PerformedStepInstances")
+  enteredQuantities        StepQuantityEntry[]       @relation("EnteredQuantities")
+  uploadedEvidence         Evidence[]                @relation("UploadedEvidence")
+  inspections              QcInspection[]            @relation("InspectorQcInspections")
 
   @@map("profiles")
 }
@@ -247,6 +250,7 @@ model QcProfile {
   style                    Style                     @relation(fields: [styleId], references: [id], onDelete: Cascade)
   orders                   ProductionOrder[]
   customerAcknowledgements CustomerAcknowledgement[]
+  qcInspections            QcInspection[]
 
   @@unique([styleId, profileType])
   @@map("qc_profiles")
@@ -397,6 +401,7 @@ model ProductionOrder {
   materialRequests      MaterialRequest[]
   customerAcknowledgements CustomerAcknowledgement[]
   workflowInstance      WorkflowInstance?
+  bundles               Bundle[]
 
   @@index([status, dueDate])
   @@map("production_orders")
@@ -556,6 +561,11 @@ model StepInstance {
   stepDefinition   StepDefinition   @relation(fields: [stepDefinitionId], references: [id])
   assignee         Profile?         @relation("AssignedStepInstances", fields: [assignedTo], references: [id])
   performer        Profile?         @relation("PerformedStepInstances", fields: [performedBy], references: [id])
+  evidence                Evidence[]
+  quantityEntries         StepQuantityEntry[]
+  currentBundles          Bundle[]            @relation("CurrentStepBundles")
+  qcInspections           QcInspection[]      @relation("StepInstanceInspections")
+  reworkTargetInspections QcInspection[]      @relation("ReworkTargetStep")
 
   @@unique([instanceId, stepDefinitionId])
   @@index([instanceId])
@@ -563,5 +573,106 @@ model StepInstance {
   @@index([status])
   @@map("step_instances")
 }
+
+model Bundle {
+  id                    String              @id @default(uuid()) @db.Uuid
+  orderId               String              @map("order_id") @db.Uuid
+  bundleCode            String              @map("bundle_code")
+  size                  String
+  qty                   Int
+  currentStepInstanceId String?             @map("current_step_instance_id") @db.Uuid
+  createdAt             DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime            @updatedAt @map("updated_at") @db.Timestamptz
+
+  order                 ProductionOrder     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  currentStepInstance   StepInstance?       @relation("CurrentStepBundles", fields: [currentStepInstanceId], references: [id])
+  quantityEntries       StepQuantityEntry[]
+  defects               Defect[]
+
+  @@unique([orderId, bundleCode])
+  @@index([orderId])
+  @@map("bundles")
+}
+
+model StepQuantityEntry {
+  id             String        @id @default(uuid()) @db.Uuid
+  stepInstanceId String        @map("step_instance_id") @db.Uuid
+  bundleId       String?       @map("bundle_id") @db.Uuid
+  size           String?
+  qtyGood        Int           @default(0) @map("qty_good")
+  qtyDefect      Int           @default(0) @map("qty_defect")
+  qtySent        Int?          @map("qty_sent")
+  qtyReceived    Int?          @map("qty_received")
+  mismatchReason String?       @map("mismatch_reason")
+  note           String?
+  enteredBy      String        @map("entered_by") @db.Uuid
+  enteredAt      DateTime      @default(now()) @map("entered_at") @db.Timestamptz
+
+  stepInstance   StepInstance  @relation(fields: [stepInstanceId], references: [id], onDelete: Cascade)
+  bundle         Bundle?       @relation(fields: [bundleId], references: [id])
+  enterer        Profile       @relation("EnteredQuantities", fields: [enteredBy], references: [id])
+
+  @@index([stepInstanceId])
+  @@map("step_quantity_entries")
+}
+
+model Evidence {
+  id             String       @id @default(uuid()) @db.Uuid
+  stepInstanceId String       @map("step_instance_id") @db.Uuid
+  filePath       String       @map("file_path")
+  note           String?
+  uploadedBy     String       @map("uploaded_by") @db.Uuid
+  uploadedAt     DateTime     @default(now()) @map("uploaded_at") @db.Timestamptz
+
+  stepInstance   StepInstance @relation(fields: [stepInstanceId], references: [id], onDelete: Cascade)
+  uploader       Profile      @relation("UploadedEvidence", fields: [uploadedBy], references: [id])
+
+  @@index([stepInstanceId])
+  @@map("evidence")
+}
+
+model QcInspection {
+  id                       String        @id @default(uuid()) @db.Uuid
+  stepInstanceId           String        @map("step_instance_id") @db.Uuid
+  inspectorId              String        @map("inspector_id") @db.Uuid
+  qcProfileId              String?       @map("qc_profile_id") @db.Uuid
+  sampleSize               Int           @map("sample_size")
+  measuredShrinkagePercent Decimal?      @map("measured_shrinkage_percent") @db.Decimal(5, 2)
+  measuredColorFadingLevel Int?          @map("measured_color_fading_level") @db.SmallInt
+  result                   QcResult
+  reworkTargetStepId       String?       @map("rework_target_step_id") @db.Uuid
+  reason                   String?
+  notes                    String?
+  createdAt                DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+
+  stepInstance             StepInstance  @relation("StepInstanceInspections", fields: [stepInstanceId], references: [id], onDelete: Cascade)
+  inspector                Profile       @relation("InspectorQcInspections", fields: [inspectorId], references: [id])
+  qcProfile                QcProfile?    @relation(fields: [qcProfileId], references: [id])
+  reworkTargetStep         StepInstance? @relation("ReworkTargetStep", fields: [reworkTargetStepId], references: [id])
+  defects                  Defect[]
+
+  @@index([stepInstanceId])
+  @@index([inspectorId])
+  @@map("qc_inspections")
+}
+
+model Defect {
+  id           String        @id @default(uuid()) @db.Uuid
+  inspectionId String        @map("inspection_id") @db.Uuid
+  bundleId     String?       @map("bundle_id") @db.Uuid
+  defectType   String        @map("defect_type")
+  qty          Int
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+
+  inspection   QcInspection  @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  bundle       Bundle?       @relation(fields: [bundleId], references: [id])
+
+  @@index([inspectionId])
+  @@index([bundleId])
+  @@map("defects")
+}
+
 
 
