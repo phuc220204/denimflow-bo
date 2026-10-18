@@ -39,6 +39,7 @@ import {
   type QcEvaluationOutputDto,
   type RecordQcInspectionDto,
   type QcInspectionResponseDto,
+  type ReworkTargetDto,
 } from '@denimflow/shared';
 
 export type {
@@ -1381,5 +1382,17 @@ export async function fetchStepInspectionsApi(
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Không thể tải lịch sử kiểm tra QC');
+  return data;
+}
+
+export async function fetchReworkTargetsApi(
+  stepInstanceId: string,
+  token?: string | null,
+): Promise<ReworkTargetDto[]> {
+  const res = await fetch(`${API_BASE}/quality/rework-targets/${stepInstanceId}`, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tải danh sách công đoạn làm lại');
   return data;
 }

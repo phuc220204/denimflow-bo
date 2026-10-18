@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   evaluateQcInspection,
+  evaluateReworkRouting,
   type QcProfileSnapshot,
   type QcInspectionEvaluationInput,
   StandardQcStrategy,
@@ -107,5 +108,69 @@ describe('Quality Strategy Engine (T5.1, FR-16, BR-19)', () => {
       fullProcessProfile,
     );
     expect(res.passed).toBe(true);
+  });
+});
+
+describe('Rework Routing Engine (T5.2, FR-17, BR-10)', () => {
+  it('rejects rework when reason is missing or empty (mandatory reason)', () => {
+    const res = evaluateReworkRouting({
+      currentStepId: 'step-qc-13',
+      targetStepId: 'step-sew-8',
+      currentStepSeq: 13,
+      targetStepSeq: 8,
+      targetReworkCount: 0,
+      maxRework: 2,
+      reason: '',
+    });
+
+    expect(res.allowed).toBe(false);
+    expect(res.errorMessage).toContain('Lý do làm lại/từ chối là bắt buộc');
+  });
+
+  it('rejects rework when target step sequence is greater than current step sequence', () => {
+    const res = evaluateReworkRouting({
+      currentStepId: 'step-sew-8',
+      targetStepId: 'step-qc-13',
+      currentStepSeq: 8,
+      targetStepSeq: 13,
+      targetReworkCount: 0,
+      maxRework: 2,
+      reason: 'Lỗi đường chỉ',
+    });
+
+    expect(res.allowed).toBe(false);
+    expect(res.errorMessage).toContain('Công đoạn làm lại phải là công đoạn trước đó');
+  });
+
+  it('allows rework when rework count is below maxRework limit', () => {
+    const res = evaluateReworkRouting({
+      currentStepId: 'step-qc-13',
+      targetStepId: 'step-sew-8',
+      currentStepSeq: 13,
+      targetStepSeq: 8,
+      targetReworkCount: 1,
+      maxRework: 2,
+      reason: 'Đường chỉ bị sút ở túi sau',
+    });
+
+    expect(res.allowed).toBe(true);
+    expect(res.exceedsMaxRework).toBe(false);
+    expect(res.reworkCount).toBe(2);
+  });
+
+  it('flags for Planner exception handling and blocks rework when rework count reaches maxRework', () => {
+    const res = evaluateReworkRouting({
+      currentStepId: 'step-qc-13',
+      targetStepId: 'step-sew-8',
+      currentStepSeq: 13,
+      targetStepSeq: 8,
+      targetReworkCount: 2,
+      maxRework: 2,
+      reason: 'Vẫn bị lỗi đường may sau 2 lần sửa',
+    });
+
+    expect(res.allowed).toBe(false);
+    expect(res.exceedsMaxRework).toBe(true);
+    expect(res.errorMessage).toContain('Vượt quá giới hạn làm lại tối đa');
   });
 });

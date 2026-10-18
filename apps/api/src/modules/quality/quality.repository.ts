@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import {
   evaluateQcInspection,
+  evaluateReworkRouting,
   evaluateStepReadiness,
   type QcProfileSnapshot,
   type StepInstanceSnapshot,
@@ -17,6 +18,7 @@ import {
   type QcEvaluationOutputDto,
   type QcInspectionResponseDto,
   type RecordQcInspectionDto,
+  type ReworkTargetDto,
 } from '@denimflow/shared';
 import { BusinessRuleViolation } from '../../common/errors/business-rule-violation.js';
 import type { Prisma } from '../../generated/prisma/client.js';
@@ -151,6 +153,96 @@ export class QualityRepository {
         order.qcProfile ??
         order.style.qcProfiles.find((p) => p.profileType === targetProfileType) ??
         order.style.qcProfiles[0];
+
+      // BR-10 / FR-17: Rework routing validation
+      let targetStep: {
+        id: string;
+        status: string;
+        reworkCount: number;
+        stepDefinition: {
+          code: string;
+          name: string;
+          seq: number;
+          maxRework: number | null;
+        };
+      } | null = null;
+      if (input.result === 'REWORK' || input.result === 'REJECT') {
+        if (!input.reason || input.reason.trim().length === 0) {
+          throw new BusinessRuleViolation(
+            'BR-10',
+            'BR-10: Lý do làm lại/từ chối là bắt buộc (reason mandatory)',
+          );
+        }
+
+        if (!input.reworkTargetStepId) {
+          throw new BusinessRuleViolation(
+            'BR-10',
+            'BR-10: Bắt buộc phải chọn công đoạn để làm lại (reworkTargetStepId)',
+          );
+        }
+
+        // Lock target step row in DB (DATABASE_DESIGN.md §7.3)
+        if (input.reworkTargetStepId !== input.stepInstanceId) {
+          await tx.$executeRaw`SELECT id FROM "step_instances" WHERE id = ${input.reworkTargetStepId}::uuid FOR UPDATE`;
+        }
+
+        targetStep =
+          step.instance.stepInstances.find((s) => s.id === input.reworkTargetStepId) ??
+          (step.id === input.reworkTargetStepId ? step : null);
+
+        if (!targetStep) {
+          throw new BusinessRuleViolation(
+            'BR-10',
+            'BR-10: Công đoạn làm lại không hợp lệ hoặc không thuộc đơn hàng này',
+          );
+        }
+
+        const reworkEval = evaluateReworkRouting({
+          currentStepId: step.id,
+          targetStepId: targetStep.id,
+          currentStepSeq: step.stepDefinition.seq,
+          targetStepSeq: targetStep.stepDefinition.seq,
+          targetReworkCount: targetStep.reworkCount,
+          maxRework: targetStep.stepDefinition.maxRework ?? 2,
+          reason: input.reason,
+        });
+
+        if (reworkEval.exceedsMaxRework) {
+          // Flag order for Planner exception handling (BR-10)
+          const flagNote = `[FLAGGED_FOR_PLANNER_EXCEPTION: Vượt giới hạn làm lại tại ${targetStep.stepDefinition.name} (${targetStep.reworkCount + 1}/${reworkEval.maxRework})]`;
+          const existingNotes = order.notes ?? '';
+          const updatedNotes = existingNotes.includes('FLAGGED_FOR_PLANNER_EXCEPTION')
+            ? existingNotes
+            : (existingNotes ? existingNotes + ' | ' : '') + flagNote;
+
+          await tx.productionOrder.update({
+            where: { id: order.id },
+            data: { notes: updatedNotes },
+          });
+
+          await tx.auditLog.create({
+            data: {
+              entityType: 'ProductionOrder',
+              entityId: order.id,
+              action: 'ORDER_FLAGGED_FOR_PLANNER_EXCEPTION',
+              actorId,
+              oldValue: { notes: order.notes },
+              newValue: {
+                flag: 'MAX_REWORK_EXCEEDED',
+                stepCode: targetStep.stepDefinition.code,
+                reworkCount: targetStep.reworkCount + 1,
+                maxRework: reworkEval.maxRework,
+              },
+            },
+          });
+
+          throw new BusinessRuleViolation('BR-10', reworkEval.errorMessage!);
+        }
+
+        if (!reworkEval.allowed) {
+          throw new BusinessRuleViolation('BR-10', reworkEval.errorMessage!);
+        }
+      }
 
       // Create QC Inspection record
       const inspection = await tx.qcInspection.create({
@@ -322,23 +414,44 @@ export class QualityRepository {
             },
           });
         }
-      } else if (input.result === 'REWORK') {
-        // T5.2 Rework routing: transition step back to REWORK
+      } else if (input.result === 'REWORK' || input.result === 'REJECT') {
+        // T5.2 Rework routing: transition target step to REWORK with incremented reworkCount
+        const targetStepId = input.reworkTargetStepId!;
+        const currentTarget =
+          step.instance.stepInstances.find((s) => s.id === targetStepId) ?? targetStep;
+
         await tx.stepInstance.update({
-          where: { id: step.id },
+          where: { id: targetStepId },
           data: {
             status: 'REWORK',
             reworkCount: { increment: 1 },
           },
         });
 
-        if (input.reworkTargetStepId && input.reworkTargetStepId !== step.id) {
-          await tx.stepInstance.update({
-            where: { id: input.reworkTargetStepId },
-            data: {
-              status: 'REWORK',
-              reworkCount: { increment: 1 },
+        await tx.auditLog.create({
+          data: {
+            entityType: 'StepInstance',
+            entityId: targetStepId,
+            action: 'STEP_REWORK_ROUTED',
+            actorId,
+            oldValue: {
+              status: currentTarget?.status ?? 'UNKNOWN',
+              reworkCount: currentTarget?.reworkCount ?? 0,
             },
+            newValue: {
+              status: 'REWORK',
+              reworkCount: (currentTarget?.reworkCount ?? 0) + 1,
+              fromStepCode: step.stepDefinition.code,
+              reason: input.reason,
+            },
+          },
+        });
+
+        // The inspecting step itself also transitions to REWORK if different
+        if (targetStepId !== step.id) {
+          await tx.stepInstance.update({
+            where: { id: step.id },
+            data: { status: 'REWORK' },
           });
         }
       }
@@ -418,5 +531,38 @@ export class QualityRepository {
         createdAt: d.createdAt.toISOString(),
       })),
     }));
+  }
+
+  async getReworkTargets(stepInstanceId: string): Promise<ReworkTargetDto[]> {
+    const step = await this.prisma.stepInstance.findUnique({
+      where: { id: stepInstanceId },
+      include: {
+        stepDefinition: true,
+        instance: {
+          include: {
+            stepInstances: {
+              include: { stepDefinition: true },
+              orderBy: { stepDefinition: { seq: 'asc' } },
+            },
+          },
+        },
+      },
+    });
+
+    if (!step) {
+      throw new NotFoundException(`StepInstance with ID ${stepInstanceId} not found`);
+    }
+
+    return step.instance.stepInstances
+      .filter((s) => s.stepDefinition.seq <= step.stepDefinition.seq)
+      .map((s) => ({
+        id: s.id,
+        code: s.stepDefinition.code,
+        name: s.stepDefinition.name,
+        seq: s.stepDefinition.seq,
+        status: s.status,
+        reworkCount: s.reworkCount,
+        maxRework: s.stepDefinition.maxRework ?? 2,
+      }));
   }
 }

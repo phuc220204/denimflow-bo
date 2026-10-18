@@ -29,6 +29,7 @@ import {
   attachEvidenceApi,
   completeStepApi,
   evaluateQcInspectionApi,
+  fetchReworkTargetsApi,
   fetchWorklistApi,
   generateBundlesApi,
   recordQcInspectionApi,
@@ -91,8 +92,15 @@ export const WorklistPage: React.FC = () => {
   const [qcResult, setQcResult] = useState<QcResult>('PASS');
   const [qcReason, setQcReason] = useState<string>('');
   const [qcNotes, setQcNotes] = useState<string>('');
+  const [reworkTargetStepId, setReworkTargetStepId] = useState<string>('');
   const [evaluationResult, setEvaluationResult] = useState<QcEvaluationOutputDto | null>(null);
   const [isEvaluating, setIsEvaluating] = useState<boolean>(false);
+
+  const { data: reworkTargets = [] } = useQuery({
+    queryKey: ['rework-targets', selectedStepForQc?.id],
+    queryFn: () => (selectedStepForQc ? fetchReworkTargetsApi(selectedStepForQc.id, token) : []),
+    enabled: !!selectedStepForQc,
+  });
 
   const {
     data: worklist = [],
@@ -201,6 +209,7 @@ export const WorklistPage: React.FC = () => {
       measuredShrinkagePercent?: number;
       measuredColorFadingLevel?: number;
       result: QcResult;
+      reworkTargetStepId?: string;
       reason?: string;
       notes?: string;
       defects?: Array<{ defectType: string; qty: number }>;
@@ -236,6 +245,7 @@ export const WorklistPage: React.FC = () => {
 
   const openQcModal = (step: WorklistItemDto) => {
     setSelectedStepForQc(step);
+    setReworkTargetStepId(step.id);
     setQcSampleSize(Math.min(step.qtyGood || step.totalPlannedQty || 50, 100));
     setQcShrinkage('2.5');
     setQcFading(1);
@@ -279,6 +289,7 @@ export const WorklistPage: React.FC = () => {
       measuredShrinkagePercent: qcShrinkage ? parseFloat(qcShrinkage) : undefined,
       measuredColorFadingLevel: qcFading,
       result: qcResult,
+      reworkTargetStepId: qcResult !== 'PASS' ? reworkTargetStepId : undefined,
       reason: qcReason || undefined,
       notes: qcNotes || undefined,
       defects: qcDefectQty > 0 ? [{ defectType: qcDefectType, qty: qcDefectQty }] : [],
@@ -1042,18 +1053,50 @@ export const WorklistPage: React.FC = () => {
               </div>
 
               {qcResult !== 'PASS' && (
-                <div>
-                  <label className="block text-xs font-medium text-text-muted mb-1">
-                    Lý do không đạt *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Nêu rõ lý do cần làm lại hoặc từ chối..."
-                    value={qcReason}
-                    onChange={(e) => setQcReason(e.target.value)}
-                    className="w-full border border-border rounded-lg px-3 py-1.5 text-sm bg-background"
-                  />
+                <div className="space-y-3 p-3 bg-amber-50/60 rounded-lg border border-amber-200">
+                  <div>
+                    <label className="block text-xs font-semibold text-amber-900 mb-1">
+                      Công đoạn quay về làm lại (BR-10) *
+                    </label>
+                    <select
+                      value={reworkTargetStepId}
+                      onChange={(e) => setReworkTargetStepId(e.target.value)}
+                      className="w-full border border-amber-300 rounded-lg px-3 py-1.5 text-sm bg-white"
+                      required
+                    >
+                      <option value="">-- Chọn công đoạn làm lại --</option>
+                      {reworkTargets.map((target) => (
+                        <option key={target.id} value={target.id}>
+                          [{target.code}] {target.name} (Lần sửa: {target.reworkCount}/
+                          {target.maxRework})
+                        </option>
+                      ))}
+                    </select>
+                    {reworkTargets.find(
+                      (t) => t.id === reworkTargetStepId && t.reworkCount >= t.maxRework,
+                    ) && (
+                      <p className="text-[11px] text-rose-600 font-medium mt-1">
+                        ⚠️ Công đoạn này đã đạt giới hạn làm lại tối đa (
+                        {reworkTargets.find((t) => t.id === reworkTargetStepId)?.maxRework} lần).
+                        Gửi yêu cầu này sẽ kích hoạt quy trình xử lý ngoại lệ của Production Planner
+                        (BR-10).
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-amber-900 mb-1">
+                      Lý do làm lại / không đạt * (Bắt buộc theo BR-10)
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Nêu rõ lý do hoặc lỗi kỹ thuật cần làm lại..."
+                      value={qcReason}
+                      onChange={(e) => setQcReason(e.target.value)}
+                      className="w-full border border-amber-300 rounded-lg px-3 py-1.5 text-sm bg-white"
+                    />
+                  </div>
                 </div>
               )}
 

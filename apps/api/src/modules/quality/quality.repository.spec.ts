@@ -26,6 +26,9 @@ describe('QualityRepository (T5.1, FR-16, BR-11, BR-19)', () => {
     workflowInstance: {
       update: ReturnType<typeof vi.fn>;
     };
+    productionOrder: {
+      update: ReturnType<typeof vi.fn>;
+    };
   };
 
   const mockStepWaitingQc = {
@@ -94,6 +97,9 @@ describe('QualityRepository (T5.1, FR-16, BR-11, BR-19)', () => {
       },
       workflowInstance: {
         update: vi.fn(),
+      },
+      productionOrder: {
+        update: vi.fn().mockResolvedValue({}),
       },
     };
 
@@ -269,6 +275,146 @@ describe('QualityRepository (T5.1, FR-16, BR-11, BR-19)', () => {
 
       expect(res.result).toBe('REWORK');
     });
+
+    it('BR-10: rejects REWORK when reason is missing', async () => {
+      prisma.stepInstance.findUnique.mockResolvedValue({
+        id: 'step-qc-1',
+        status: 'WAITING_QC',
+        performedBy: 'operator-1',
+        stepDefinition: {
+          id: 'sdef-qc',
+          code: 'FINAL_QC',
+          name: 'Final QC',
+          seq: 13,
+          maxRework: 2,
+        },
+        instance: {
+          id: 'inst-1',
+          order: { id: 'order-1', skipCleanWash: false, style: { qcProfiles: [] } },
+          stepInstances: [],
+        },
+      });
+
+      await expect(
+        repository.recordInspection(
+          {
+            stepInstanceId: 'step-qc-1',
+            sampleSize: 50,
+            result: 'REWORK',
+            reworkTargetStepId: 'step-qc-1',
+            reason: '',
+          },
+          'qc-inspector-2',
+          'QC_INSPECTOR',
+        ),
+      ).rejects.toThrow('BR-10: Lý do làm lại/từ chối là bắt buộc');
+    });
+
+    it('BR-10: rejects REWORK when reworkTargetStepId is missing', async () => {
+      prisma.stepInstance.findUnique.mockResolvedValue({
+        id: 'step-qc-1',
+        status: 'WAITING_QC',
+        performedBy: 'operator-1',
+        stepDefinition: {
+          id: 'sdef-qc',
+          code: 'FINAL_QC',
+          name: 'Final QC',
+          seq: 13,
+          maxRework: 2,
+        },
+        instance: {
+          id: 'inst-1',
+          order: { id: 'order-1', skipCleanWash: false, style: { qcProfiles: [] } },
+          stepInstances: [],
+        },
+      });
+
+      await expect(
+        repository.recordInspection(
+          {
+            stepInstanceId: 'step-qc-1',
+            sampleSize: 50,
+            result: 'REWORK',
+            reason: 'Lỗi đường chỉ',
+          },
+          'qc-inspector-2',
+          'QC_INSPECTOR',
+        ),
+      ).rejects.toThrow('BR-10: Bắt buộc phải chọn công đoạn để làm lại');
+    });
+
+    it('BR-10: rejects REWORK and flags order for Planner exception when reworkCount reaches maxRework', async () => {
+      prisma.stepInstance.findUnique.mockResolvedValue({
+        id: 'step-qc-1',
+        status: 'WAITING_QC',
+        performedBy: 'operator-1',
+        stepDefinition: {
+          id: 'sdef-qc',
+          code: 'FINAL_QC',
+          name: 'Final QC',
+          seq: 13,
+          maxRework: 2,
+        },
+        instance: {
+          id: 'inst-1',
+          order: {
+            id: 'order-1',
+            skipCleanWash: false,
+            notes: 'Ghi chú ban đầu',
+            style: { qcProfiles: [] },
+          },
+          stepInstances: [
+            {
+              id: 'step-sew-8',
+              status: 'DONE',
+              reworkCount: 2, // already at maxRework 2
+              stepDefinition: {
+                id: 'sdef-sew',
+                code: 'SEWING',
+                name: 'May ráp',
+                seq: 8,
+                maxRework: 2,
+              },
+            },
+          ],
+        },
+      });
+
+      await expect(
+        repository.recordInspection(
+          {
+            stepInstanceId: 'step-qc-1',
+            sampleSize: 50,
+            result: 'REWORK',
+            reworkTargetStepId: 'step-sew-8',
+            reason: 'Đường may vẫn lệch sau 2 lần sửa',
+          },
+          'qc-inspector-2',
+          'QC_INSPECTOR',
+        ),
+      ).rejects.toThrow('BR-10: Vượt quá giới hạn làm lại tối đa');
+
+      // Verify order was flagged in notes
+      expect(prisma.productionOrder.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'order-1' },
+          data: expect.objectContaining({
+            notes: expect.stringContaining('FLAGGED_FOR_PLANNER_EXCEPTION'),
+          }),
+        }),
+      );
+
+      // Verify AuditLog written for exception
+      expect(prisma.auditLog.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            entityType: 'ProductionOrder',
+            entityId: 'order-1',
+            action: 'ORDER_FLAGGED_FOR_PLANNER_EXCEPTION',
+          }),
+        }),
+      );
+    });
   });
 
   describe('getInspections', () => {
@@ -304,6 +450,62 @@ describe('QualityRepository (T5.1, FR-16, BR-11, BR-19)', () => {
       expect(list).toHaveLength(1);
       expect(list[0]!.defects).toHaveLength(1);
       expect(list[0]!.defects[0]!.defectType).toBe('LOOSE_THREAD');
+    });
+  });
+
+  describe('getReworkTargets', () => {
+    it('returns predecessor and current steps as valid rework targets', async () => {
+      prisma.stepInstance.findUnique.mockResolvedValue({
+        id: 'step-qc-13',
+        status: 'WAITING_QC',
+        stepDefinition: { id: 'sd-qc', code: 'FINAL_QC', name: 'Final QC', seq: 13, maxRework: 2 },
+        instance: {
+          stepInstances: [
+            {
+              id: 'step-sew-8',
+              status: 'DONE',
+              reworkCount: 1,
+              stepDefinition: {
+                id: 'sd-sew',
+                code: 'SEWING',
+                name: 'May ráp',
+                seq: 8,
+                maxRework: 2,
+              },
+            },
+            {
+              id: 'step-qc-13',
+              status: 'WAITING_QC',
+              reworkCount: 0,
+              stepDefinition: {
+                id: 'sd-qc',
+                code: 'FINAL_QC',
+                name: 'Final QC',
+                seq: 13,
+                maxRework: 2,
+              },
+            },
+            {
+              id: 'step-pack-14',
+              status: 'PENDING',
+              reworkCount: 0,
+              stepDefinition: {
+                id: 'sd-pack',
+                code: 'PACK_HANDOVER',
+                name: 'Bàn giao',
+                seq: 14,
+                maxRework: 2,
+              },
+            },
+          ],
+        },
+      });
+
+      const targets = await repository.getReworkTargets('step-qc-13');
+      expect(targets).toHaveLength(2); // Only seq <= 13 (SEWING and FINAL_QC, not PACK_HANDOVER)
+      expect(targets[0]!.code).toBe('SEWING');
+      expect(targets[0]!.reworkCount).toBe(1);
+      expect(targets[1]!.code).toBe('FINAL_QC');
     });
   });
 });

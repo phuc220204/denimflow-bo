@@ -116,3 +116,68 @@ export function evaluateQcInspection(
 ): QcEvaluationResult {
   return strategy.evaluate(input, profile);
 }
+
+export interface ReworkEvaluationInput {
+  currentStepId: string;
+  targetStepId: string;
+  targetStepSeq: number;
+  currentStepSeq: number;
+  targetReworkCount: number;
+  maxRework: number | null | undefined;
+  reason?: string | null;
+}
+
+export interface ReworkEvaluationResult {
+  allowed: boolean;
+  exceedsMaxRework: boolean;
+  reworkCount: number;
+  maxRework: number;
+  errorMessage?: string;
+}
+
+/**
+ * BR-10 / FR-17: Rework routing with loop limit verification.
+ * Requires a target step and a mandatory reason.
+ * Beyond maxRework, flags for Planner exception handling.
+ */
+export function evaluateReworkRouting(input: ReworkEvaluationInput): ReworkEvaluationResult {
+  const maxRework = input.maxRework ?? 2;
+
+  if (!input.reason || input.reason.trim().length === 0) {
+    return {
+      allowed: false,
+      exceedsMaxRework: false,
+      reworkCount: input.targetReworkCount,
+      maxRework,
+      errorMessage: 'BR-10: Lý do làm lại/từ chối là bắt buộc (reason mandatory)',
+    };
+  }
+
+  if (input.targetStepSeq > input.currentStepSeq) {
+    return {
+      allowed: false,
+      exceedsMaxRework: false,
+      reworkCount: input.targetReworkCount,
+      maxRework,
+      errorMessage:
+        'BR-10: Công đoạn làm lại phải là công đoạn trước đó hoặc chính công đoạn hiện tại',
+    };
+  }
+
+  if (input.targetReworkCount >= maxRework) {
+    return {
+      allowed: false,
+      exceedsMaxRework: true,
+      reworkCount: input.targetReworkCount + 1,
+      maxRework,
+      errorMessage: `BR-10: Vượt quá giới hạn làm lại tối đa (${maxRework} vòng). Cần Production Planner can thiệp xử lý ngoại lệ.`,
+    };
+  }
+
+  return {
+    allowed: true,
+    exceedsMaxRework: false,
+    reworkCount: input.targetReworkCount + 1,
+    maxRework,
+  };
+}

@@ -4,6 +4,7 @@ import type {
   QcEvaluationOutputDto,
   QcInspectionResponseDto,
   RecordQcInspectionDto,
+  ReworkTargetDto,
 } from '@denimflow/shared';
 import { QualityRepository } from './quality.repository.js';
 
@@ -28,5 +29,9 @@ export class QualityService {
 
   async getInspections(stepInstanceId: string): Promise<QcInspectionResponseDto[]> {
     return this.qualityRepository.getInspections(stepInstanceId);
+  }
+
+  async getReworkTargets(stepInstanceId: string): Promise<ReworkTargetDto[]> {
+    return this.qualityRepository.getReworkTargets(stepInstanceId);
   }
 }

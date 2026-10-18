@@ -16,7 +16,7 @@ Branch: `feat/quality-rework`
 FR/BR: FR-17, BR-10
 Do: REWORK/REJECT requires a target step and a reason; transition kind REWORK; `reworkCount` increments; above `maxRework`, mark for Planner exception handling (order stays visible, flagged).
 Acceptance:
-- [ ] Loop limit enforced; reason mandatory; audit rows written.
+- [x] Loop limit enforced; reason mandatory; audit rows written.
 
 ### T5.3 Defects   [agent]
 Branch: `feat/quality-defects`

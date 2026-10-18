@@ -68,3 +68,14 @@ export const qcInspectionResponseSchema = z.object({
   defects: z.array(defectItemSchema),
 });
 export type QcInspectionResponseDto = z.infer<typeof qcInspectionResponseSchema>;
+
+export const reworkTargetSchema = z.object({
+  id: z.string().uuid(),
+  code: z.string(),
+  name: z.string(),
+  seq: z.number().int(),
+  status: z.string(),
+  reworkCount: z.number().int(),
+  maxRework: z.number().int(),
+});
+export type ReworkTargetDto = z.infer<typeof reworkTargetSchema>;

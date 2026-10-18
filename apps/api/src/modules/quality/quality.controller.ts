@@ -36,4 +36,13 @@ export class QualityController {
     await this.authService.getMe(authHeader);
     return this.qualityService.getInspections(stepInstanceId);
   }
+
+  @Get('rework-targets/:stepInstanceId')
+  async getReworkTargets(
+    @Param('stepInstanceId') stepInstanceId: string,
+    @Headers('authorization') authHeader?: string,
+  ) {
+    await this.authService.getMe(authHeader);
+    return this.qualityService.getReworkTargets(stepInstanceId);
+  }
 }
