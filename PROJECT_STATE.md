@@ -26,13 +26,13 @@ Team: tasks are picked in `docs/TASK_BOARD.md` (max 2 per person); onboarding gu
 | D6 | Docs are bilingual: `docs/en` canonical, `docs/vi` mirror; agent files English only |
 | D7 | QC thresholds when clean wash is skipped are separate QC Profiles + signed customer acknowledgement (BR-18/19) |
 | D8 | UI language is **Vietnamese** (single language; strings still live in a dictionary). Design system and Vietnamese glossary: `docs/design/DESIGN.md` |
+| D9 | Web on **Cloudflare Workers static assets** via Workers Builds (O2 resolved, ADR 0001); API on Render free; prod migrations via the `migrate.yml` workflow |
 
 ## Open decisions (need the owner)
 
 | # | Question | Default if no answer |
 |---|---|---|
 | O1 | Deadline and demo date | Plan 6 sprints (S0..S5), compress if needed |
-| O2 | Cloudflare Pages or Workers static assets for the web app | Decide in Sprint 0 after reading current Cloudflare docs |
 | O4 | Parallel steps (Q11) in MVP? | No. MVP engine = sequential + conditional + rework loops. Parallel is stretch |
 | O5 | Custom branch (FR-27) and Hold/Cancel (FR-10) in MVP? | No (High priority, after MVP). `isCustom` is stored but the CUSTOM_REVIEW step is not built yet |
 | O6 | Evidence upload (FR-14) in MVP? | Gate check implemented, upload UI in Sprint 4 only if time remains |

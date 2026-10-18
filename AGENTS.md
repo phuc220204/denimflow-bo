@@ -67,7 +67,7 @@ pnpm --filter @denimflow/api db:seed
 ## 6. Hard rules
 
 1. **Never push to `main`.** Work on a branch, open a PR. The repo ruleset blocks direct pushes. Details: `.agents/rules/03-git-and-pr-workflow.md`.
-2. **No secrets in the repo.** Use `.env` (git-ignored) and `.env.example` (placeholders only). The Supabase service role key exists only in the API environment, never in `apps/web`. Details: `.agents/rules/04-security-and-secrets.md`.
+2. **No secrets in the repo.** Use `.env` (git-ignored) and `.env.example` (placeholders only). The Supabase service role key exists only in the API environment, never in `apps/web`. Dev demo logins live in the git-ignored `account-dev.md` (template `account-dev.example.md`): read it to log in or run `smoke:roles`, never copy the password elsewhere. Details: `.agents/rules/04-security-and-secrets.md`.
 3. **Engine purity.** `packages/engine` must not import NestJS, Prisma, Supabase, `fs`, or read the clock/randomness directly. Details: `.agents/rules/01-architecture-boundaries.md`.
 4. **Business rules are code and are tested.** Every BR implemented gets a test named with its ID (`BR-08 rejects qtyIn above previous good qty`). Update the status in `BUSINESS_RECONCILIATION.md`.
 5. **Atomic use-cases.** Any use-case that changes more than one row (Confirm order, quantity entry, QC decision, workflow change) runs in one DB transaction that also writes the `AuditLog` (BR-16).
