@@ -9,9 +9,9 @@ Last updated: 2026-10-19
 - Sprint 1–3 and T4.1 reached `main` in one self-merged PR (#26, +25k lines, **no review**, while the ruleset was disabled). Treat them as merged but unreviewed.
 - `protect-main` is enabled again: 1 approval + required `CI` check. Security hotfix #28 (no local-token / password-less login, login required on workflow and catalog, roles via `AuthGuard` + `@Roles()`, 422 on invalid input).
 - Supabase dev: all migrations applied, RLS on all 24 tables, 7 demo roles log in and pass 42/42 permission checks. `db:seed` fixed in #35 (template "Jean Standard" not yet seeded on dev until #35 merges and the owner runs it).
-- #27, #29–#34 are being rebuilt by the owner as one PR per task from `main` (no stacking). T4.2 (#43) and T4.3 (#44, migration applied on dev) merged. T4.5 rebuilt (replaces #31): `completed_by`, Process Engineer gets BR-11, performer check for QC (R-23).
+- #27, #29–#34, #37–#41 are being rebuilt by the owner as one PR per task from `main` (no stacking). Merged: T4.2 (#43), T4.3 (#44), T4.5 (#45); migrations applied on dev. T5.1 rebuilt (replaces #32): QC inspection by QC Profile, PASS only (R-24, R-25). T5.5 and T5.6 rebuilt in parallel sessions.
 
-**Next:** review/merge the T4.5 PR, then rebuild T5.1, T5.2, T5.3, and T4.4 (optional) last; technical debt D1–D4 in `docs/TASK_BOARD.md` (cascade → restrict, guards, audit actor, module reviews); T5.5 dashboard.
+**Next:** review/merge T5.1, then T5.2 rework (REWORK/REJECT, BR-10), T5.3, T5.4, T5.7 e2e, T4.4 (optional); Sprint 0 still needs #40 approved and the prod setup (T0.1/T0.7/T0.8); technical debt D1–D4 in `docs/TASK_BOARD.md`.
 Team: tasks are picked in `docs/TASK_BOARD.md` (max 2 per person); onboarding guide `docs/<lang>/GETTING_STARTED.md`.
 
 ## Decisions (settled)
@@ -46,8 +46,8 @@ Team: tasks are picked in `docs/TASK_BOARD.md` (max 2 per person); onboarding gu
 | S1 | Auth + RBAC + master data | merged via #26, unreviewed; hotfix #28 |
 | S2 | Workflow engine core + designer MVP | merged via #26, unreviewed; seed fix #35 |
 | S3 | Order create / Confirm / snapshot | merged via #26, unreviewed |
-| S4 | Worklist, quantities, Gates | T4.1 (#26), T4.2 (#43), T4.3 (#44) merged; T4.5 rebuilt in a new PR; T4.4 optional, last |
-| S5 | QC, rework, QC Profile, dashboard, handover, polish | T5.1–T5.3 in PRs #32–#34 (stacked); T5.5, T5.6 free |
+| S4 | Worklist, quantities, Gates | T4.1 (#26), T4.2 (#43), T4.3 (#44), T4.5 (#45) merged; T4.4 optional, last |
+| S5 | QC, rework, QC Profile, dashboard, handover, polish | T5.1 rebuilt in a new PR; T5.5, T5.6 rebuilt in parallel; T5.2–T5.4, T5.7 to rebuild |
 
 ## Known risks
 

@@ -123,8 +123,8 @@ Ví dụ `condition_expr` (kiểm bằng Zod trong `packages/shared`): `{"op":"e
 | `bundles` | `id PK`, `order_id FK NN RESTRICT`, `bundle_code NN`, `size NN`, `qty int NN CK > 0`, `created_at`; **UQ(order_id, bundle_code)**. Tạo từ số đạt đã cắt theo từng size khi CUTTING hoàn thành, mỗi bó 50 (R-20). Không có `current_step_instance_id`: WIP theo bó suy ra từ các lần nhập |
 | `step_quantity_entries` | `id PK`, `step_instance_id FK NN`, `bundle_id FK NULL`, `size NULL` (có đúng một trong hai: size ở bước cắt, bó ở các bước sau), `qty_good int NN`, `qty_defect int NN`, `qty_sent int NULL`, `qty_received int NULL`, `mismatch_reason`, `note`, `reverses_entry_id FK NULL UQ`, `entered_by FK NN`, `entered_at NN`; mọi FK là RESTRICT. **CK**: dòng thường ≥ 0 và có ít nhất 1 sản phẩm; dòng huỷ (R-22) ≤ 0 và bắt buộc `note`; gửi/nhận cùng có hoặc cùng không, `qty_good + qty_defect = qty_received`, nhận ≤ gửi, lệch thì phải có `mismatch_reason` (BR-09). Append-only bằng trigger (R-03): nhập nhầm thì huỷ bằng một dòng bù |
 | `evidence` | `id PK`, `step_instance_id FK NN`, `file_path NN`, `note`, `uploaded_by FK NN`, `uploaded_at NN` |
-| `qc_inspections` | `id PK`, `step_instance_id FK NN`, `inspector_id FK NN`, `qc_profile_id FK NULL`, `sample_size int NN`, `measured_shrinkage_percent numeric(5,2) NULL`, `measured_color_fading_level smallint NULL`, `result QcResult NN`, `rework_target_step_id FK → step_instances NULL`, `reason`, `notes` |
-| `defects` | `id PK`, `inspection_id FK NN`, `bundle_id FK NULL`, `defect_type NN`, `qty int NN CK > 0` |
+| `qc_inspections` | `id PK`, `step_instance_id FK NN`, `inspector_id FK NN`, `qc_profile_id FK NULL`, `sample_size int NN CK > 0`, `measured_shrinkage_percent numeric(5,2) NULL CK 0..100`, `measured_color_fading_level smallint NULL CK 0..5`, `proposed_result QcResult NN`, `result QcResult NN`, `rework_target_step_id FK → step_instances NULL`, `reason`, `notes`, `created_at`; mọi FK là RESTRICT. `proposed_result` lưu đề xuất của engine theo Hồ sơ QC, đặt cạnh `result` của inspector (R-24). Append-only bằng trigger (R-25) |
+| `defects` | `id PK`, `inspection_id FK NN`, `bundle_id FK NULL`, `defect_type NN`, `qty int NN CK > 0`, `created_at`; mọi FK là RESTRICT. Append-only bằng trigger (R-25) |
 | `audit_logs` | `id bigint PK` tự tăng (`bigserial`, Prisma `autoincrement()`), `entity_type NN`, `entity_id uuid NN`, `action NN`, `old_value jsonb`, `new_value jsonb`, `actor_id uuid NULL` (NULL = hệ thống), `created_at NN default now()` — **append-only** |
 | `workflow_change_requests` *(sau MVP)* | `id PK`, `instance_id FK`, `requested_by FK`, `payload jsonb`, `status ChangeRequestStatus`, `approved_by FK NULL` |
 
@@ -214,6 +214,8 @@ Phân bổ (`material_allocations`) dùng cùng mẫu này trên dòng `fabric_l
 ### 7.3 Quyết định QC (FR-16, FR-17, BR-10, BR-11, BR-19)
 
 Khoá dòng step được kiểm (và step đích rework); kiểm tra BR-11 (inspector ≠ người thực hiện); engine chọn ngưỡng từ `qc_profile_id` của đơn và trả về kết quả đề xuất; insert `qc_inspections`; nếu REWORK thì đặt step đích thành `REWORK` và tăng `rework_count` (vượt `max_rework` ⇒ gắn cờ cho Planner, BR-10); ghi các dòng audit; tất cả trong một transaction.
+
+Phần PASS (T5.1): step được kiểm hoặc đang chờ QC (QC trong chuyền, áp BR-11), hoặc là step loại QC do inspector bắt đầu (R-25); chỉ chấp nhận PASS khi engine đề xuất PASS (BR-19, R-24); step chuyển DONE và `openNextSteps` chạy trong cùng transaction. REWORK và REJECT làm ở T5.2.
 
 ## 8. Bảo mật
 

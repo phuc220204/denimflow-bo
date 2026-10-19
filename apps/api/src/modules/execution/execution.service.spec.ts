@@ -113,9 +113,10 @@ describe('ExecutionService', () => {
         station: null,
       });
       await service.getWorklist(user('QC_INSPECTOR'));
+      // R-25: QC-type steps plus any step waiting for inspection (e.g. SEWING).
       expect(repo.findWorklistSteps).toHaveBeenCalledWith({
         status: { in: ['READY', 'IN_PROGRESS', 'REWORK', 'WAITING_QC'] },
-        stepDefinition: { stepType: 'QC' },
+        OR: [{ stepDefinition: { stepType: 'QC' } }, { status: 'WAITING_QC' }],
       });
     });
   });
@@ -230,6 +231,25 @@ describe('ExecutionService', () => {
         {},
         'step-SEWING',
         'user-station_operator',
+      );
+      expect(repo.transitionStep).not.toHaveBeenCalled();
+    });
+
+    it('R-25: a QC-type step cannot be completed directly, only by an inspection', async () => {
+      repo.findStepForTransition.mockResolvedValue(
+        stepForTransition('FINAL_QC', 'IN_PROGRESS', {
+          stepType: 'QC',
+          responsibleRole: 'QC_INSPECTOR',
+          stationType: 'QC',
+        }),
+      );
+      repo.findProfileWithStation.mockResolvedValue({
+        id: 'u',
+        role: 'QC_INSPECTOR',
+        station: null,
+      });
+      await expect(service.completeStep('step-FINAL_QC', user('QC_INSPECTOR'))).rejects.toThrow(
+        /phiếu kiểm tra QC/,
       );
       expect(repo.transitionStep).not.toHaveBeenCalled();
     });
