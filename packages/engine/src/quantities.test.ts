@@ -4,7 +4,9 @@ import {
   generateBundles,
   maxCutQty,
   negateEntry,
+  previousQuantityStep,
   quantityIn,
+  tracksQuantities,
   validateQuantityEntry,
   type QuantityEntryContext,
 } from './quantities.js';
@@ -154,5 +156,39 @@ describe('generateBundles (FR-15)', () => {
       { bundleCode: 'PO-20261019-001-B003', size: '30', qty: 20 },
       { bundleCode: 'PO-20261019-001-B004', size: '32', qty: 50 },
     ]);
+  });
+});
+
+describe('previousQuantityStep (R-17 pass-through)', () => {
+  const step = (code: string, seq: number, status = 'DONE', stationType: string | null = code) => ({
+    code,
+    status,
+    stepDefinition: { seq, responsibleRole: 'STATION_OPERATOR', stationType },
+  });
+  const planner = {
+    code: 'BOM_ALLOCATE',
+    status: 'DONE',
+    stepDefinition: { seq: 3, responsibleRole: 'PRODUCTION_PLANNER', stationType: null },
+  };
+
+  it('only operator steps with a station type track quantities', () => {
+    expect(tracksQuantities({ responsibleRole: 'STATION_OPERATOR', stationType: 'SEWING' })).toBe(
+      true,
+    );
+    expect(tracksQuantities({ responsibleRole: 'QC_INSPECTOR', stationType: 'QC' })).toBe(false);
+    expect(tracksQuantities(planner.stepDefinition)).toBe(false);
+  });
+
+  it('picks the nearest earlier quantity step and passes through skipped ones', () => {
+    const steps = [
+      step('SEWING', 8),
+      planner,
+      step('CUTTING', 6),
+      step('DYEING', 9, 'SKIPPED'),
+      step('EFFECT_WASH', 10, 'READY', 'WASH'),
+    ];
+    expect(previousQuantityStep(steps, 10)?.code).toBe('SEWING');
+    expect(previousQuantityStep(steps, 8)?.code).toBe('CUTTING');
+    expect(previousQuantityStep(steps, 6)).toBeNull();
   });
 });

@@ -24,6 +24,7 @@ import {
   type AttachAcknowledgementDto,
   type ConfirmOrderResponseDto,
   type CuttingGateResultDto,
+  type DashboardWipSummaryDto,
   type RequestStatus,
   type CompleteStepResponseDto,
   type RecordQuantityEntryDto,
@@ -1285,5 +1286,18 @@ export async function reverseQuantityApi(
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Không thể huỷ dòng nhập');
+  return data;
+}
+
+// ==========================================
+// DASHBOARD API CLIENT (T5.5, FR-21)
+// ==========================================
+
+export async function fetchDashboardWipApi(token?: string | null): Promise<DashboardWipSummaryDto> {
+  const res = await fetch(`${API_BASE}/dashboard/wip`, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tải số liệu bảng điều khiển');
   return data;
 }

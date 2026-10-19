@@ -42,6 +42,40 @@ export interface QuantityEntryContext {
 
 const OK: QuantityCheckResult = { valid: true };
 
+export interface QuantityStepDefinition {
+  seq: number;
+  responsibleRole: string;
+  stationType: string | null;
+}
+
+// Steps worked by station operators track quantities (FR-13); Planner and QC steps do not.
+export function tracksQuantities(
+  definition: Pick<QuantityStepDefinition, 'responsibleRole' | 'stationType'>,
+): boolean {
+  return definition.responsibleRole === 'STATION_OPERATOR' && definition.stationType !== null;
+}
+
+/**
+ * The step whose good pieces the step at `seq` takes in: the nearest earlier quantity step that
+ * was not skipped (same pass-through rule as BR-14 / R-17). `steps` are the instance's steps.
+ */
+export function previousQuantityStep<
+  T extends { status: string; stepDefinition: QuantityStepDefinition },
+>(steps: readonly T[], seq: number): T | null {
+  let previous: T | null = null;
+  for (const step of steps) {
+    if (
+      step.stepDefinition.seq < seq &&
+      step.status !== 'SKIPPED' &&
+      tracksQuantities(step.stepDefinition) &&
+      (!previous || step.stepDefinition.seq > previous.stepDefinition.seq)
+    ) {
+      previous = step;
+    }
+  }
+  return previous;
+}
+
 // BR-07: plan + tolerance, rounded down. Tolerance has two decimals (numeric(5,2)), so integer
 // hundredths keep the arithmetic exact.
 export function maxCutQty(plannedQty: number, tolerancePercent: number): number {

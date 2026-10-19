@@ -25,7 +25,6 @@ Cập nhật 2026-10-18: Sprint 1–3 và T4.1 đã vào `main` qua #26 (gộp, 
 | D2 | Chuyển các `assertAdmin` / `assertPlannerOrAdmin` / `assertAuthenticated` còn lại (users, catalog ghi, order, inventory) sang `@UseGuards(AuthGuard)` + `@Roles(...)` | Guard có sẵn từ #28; rule 01 |
 | D3 | Workflow: truyền id người thao tác vào `createTemplate` / `publishVersion` / `assignTemplateToStyle` để `created_by` và audit log không bị null | BR-16 |
 | D4 | Review lại code đã merge qua #26 theo module (catalog, order, inventory, web), mỗi người một module; ghi lỗi tìm được thành task hoặc PR nhỏ | Dùng checklist trong `.agents/rules/` |
-| [T5.5](../.agents/tasks/S5-qc-rework-dashboard.md) | Dashboard WIP | Phụ thuộc T3.5 đã có trên `main` |
 | [T5.6](../.agents/tasks/S5-qc-rework-dashboard.md) | Xem AuditLog (tuỳ chọn) | Phụ thuộc T0.4A đã có |
 | [T0.1](../.agents/tasks/S0-scaffold-and-pipeline.md) 👤 | Tạo project Supabase `denimflow-prod` | Owner |
 | [T0.7](../.agents/tasks/S0-scaffold-and-pipeline.md) 👤 | Deploy lần đầu (Render, Cloudflare, ADR Pages/Workers) | Owner, sau T0.1 |
@@ -97,7 +96,7 @@ Cập nhật 2026-10-18: Sprint 1–3 và T4.1 đã vào `main` qua #26 (gộp, 
 | [T5.2](../.agents/tasks/S5-qc-rework-dashboard.md) | Định tuyến làm lại (rework), giới hạn số vòng | FR-17, BR-10 | T5.1 | MVP | tmdzvkl | 🔄 PR mở, chồng trên #27 | #33 |
 | [T5.3](../.agents/tasks/S5-qc-rework-dashboard.md) | Ghi nhận lỗi (defects) | FR-18 | T5.1 | Tuỳ chọn | tmdzvkl | 🔄 PR mở, chồng trên #27 | #34 |
 | [T5.4](../.agents/tasks/S5-qc-rework-dashboard.md) | Đóng gói và bàn giao | FR-26 | T5.1 | MVP | | ⏳ | |
-| [T5.5](../.agents/tasks/S5-qc-rework-dashboard.md) | Dashboard WIP | FR-21 | T3.5 | MVP | | 🟢 | |
+| [T5.5](../.agents/tasks/S5-qc-rework-dashboard.md) | Dashboard WIP | FR-21 | T3.5 | MVP | phuc220204 (làm lại từ #38 của tmdzvkl) | 🔄 PR mới từ `main`, chờ review | thay #38 |
 | [T5.6](../.agents/tasks/S5-qc-rework-dashboard.md) | Xem AuditLog | FR-25 | T0.4A | Tuỳ chọn | | 🟢 | |
 | [T5.7](../.agents/tasks/S5-qc-rework-dashboard.md) | E2E kịch bản demo và hoàn thiện | — | tất cả, T0.7 | MVP ☁️ | | ⏳ | |
 

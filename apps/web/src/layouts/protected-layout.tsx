@@ -3,6 +3,7 @@ import {
   Factory,
   FileSpreadsheet,
   GitFork,
+  LayoutDashboard,
   History,
   Home,
   LogOut,
@@ -21,13 +22,23 @@ import { ForbiddenPage } from '../pages/forbidden';
 
 // Permissions matrix: maps each Role to the routes they are allowed to access (PRD.md §4)
 const ROLE_ALLOWED_ROUTES: Record<string, string[]> = {
-  ADMIN: ['/', '/users', '/catalog', '/audit', '/workflow', '/orders', '/inventory', '/worklist'],
-  PROCESS_ENGINEER: ['/', '/workflow', '/catalog'],
-  PRODUCTION_PLANNER: ['/', '/orders', '/worklist', '/catalog', '/inventory'],
+  ADMIN: [
+    '/',
+    '/dashboard',
+    '/users',
+    '/catalog',
+    '/audit',
+    '/workflow',
+    '/orders',
+    '/inventory',
+    '/worklist',
+  ],
+  PROCESS_ENGINEER: ['/', '/dashboard', '/workflow', '/catalog'],
+  PRODUCTION_PLANNER: ['/', '/dashboard', '/orders', '/worklist', '/catalog', '/inventory'],
   WAREHOUSE_KEEPER: ['/', '/inventory', '/catalog'],
   STATION_OPERATOR: ['/', '/worklist'],
   QC_INSPECTOR: ['/', '/qc', '/worklist', '/catalog'],
-  MANAGER: ['/', '/orders', '/audit', '/catalog', '/inventory', '/worklist'],
+  MANAGER: ['/', '/dashboard', '/orders', '/audit', '/catalog', '/inventory', '/worklist'],
 };
 
 export const ProtectedLayout: React.FC = () => {
@@ -53,6 +64,7 @@ export const ProtectedLayout: React.FC = () => {
 
   const allNavItems = [
     { label: i18n.nav.home, href: '/', icon: Home, disabled: false },
+    { label: i18n.nav.dashboard, href: '/dashboard', icon: LayoutDashboard, disabled: false },
     { label: 'Phân quyền & Nhân sự', href: '/users', icon: Users, disabled: false },
     { label: i18n.nav.orders, href: '/orders', icon: ClipboardList, disabled: false },
     { label: i18n.nav.workflow, href: '/workflow', icon: GitFork, disabled: false },
@@ -151,7 +163,9 @@ export const ProtectedLayout: React.FC = () => {
                   ? 'Danh mục xưởng may'
                   : location.pathname === '/workflow'
                     ? 'Thiết kế quy trình'
-                    : location.pathname}
+                    : location.pathname === '/dashboard'
+                      ? i18n.nav.dashboard
+                      : location.pathname}
             </span>
           </div>
 

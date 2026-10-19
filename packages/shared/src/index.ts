@@ -7,3 +7,4 @@ export * from './workflow.js';
 export * from './order.js';
 export * from './inventory.js';
 export * from './execution.js';
+export * from './dashboard.js';

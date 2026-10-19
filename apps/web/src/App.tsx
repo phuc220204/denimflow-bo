@@ -12,6 +12,12 @@ import { WorkflowDesignerPage } from './pages/workflow/workflow-designer';
 import { OrdersPage } from './pages/orders';
 import { InventoryPage } from './pages/inventory';
 import { WorklistPage } from './pages/worklist';
+import { i18n } from './lib/i18n/dictionary';
+
+// Loaded on demand: Recharts is only needed on the dashboard, so other roles never download it.
+const WipDashboardPage = React.lazy(() =>
+  import('./pages/dashboard').then((module) => ({ default: module.WipDashboardPage })),
+);
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -37,6 +43,16 @@ export const App: React.FC = () => {
               <Route path="orders" element={<OrdersPage />} />
               <Route path="inventory" element={<InventoryPage />} />
               <Route path="worklist" element={<WorklistPage />} />
+              <Route
+                path="dashboard"
+                element={
+                  <React.Suspense
+                    fallback={<p className="text-sm text-text-muted">{i18n.common.loading}</p>}
+                  >
+                    <WipDashboardPage />
+                  </React.Suspense>
+                }
+              />
             </Route>
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
