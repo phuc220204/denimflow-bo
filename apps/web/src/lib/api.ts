@@ -30,6 +30,11 @@ import {
   type StartStepResponseDto,
   type StepQuantityEntryDto,
   type StepQuantityPanelDto,
+  type QcEvaluationDto,
+  type QcEvaluationInputDto,
+  type QcInspectionDto,
+  type RecordQcInspectionDto,
+  type RecordQcInspectionResponseDto,
   type StepStatus,
   type WorklistItemDto,
 } from '@denimflow/shared';
@@ -40,6 +45,11 @@ export type {
   StartStepResponseDto,
   StepQuantityEntryDto,
   StepQuantityPanelDto,
+  QcEvaluationDto,
+  QcEvaluationInputDto,
+  QcInspectionDto,
+  RecordQcInspectionDto,
+  RecordQcInspectionResponseDto,
   StepStatus,
   WorklistItemDto,
 };
@@ -1285,5 +1295,51 @@ export async function reverseQuantityApi(
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Không thể huỷ dòng nhập');
+  return data;
+}
+
+// ==========================================
+// QC INSPECTION API CLIENT (T5.1, FR-16)
+// ==========================================
+
+export async function evaluateQcApi(
+  stepId: string,
+  body: QcEvaluationInputDto,
+  token?: string | null,
+): Promise<QcEvaluationDto> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/qc/evaluate`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể đánh giá kết quả QC');
+  return data;
+}
+
+export async function recordQcInspectionApi(
+  stepId: string,
+  body: RecordQcInspectionDto,
+  token?: string | null,
+): Promise<RecordQcInspectionResponseDto> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/qc/inspections`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể ghi nhận phiếu kiểm tra QC');
+  return data;
+}
+
+export async function fetchQcInspectionsApi(
+  stepId: string,
+  token?: string | null,
+): Promise<QcInspectionDto[]> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/qc/inspections`, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tải lịch sử kiểm tra QC');
   return data;
 }

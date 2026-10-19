@@ -36,8 +36,8 @@ export class ExecutionService {
     @Inject(QuantityService) private readonly quantityService: QuantityService,
   ) {}
 
-  // FR-12: an operator sees only the steps of their own station type; a QC inspector sees QC
-  // steps including those waiting for inspection; other roles may filter by station type.
+  // FR-12: an operator sees only the steps of their own station type; a QC inspector sees QC-type
+  // steps plus every step waiting for inspection (R-25); other roles may filter by station type.
   async getWorklist(user: CurrentUser, query: WorklistQueryDto = {}): Promise<WorklistItemDto[]> {
     const profile = await this.executionRepository.findProfileWithStation(user.id);
     if (!profile) {
@@ -59,7 +59,7 @@ export class ExecutionService {
       }
       where.stepDefinition = { stationType: profile.station.stationType };
     } else if (profile.role === 'QC_INSPECTOR') {
-      where.stepDefinition = { stepType: 'QC' };
+      where.OR = [{ stepDefinition: { stepType: 'QC' } }, { status: 'WAITING_QC' }];
     } else if (query.stationType) {
       where.stepDefinition = { stationType: query.stationType };
     }
@@ -134,6 +134,12 @@ export class ExecutionService {
           `Bước ${step.stepDefinition.code} đang ở trạng thái ${step.status}, chỉ hoàn thành được khi IN_PROGRESS`,
         );
       }
+      // R-06 / R-25: a QC-type step is completed by its inspection decision, never directly.
+      if (step.stepDefinition.stepType === 'QC') {
+        throw new ConflictException(
+          `Bước ${step.stepDefinition.code} là bước kiểm tra QC, hãy hoàn thành bằng phiếu kiểm tra QC`,
+        );
+      }
 
       // FR-13: quantity steps must balance (BR-08); cutting also creates the bundles (FR-15).
       await this.quantityService.closeOnComplete(tx, stepId, user.id);
@@ -183,7 +189,8 @@ export class ExecutionService {
   }
 
   // Runs the engine's readiness evaluation (conditions + Gate chain) and applies the result.
-  private async openNextSteps(
+  // Also called by the QC decision (T5.1) inside its own transaction.
+  async openNextSteps(
     tx: Tx,
     instanceId: string,
     actorId: string,

@@ -5,7 +5,15 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default defineConfig([
-  globalIgnores(['**/node_modules/', '**/dist/', '**/coverage/', '.husky/_/', '**/src/generated/']),
+  // `.claude/` holds Claude Code worktrees (full repo copies) when agents work in parallel.
+  globalIgnores([
+    '**/node_modules/',
+    '**/dist/',
+    '**/coverage/',
+    '.husky/_/',
+    '**/src/generated/',
+    '.claude/',
+  ]),
   js.configs.recommended,
   tseslint.configs.recommended,
   {
