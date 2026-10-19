@@ -7,6 +7,7 @@ import {
   Filter,
   Play,
   RefreshCw,
+  ShieldCheck,
 } from 'lucide-react';
 import React, { useState } from 'react';
 import { Badge } from '../../components/ui/badge';
@@ -21,6 +22,7 @@ import {
 import { completeStepApi, fetchWorklistApi, startStepApi } from '../../lib/api';
 import { useAuth } from '../../lib/auth-context';
 import type { StepStatus, WorklistItemDto } from '@denimflow/shared';
+import { QcPanel } from './qc-panel';
 import { QuantityPanel } from './quantity-panel';
 
 const STATUS_CONFIG: Record<
@@ -42,6 +44,7 @@ export const WorklistPage: React.FC = () => {
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [quantityStepId, setQuantityStepId] = useState<string | null>(null);
+  const [qcStepId, setQcStepId] = useState<string | null>(null);
 
   const {
     data: worklist = [],
@@ -113,6 +116,10 @@ export const WorklistPage: React.FC = () => {
   // FR-13: steps worked by station operators track quantities.
   const tracksQuantities = (item: WorklistItemDto) =>
     item.responsibleRole === 'STATION_OPERATOR' && Boolean(item.stationType);
+  // FR-16 / R-25: the inspector checks steps waiting for QC and QC-type steps they started.
+  const canInspect = (item: WorklistItemDto) =>
+    user?.role === 'QC_INSPECTOR' &&
+    (item.status === 'WAITING_QC' || (item.stepType === 'QC' && item.status === 'IN_PROGRESS'));
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
@@ -225,12 +232,13 @@ export const WorklistPage: React.FC = () => {
 
             const isPendingAction = startMutation.isPending || completeMutation.isPending;
             const showQuantities = quantityStepId === item.id;
+            const showQc = qcStepId === item.id;
 
             return (
               <Card
                 key={item.id}
                 className={`flex flex-col justify-between border border-border shadow-sm hover:shadow transition-shadow ${
-                  showQuantities ? 'md:col-span-2 lg:col-span-3' : ''
+                  showQuantities || showQc ? 'md:col-span-2 lg:col-span-3' : ''
                 }`}
               >
                 <CardHeader className="pb-3">
@@ -314,7 +322,19 @@ export const WorklistPage: React.FC = () => {
                       </Button>
                     )}
 
-                    {canWork(item) && item.status === 'IN_PROGRESS' && (
+                    {canInspect(item) && (
+                      <Button
+                        variant="outline"
+                        className="w-full mb-2 flex items-center justify-center gap-2"
+                        size="sm"
+                        onClick={() => setQcStepId(showQc ? null : item.id)}
+                      >
+                        <ShieldCheck className="h-4 w-4" />
+                        {showQc ? 'Đóng kiểm tra QC' : 'Kiểm tra QC'}
+                      </Button>
+                    )}
+
+                    {canWork(item) && item.status === 'IN_PROGRESS' && item.stepType !== 'QC' && (
                       <Button
                         variant="primary"
                         className="w-full bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-2"
@@ -327,7 +347,7 @@ export const WorklistPage: React.FC = () => {
                       </Button>
                     )}
 
-                    {item.status === 'WAITING_QC' && (
+                    {item.status === 'WAITING_QC' && !canInspect(item) && (
                       <div className="text-center py-1 text-xs text-purple-700 font-medium">
                         Đang chờ QC Inspector phê duyệt
                       </div>
@@ -336,6 +356,19 @@ export const WorklistPage: React.FC = () => {
 
                   {showQuantities && (
                     <QuantityPanel stepId={item.id} token={token} canEdit={canWork(item)} />
+                  )}
+
+                  {showQc && (
+                    <QcPanel
+                      stepId={item.id}
+                      token={token}
+                      withBundles={tracksQuantities(item)}
+                      onPassed={(message) => {
+                        setQcStepId(null);
+                        setActionError(null);
+                        setActionSuccess(message);
+                      }}
+                    />
                   )}
                 </CardContent>
               </Card>

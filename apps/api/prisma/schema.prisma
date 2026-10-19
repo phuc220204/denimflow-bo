@@ -149,6 +149,7 @@ model Profile {
   performedStepInstances   StepInstance[]            @relation("PerformedStepInstances")
   completedStepInstances   StepInstance[]            @relation("CompletedStepInstances")
   quantityEntries          StepQuantityEntry[]
+  qcInspections            QcInspection[]
 
   @@map("profiles")
 }
@@ -251,6 +252,7 @@ model QcProfile {
   style                    Style                     @relation(fields: [styleId], references: [id], onDelete: Cascade)
   orders                   ProductionOrder[]
   customerAcknowledgements CustomerAcknowledgement[]
+  qcInspections            QcInspection[]
 
   @@unique([styleId, profileType])
   @@map("qc_profiles")
@@ -565,6 +567,8 @@ model StepInstance {
   performer        Profile?         @relation("PerformedStepInstances", fields: [performedBy], references: [id])
   completer        Profile?         @relation("CompletedStepInstances", fields: [completedBy], references: [id], onDelete: Restrict)
   quantityEntries  StepQuantityEntry[]
+  qcInspections    QcInspection[]   @relation("InspectedStep")
+  reworkInspections QcInspection[]  @relation("ReworkTargetStep")
 
   @@unique([instanceId, stepDefinitionId])
   @@index([instanceId])
@@ -584,6 +588,7 @@ model Bundle {
 
   order           ProductionOrder     @relation(fields: [orderId], references: [id], onDelete: Restrict)
   quantityEntries StepQuantityEntry[]
+  defects         Defect[]
 
   @@unique([orderId, bundleCode])
   @@index([orderId])
@@ -618,4 +623,46 @@ model StepQuantityEntry {
   @@map("step_quantity_entries")
 }
 
+// FR-16: one row per QC decision, append-only (trigger in the migration). The engine's proposal is
+// kept next to the inspector's result for audit (R-24).
+model QcInspection {
+  id                       String    @id @default(uuid()) @db.Uuid
+  stepInstanceId           String    @map("step_instance_id") @db.Uuid
+  inspectorId              String    @map("inspector_id") @db.Uuid
+  qcProfileId              String?   @map("qc_profile_id") @db.Uuid
+  sampleSize               Int       @map("sample_size")
+  measuredShrinkagePercent Decimal?  @map("measured_shrinkage_percent") @db.Decimal(5, 2)
+  measuredColorFadingLevel Int?      @map("measured_color_fading_level") @db.SmallInt
+  proposedResult           QcResult  @map("proposed_result")
+  result                   QcResult
+  reworkTargetStepId       String?   @map("rework_target_step_id") @db.Uuid
+  reason                   String?
+  notes                    String?
+  createdAt                DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
+  stepInstance      StepInstance  @relation("InspectedStep", fields: [stepInstanceId], references: [id], onDelete: Restrict)
+  inspector         Profile       @relation(fields: [inspectorId], references: [id], onDelete: Restrict)
+  qcProfile         QcProfile?    @relation(fields: [qcProfileId], references: [id], onDelete: Restrict)
+  reworkTargetStep  StepInstance? @relation("ReworkTargetStep", fields: [reworkTargetStepId], references: [id], onDelete: Restrict)
+  defects           Defect[]
+
+  @@index([stepInstanceId])
+  @@map("qc_inspections")
+}
+
+// FR-16/FR-18: defects found in one inspection, optionally per bundle; append-only.
+model Defect {
+  id           String   @id @default(uuid()) @db.Uuid
+  inspectionId String   @map("inspection_id") @db.Uuid
+  bundleId     String?  @map("bundle_id") @db.Uuid
+  defectType   String   @map("defect_type")
+  qty          Int
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  inspection QcInspection @relation(fields: [inspectionId], references: [id], onDelete: Restrict)
+  bundle     Bundle?      @relation(fields: [bundleId], references: [id], onDelete: Restrict)
+
+  @@index([inspectionId])
+  @@index([bundleId])
+  @@map("defects")
+}

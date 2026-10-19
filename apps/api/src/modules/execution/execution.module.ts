@@ -10,6 +10,6 @@ import { QuantityService } from './quantity.service.js';
   imports: [PrismaModule, AuthModule],
   controllers: [ExecutionController],
   providers: [ExecutionRepository, ExecutionService, QuantityService],
-  exports: [ExecutionService],
+  exports: [ExecutionService, ExecutionRepository],
 })
 export class ExecutionModule {}
