@@ -10,7 +10,9 @@ import {
   generateBundles,
   maxCutQty,
   negateEntry,
+  previousQuantityStep as findPreviousQuantityStep,
   quantityIn,
+  tracksQuantities,
   validateQuantityEntry,
   type QuantityCheckResult,
   type QuantityEntryContext,
@@ -35,29 +37,12 @@ import { assertMayWork } from './step-access.js';
 type CurrentUser = AuthResponse['user'];
 type QuantityStep = StepForQuantity['instance']['stepInstances'][number];
 
-// Steps worked by station operators track quantities (FR-13); Planner and QC steps do not.
-export function tracksQuantities(
-  definition: Pick<StepDefinition, 'responsibleRole' | 'stationType'>,
-): boolean {
-  return definition.responsibleRole === 'STATION_OPERATOR' && definition.stationType !== null;
-}
-
 const isCutting = (definition: Pick<StepDefinition, 'stationType'>) =>
   definition.stationType === 'CUTTING';
 
-// The step whose good pieces this step takes in: the nearest earlier quantity step that was not
-// skipped (same pass-through rule as BR-14 / R-17).
-function previousQuantityStep(step: StepForQuantity): QuantityStep | null {
-  const earlier = step.instance.stepInstances
-    .filter(
-      (s) =>
-        s.stepDefinition.seq < step.stepDefinition.seq &&
-        s.status !== 'SKIPPED' &&
-        tracksQuantities(s.stepDefinition),
-    )
-    .sort((a, b) => b.stepDefinition.seq - a.stepDefinition.seq);
-  return earlier[0] ?? null;
-}
+// The step whose good pieces this step takes in (engine rule, BR-14 / R-17 pass-through).
+const previousQuantityStep = (step: StepForQuantity): QuantityStep | null =>
+  findPreviousQuantityStep(step.instance.stepInstances, step.stepDefinition.seq);
 
 // Pieces an entry took into its step. Stored rows are outsourced exactly when qty_sent is set,
 // and reversal rows carry negated values, so plain sums give the net totals.

@@ -24,6 +24,7 @@ import {
   type AttachAcknowledgementDto,
   type ConfirmOrderResponseDto,
   type CuttingGateResultDto,
+  type DashboardWipSummaryDto,
   type RequestStatus,
   type CompleteStepResponseDto,
   type RecordQuantityEntryDto,
@@ -1384,5 +1385,19 @@ export async function fetchAuditFilterOptionsApi(
   // A proxy or crash page may answer without JSON; keep the Vietnamese message then.
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.message || 'Không thể tải bộ lọc nhật ký');
+  return data;
+}
+
+// ==========================================
+// DASHBOARD API CLIENT (T5.5, FR-21)
+// ==========================================
+
+export async function fetchDashboardWipApi(token?: string | null): Promise<DashboardWipSummaryDto> {
+  const res = await fetch(`${API_BASE}/dashboard/wip`, {
+    headers: getAuthHeaders(token),
+  });
+  // A proxy or crash page may answer without JSON; keep the Vietnamese message then.
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Không thể tải số liệu bảng điều khiển');
   return data;
 }
