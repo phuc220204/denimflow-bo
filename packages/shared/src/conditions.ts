@@ -164,3 +164,34 @@ export interface OrderConditionData {
 }
 
 export type OrderConditionContext = OrderConditionData | { order: OrderConditionData };
+
+// The order flags that workflow conditions read (BUSINESS_RECONCILIATION.md §3).
+export interface OrderConditionSource {
+  dyeRequired: boolean;
+  dyeMode: string | null;
+  dyeSource: string | null;
+  embroideryRequired: boolean;
+  fabricInspectRequired: boolean;
+  ppSampleRequired: boolean;
+  skipCleanWash: boolean;
+  washTypeId: string | null;
+  isCustom: boolean;
+}
+
+// Single place that turns an order into the context conditions are evaluated against, so
+// Confirm (initial plan) and step completion (readiness) always see the same `order.*` fields.
+export function toOrderConditionContext(order: OrderConditionSource): OrderConditionContext {
+  return {
+    order: {
+      dyeRequired: order.dyeRequired,
+      dyeMode: order.dyeMode,
+      dyeSource: order.dyeSource,
+      embroideryRequired: order.embroideryRequired,
+      fabricInspectRequired: order.fabricInspectRequired,
+      ppSampleRequired: order.ppSampleRequired,
+      skipCleanWash: order.skipCleanWash,
+      washTypeId: order.washTypeId,
+      isCustom: order.isCustom,
+    },
+  };
+}

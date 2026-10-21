@@ -18,6 +18,8 @@ export const createStyleSchema = z.object({
   name: z.string().trim().min(1, 'Tên kiểu dáng không được để trống'),
   fitType: z.string().trim().optional().nullable(),
   hasEmbroidery: z.boolean().default(false),
+  // BR-07: the cut may exceed the plan by this percentage (R-19)
+  cutTolerancePercent: z.number().min(0).max(100).optional(),
   isActive: z.boolean().default(true),
 });
 export const updateStyleSchema = createStyleSchema.partial();

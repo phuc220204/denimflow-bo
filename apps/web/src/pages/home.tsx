@@ -381,20 +381,24 @@ export const HomePage: React.FC = () => {
             </div>
 
             <div className="grid gap-4 sm:grid-cols-3">
-              <Card className="border-slate-200 hover:border-purple-300 transition-colors cursor-pointer">
-                <CardHeader className="pb-3">
-                  <TrendingUp className="h-6 w-6 text-purple-600 mb-1" />
-                  <CardTitle className="text-base font-semibold">Tiến độ sản xuất xưởng</CardTitle>
-                  <CardDescription className="text-xs">
-                    Tổng hợp số lượng sản phẩm đang cắt, đang may và chờ giao.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <span className="inline-flex items-center gap-1 text-xs font-medium text-purple-600">
-                    Xem báo cáo xưởng <ArrowRight className="h-3.5 w-3.5" />
-                  </span>
-                </CardContent>
-              </Card>
+              <Link to="/dashboard" className="block">
+                <Card className="border-slate-200 hover:border-purple-300 transition-colors cursor-pointer">
+                  <CardHeader className="pb-3">
+                    <TrendingUp className="h-6 w-6 text-purple-600 mb-1" />
+                    <CardTitle className="text-base font-semibold">
+                      Tiến độ sản xuất xưởng
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      Tổng hợp số lượng sản phẩm đang cắt, đang may và chờ giao.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-purple-600">
+                      Xem báo cáo xưởng <ArrowRight className="h-3.5 w-3.5" />
+                    </span>
+                  </CardContent>
+                </Card>
+              </Link>
 
               <Card className="border-slate-200 hover:border-purple-300 transition-colors cursor-pointer">
                 <CardHeader className="pb-3">

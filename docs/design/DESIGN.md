@@ -155,6 +155,13 @@ Code identifiers, enum values and API fields stay in English. Only the displayed
 | Handover record | Biên bản bàn giao |
 | Packing list | Phiếu đóng gói |
 | Audit log | Nhật ký kiểm toán |
+| Actor (who did it) / Action / Entity | Người thao tác / Thao tác / Đối tượng |
+| System (no user) | Hệ thống |
+| Station | Trạm |
+| Step (of an order) | Công đoạn |
+| User account | Tài khoản |
+| Workflow version | Phiên bản quy trình |
+| Quantity entry | Dòng nhập số lượng |
 | Dashboard | Bảng điều khiển |
 | Publish | Xuất bản |
 | Confirm | Xác nhận |
