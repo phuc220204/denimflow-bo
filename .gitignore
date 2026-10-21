@@ -10,3 +10,6 @@ coverage/
 .env
 .env.*
 !.env.example
+
+# Dev demo logins shared privately by the owner (template: account-dev.example.md)
+account-dev.md
