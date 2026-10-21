@@ -39,7 +39,12 @@ Acceptance:
 - [ ] Numbers match the database for the demo data (test with a fixture).
 
 ### T5.6 AuditLog viewer (FR-25, optional)   [agent]
+Branch: `feat/audit-log-viewer-rebuild`
 Admin screen with filters by entity, actor, date. Append-only trigger already blocks edits.
+Acceptance:
+- [x] `GET /audit` (paged, max 100 rows per page) filters by entity type, entity id, actor and an inclusive date range; invalid input gives 422.
+- [x] Only ADMIN and MANAGER may read it (401 without login, 403 for other roles); `GET /audit/filter-options` feeds the dropdowns.
+- [x] The screen shows who, when, action and entity, and a dialog with the before/after values field by field.
 
 ### T5.7 E2E demo and polish   [agent + human]
 Branch: `test/e2e-demo`

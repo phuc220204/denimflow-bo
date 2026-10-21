@@ -123,7 +123,7 @@ MVP = 14 FR của Proposal. Mục đánh dấu ◐ là **phần tối thiểu** 
 | FR-22 | Tracking & Report | Báo cáo tỷ lệ lỗi và thời gian chạy | Medium | — | sau MVP | DEFERRED |
 | FR-23 | Tracking & Report | Truy vết theo lô vải và bundle | High | — | sau MVP | DEFERRED |
 | FR-24 | Notification & Audit | Thông báo (READY, BLOCKED, QC fail) | High | — | sau MVP | DEFERRED |
-| FR-25 | Notification & Audit | Xem/lọc AuditLog | High | tuỳ chọn | S5 T5.6 | TODO |
+| FR-25 | Notification & Audit | Xem/lọc AuditLog | High | tuỳ chọn | S5 T5.6 | DONE (Admin và Manager, chỉ xem; lọc theo loại đối tượng, mã đối tượng, người thao tác, khoảng ngày; so sánh trước/sau) |
 | FR-26 | Notification & Audit | Đóng gói, packing list, biên bản bàn giao | MVP | ✔ | S5 T5.4 | TODO |
 | FR-27 | Production Order | Yêu cầu custom, đánh giá khả thi, workflow riêng | High | — | sau MVP | DEFERRED |
 | FR-28 | QC & Rework | Ngưỡng QC Profile theo Style, áp dụng ở QC cuối | High | ◐ | S1 T1.5, S5 T5.1 | MỘT PHẦN (lát cắt S1 XONG) |

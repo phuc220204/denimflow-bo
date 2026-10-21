@@ -10,6 +10,7 @@ import { OrderModule } from './modules/order/order.module.js';
 import { InventoryModule } from './modules/inventory/inventory.module.js';
 import { ExecutionModule } from './modules/execution/execution.module.js';
 import { QualityModule } from './modules/quality/quality.module.js';
+import { AuditModule } from './modules/audit/audit.module.js';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { QualityModule } from './modules/quality/quality.module.js';
     InventoryModule,
     ExecutionModule,
     QualityModule,
+    AuditModule,
   ],
 })
 export class AppModule {}

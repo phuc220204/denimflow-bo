@@ -47,7 +47,7 @@ Team: tasks are picked in `docs/TASK_BOARD.md` (max 2 per person); onboarding gu
 | S2 | Workflow engine core + designer MVP | merged via #26, unreviewed; seed fix #35 |
 | S3 | Order create / Confirm / snapshot | merged via #26, unreviewed |
 | S4 | Worklist, quantities, Gates | T4.1 (#26), T4.2 (#43), T4.3 (#44), T4.5 (#45) merged; T4.4 optional, last |
-| S5 | QC, rework, QC Profile, dashboard, handover, polish | T5.1 rebuilt in a new PR; T5.5, T5.6 rebuilt in parallel; T5.2–T5.4, T5.7 to rebuild |
+| S5 | QC, rework, QC Profile, dashboard, handover, polish | T5.1 (#46) merged; T5.5 (#48) and T5.6 (#47, replaces #39) in PRs; T5.2–T5.4, T5.7 to rebuild |
 
 ## Known risks
 
