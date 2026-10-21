@@ -25,7 +25,13 @@ import { i18n } from '../../lib/i18n/dictionary';
 const t = i18n.dashboard;
 
 // Design tokens (docs/design/DESIGN.md); Recharts needs raw colors, not Tailwind classes.
-const COLOR = { primary: '#2F5D8A', border: '#E2E5EA', textMuted: '#5B6672', text: '#1F2933' };
+const COLOR = {
+  primary: '#2F5D8A',
+  primaryTint: '#E8EFF6',
+  border: '#E2E5EA',
+  textMuted: '#5B6672',
+  text: '#1F2933',
+};
 const BAR_ROW_HEIGHT = 36;
 const AXIS_BAND = 32;
 
@@ -101,6 +107,18 @@ export const WipDashboardPage: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      {/* A failed refetch keeps the last numbers; say so, or they read as current. */}
+      {error && (
+        <div
+          role="alert"
+          className="flex items-center gap-2 rounded border border-warning/50 bg-warning-tint px-3 py-2 text-sm text-warning-text"
+        >
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span>{t.staleWarning}</span>
+          <span className="text-xs text-text-muted">{(error as Error).message}</span>
+        </div>
+      )}
 
       <KpiRow data={data} />
 
@@ -216,7 +234,7 @@ const WipChart: React.FC<{ steps: DashboardStepRowDto[] }> = ({ steps }) => (
               />
               <Tooltip
                 content={({ active, payload }) => <WipTooltip active={active} payload={payload} />}
-                cursor={{ fill: '#E8EFF6' }}
+                cursor={{ fill: COLOR.primaryTint }}
               />
               <Bar dataKey="wipQty" fill={COLOR.primary} barSize={16} radius={[0, 4, 4, 0]} />
             </BarChart>

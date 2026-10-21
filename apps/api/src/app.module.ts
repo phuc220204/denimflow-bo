@@ -9,6 +9,8 @@ import { WorkflowModule } from './modules/workflow/workflow.module.js';
 import { OrderModule } from './modules/order/order.module.js';
 import { InventoryModule } from './modules/inventory/inventory.module.js';
 import { ExecutionModule } from './modules/execution/execution.module.js';
+import { QualityModule } from './modules/quality/quality.module.js';
+import { AuditModule } from './modules/audit/audit.module.js';
 import { DashboardModule } from './modules/dashboard/dashboard.module.js';
 
 @Module({
@@ -23,6 +25,8 @@ import { DashboardModule } from './modules/dashboard/dashboard.module.js';
     OrderModule,
     InventoryModule,
     ExecutionModule,
+    QualityModule,
+    AuditModule,
     DashboardModule,
   ],
 })

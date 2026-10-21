@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -122,6 +122,23 @@ describe('WipDashboardPage (T5.5, FR-21)', () => {
     expect(await screen.findByText('Không thể tải số liệu bảng điều khiển')).toBeInTheDocument();
     expect(screen.getByText('Bạn không có quyền thực hiện thao tác này')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Thử lại' })).toBeInTheDocument();
+  });
+
+  it('keeps the last numbers and warns when a refresh fails', async () => {
+    renderPage();
+    const wipTile = (await screen.findByText('Bó đang sản xuất (WIP)')).parentElement!;
+
+    server.use(
+      http.get('*/dashboard/wip', () => new HttpResponse('<html>502</html>', { status: 502 })),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Làm mới' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Không cập nhật được số liệu mới, đang hiển thị số liệu cũ.',
+    );
+    // A non-JSON error page still gives the Vietnamese message, not a JSON parse error.
+    expect(screen.getByRole('alert')).toHaveTextContent('Không thể tải số liệu bảng điều khiển');
+    expect(within(wipTile).getByText('4')).toBeInTheDocument();
   });
 
   it('renders an empty state without orders', async () => {

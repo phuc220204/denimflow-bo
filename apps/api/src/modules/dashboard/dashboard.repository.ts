@@ -85,7 +85,8 @@ export class DashboardRepository {
         responsibleRole: true,
         stationType: true,
       },
-      orderBy: [{ seq: 'asc' }, { code: 'asc' }],
+      // Newest first: a row merged across template versions takes the latest name and seq.
+      orderBy: [{ createdAt: 'desc' }, { code: 'asc' }],
     });
   }
 

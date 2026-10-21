@@ -60,14 +60,17 @@ export class DashboardService {
 
     const bundlesByOrder = new Map<string, Bundle[]>();
     for (const bundle of bundles) {
-      bundlesByOrder.set(bundle.orderId, [...(bundlesByOrder.get(bundle.orderId) ?? []), bundle]);
+      const list = bundlesByOrder.get(bundle.orderId) ?? [];
+      list.push(bundle);
+      bundlesByOrder.set(bundle.orderId, list);
     }
     const goodOf = new Map(
       goodByStepAndBundle.map((row) => [`${row.stepInstanceId}:${row.bundleId}`, row.qtyGood]),
     );
     const previousOf = new Map(handedOver.map(({ step, previous }) => [step.id, previous]));
 
-    // Rows per step code, in template order, with the totals of every order.
+    // Rows per step code with the totals of every order; definitions come newest first, so the
+    // row keeps the latest version's name and seq.
     const totalsOf = new Map(stepTotals.map((totals) => [totals.stepDefinitionId, totals]));
     const rows = new Map<string, DashboardStepRowDto>();
     for (const definition of definitions) {

@@ -72,7 +72,7 @@ export const ProtectedLayout: React.FC = () => {
     { label: i18n.nav.qc, href: '/qc', icon: ShieldCheck, disabled: true },
     { label: i18n.nav.inventory, href: '/inventory', icon: Package, disabled: false },
     { label: i18n.nav.catalog, href: '/catalog', icon: FileSpreadsheet, disabled: false },
-    { label: i18n.nav.audit, href: '/audit', icon: History, disabled: true },
+    { label: i18n.nav.audit, href: '/audit', icon: History, disabled: false },
   ];
 
   // Filter navigation items strictly for the active user's role (RBAC)

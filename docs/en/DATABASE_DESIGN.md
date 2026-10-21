@@ -123,8 +123,8 @@ Notation: `PK`, `FK → table`, `UQ`, `NN` (not null), `CK` (check). Unlisted co
 | `bundles` | `id PK`, `order_id FK NN RESTRICT`, `bundle_code NN`, `size NN`, `qty int NN CK > 0`, `created_at`; **UQ(order_id, bundle_code)**. Created from the good pieces cut per size when CUTTING completes, 50 per bundle (R-20). No `current_step_instance_id`: WIP per bundle is derived from the entries |
 | `step_quantity_entries` | `id PK`, `step_instance_id FK NN`, `bundle_id FK NULL`, `size NULL` (exactly one of the two: size at cutting, bundle later), `qty_good int NN`, `qty_defect int NN`, `qty_sent int NULL`, `qty_received int NULL`, `mismatch_reason`, `note`, `reverses_entry_id FK NULL UQ`, `entered_by FK NN`, `entered_at NN`; all FKs RESTRICT. **CK**: normal rows ≥ 0 and count at least one piece; a reversal row (R-22) is ≤ 0 and needs `note`; sent/received both or neither, `qty_good + qty_defect = qty_received`, received ≤ sent, mismatch needs `mismatch_reason` (BR-09). Append-only via trigger (R-03): a mistake is cancelled with a reversal row |
 | `evidence` | `id PK`, `step_instance_id FK NN`, `file_path NN`, `note`, `uploaded_by FK NN`, `uploaded_at NN` |
-| `qc_inspections` | `id PK`, `step_instance_id FK NN`, `inspector_id FK NN`, `qc_profile_id FK NULL`, `sample_size int NN`, `measured_shrinkage_percent numeric(5,2) NULL`, `measured_color_fading_level smallint NULL`, `result QcResult NN`, `rework_target_step_id FK → step_instances NULL`, `reason`, `notes` |
-| `defects` | `id PK`, `inspection_id FK NN`, `bundle_id FK NULL`, `defect_type NN`, `qty int NN CK > 0` |
+| `qc_inspections` | `id PK`, `step_instance_id FK NN`, `inspector_id FK NN`, `qc_profile_id FK NULL`, `sample_size int NN CK > 0`, `measured_shrinkage_percent numeric(5,2) NULL CK 0..100`, `measured_color_fading_level smallint NULL CK 0..5`, `proposed_result QcResult NN`, `result QcResult NN`, `rework_target_step_id FK → step_instances NULL`, `reason`, `notes`, `created_at`; all FKs RESTRICT. `proposed_result` keeps what the engine proposed from the QC Profile next to the inspector's `result` (R-24). Append-only via trigger (R-25) |
+| `defects` | `id PK`, `inspection_id FK NN`, `bundle_id FK NULL`, `defect_type NN`, `qty int NN CK > 0`, `created_at`; all FKs RESTRICT. Append-only via trigger (R-25) |
 | `audit_logs` | `id bigint PK` auto-increment (`bigserial`, Prisma `autoincrement()`), `entity_type NN`, `entity_id uuid NN`, `action NN`, `old_value jsonb`, `new_value jsonb`, `actor_id uuid NULL` (NULL = system), `created_at NN default now()` — **append-only** |
 | `workflow_change_requests` *(post-MVP)* | `id PK`, `instance_id FK`, `requested_by FK`, `payload jsonb`, `status ChangeRequestStatus`, `approved_by FK NULL` |
 
@@ -214,6 +214,8 @@ Allocation (`material_allocations`) uses the same pattern on the `fabric_lots` r
 ### 7.3 QC decision (FR-16, FR-17, BR-10, BR-11, BR-19)
 
 Lock the inspected step row (and the rework target); check BR-11 (inspector ≠ performer); the engine picks thresholds from the order's `qc_profile_id` and returns the proposed result; insert `qc_inspections`; on REWORK set the target step `REWORK` and increment `rework_count` (over `max_rework` ⇒ flag for the Planner, BR-10); write audit rows; all in one transaction.
+
+PASS slice (T5.1): the inspected step is either waiting for QC (in-line QC, BR-11 applies) or a QC-type step the inspector started (R-25); PASS is accepted only when the engine proposes PASS (BR-19, R-24); the step becomes DONE and `openNextSteps` runs in the same transaction. REWORK and REJECT arrive with T5.2.
 
 ## 8. Security
 

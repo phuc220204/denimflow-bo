@@ -31,16 +31,34 @@ import {
   type StartStepResponseDto,
   type StepQuantityEntryDto,
   type StepQuantityPanelDto,
+  type QcEvaluationDto,
+  type QcEvaluationInputDto,
+  type QcInspectionDto,
+  type RecordQcInspectionDto,
+  type RecordQcInspectionResponseDto,
   type StepStatus,
   type WorklistItemDto,
+  type AuditLogFilterOptionsDto,
+  type AuditLogItemDto,
+  type AuditLogListResponseDto,
+  type AuditLogQueryDto,
 } from '@denimflow/shared';
 
 export type {
+  AuditLogFilterOptionsDto,
+  AuditLogItemDto,
+  AuditLogListResponseDto,
+  AuditLogQueryDto,
   CompleteStepResponseDto,
   RecordQuantityEntryDto,
   StartStepResponseDto,
   StepQuantityEntryDto,
   StepQuantityPanelDto,
+  QcEvaluationDto,
+  QcEvaluationInputDto,
+  QcInspectionDto,
+  RecordQcInspectionDto,
+  RecordQcInspectionResponseDto,
   StepStatus,
   WorklistItemDto,
 };
@@ -1290,6 +1308,87 @@ export async function reverseQuantityApi(
 }
 
 // ==========================================
+// QC INSPECTION API CLIENT (T5.1, FR-16)
+// ==========================================
+
+export async function evaluateQcApi(
+  stepId: string,
+  body: QcEvaluationInputDto,
+  token?: string | null,
+): Promise<QcEvaluationDto> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/qc/evaluate`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể đánh giá kết quả QC');
+  return data;
+}
+
+export async function recordQcInspectionApi(
+  stepId: string,
+  body: RecordQcInspectionDto,
+  token?: string | null,
+): Promise<RecordQcInspectionResponseDto> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/qc/inspections`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể ghi nhận phiếu kiểm tra QC');
+  return data;
+}
+
+export async function fetchQcInspectionsApi(
+  stepId: string,
+  token?: string | null,
+): Promise<QcInspectionDto[]> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/qc/inspections`, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tải lịch sử kiểm tra QC');
+  return data;
+}
+
+// ==========================================
+// AUDIT LOG VIEWER API CLIENT (T5.6, FR-25)
+// ==========================================
+
+export async function fetchAuditLogsApi(
+  query: Partial<AuditLogQueryDto>,
+  token?: string | null,
+): Promise<AuditLogListResponseDto> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined && value !== '') params.append(key, String(value));
+  }
+
+  const qs = params.toString() ? `?${params.toString()}` : '';
+  const res = await fetch(`${API_BASE}/audit${qs}`, {
+    headers: getAuthHeaders(token),
+  });
+  // A proxy or crash page may answer without JSON; keep the Vietnamese message then.
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Không thể tải nhật ký kiểm toán');
+  return data;
+}
+
+export async function fetchAuditFilterOptionsApi(
+  token?: string | null,
+): Promise<AuditLogFilterOptionsDto> {
+  const res = await fetch(`${API_BASE}/audit/filter-options`, {
+    headers: getAuthHeaders(token),
+  });
+  // A proxy or crash page may answer without JSON; keep the Vietnamese message then.
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Không thể tải bộ lọc nhật ký');
+  return data;
+}
+
+// ==========================================
 // DASHBOARD API CLIENT (T5.5, FR-21)
 // ==========================================
 
@@ -1297,7 +1396,8 @@ export async function fetchDashboardWipApi(token?: string | null): Promise<Dashb
   const res = await fetch(`${API_BASE}/dashboard/wip`, {
     headers: getAuthHeaders(token),
   });
-  const data = await res.json();
+  // A proxy or crash page may answer without JSON; keep the Vietnamese message then.
+  const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.message || 'Không thể tải số liệu bảng điều khiển');
   return data;
 }
