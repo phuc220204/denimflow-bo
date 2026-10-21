@@ -96,7 +96,7 @@ pnpm --filter @denimflow/api smoke:roles         # ở terminal khác: đăng nh
 ```
 
 - `db:seed` idempotent (chạy lại an toàn). Cần `SEED_DEFAULT_PASSWORD` (ít nhất 12 ký tự) và sẽ đặt lại mật khẩu các tài khoản demo về giá trị đó.
-- Tài khoản demo: `admin@`, `pe@`, `planner@`, `warehouse@`, `operator@`, `qc@`, `manager@` + `denimflow.internal`. Mật khẩu là `SEED_DEFAULT_PASSWORD` của dev; xin owner gửi riêng.
+- Tài khoản demo: `admin@`, `pe@`, `planner@`, `warehouse@`, `operator@`, `qc@`, `manager@` + `denimflow.internal`. Copy [`account-dev.example.md`](../../account-dev.example.md) thành `account-dev.md` (đã git ignore) và điền mật khẩu owner gửi riêng; AI agent đọc mật khẩu từ file đó.
 - `smoke:roles` chỉ in mã HTTP, không ghi dữ liệu. Kết quả mong đợi: `ALL CHECKS PASSED`.
 
 ## 7. Quy trình hằng ngày

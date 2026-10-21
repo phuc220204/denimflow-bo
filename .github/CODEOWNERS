@@ -1,0 +1,5 @@
+# Code owners are requested automatically as reviewers (T0.8). The protect-main ruleset does not
+# require code-owner approval: any teammate's approval still counts.
+# Split per module (apps/api/src/modules/*, apps/web, packages/engine) once the team fills the
+# role table in Tutorial_denimflow-bo.md.
+* @phuc220204
