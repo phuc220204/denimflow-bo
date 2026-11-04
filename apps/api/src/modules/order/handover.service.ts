@@ -5,6 +5,7 @@ import type {
   PackingListItemDto,
 } from '@denimflow/shared';
 import { BusinessRuleViolation } from '../../common/errors/business-rule-violation.js';
+import { EvidenceService } from '../execution/evidence.service.js';
 import { HandoverRepository } from './handover.repository.js';
 
 type RecordRow = NonNullable<Awaited<ReturnType<HandoverRepository['find']>>>;
@@ -26,7 +27,10 @@ function toDto(row: RecordRow): HandoverRecordResponseDto {
 }
 @Injectable()
 export class HandoverService {
-  constructor(@Inject(HandoverRepository) private readonly repository: HandoverRepository) {}
+  constructor(
+    @Inject(HandoverRepository) private readonly repository: HandoverRepository,
+    @Inject(EvidenceService) private readonly evidence: EvidenceService,
+  ) {}
   async get(orderId: string) {
     const record = await this.repository.find(orderId);
     return record ? toDto(record) : null;
@@ -64,6 +68,12 @@ export class HandoverService {
           'Chỉ bàn giao khi FINAL_QC và tất cả công đoạn trước đã hoàn thành',
         );
       if (!order.qcProfile) throw new ConflictException('Đơn hàng chưa có QC Profile đã chốt');
+      await this.evidence.assertCompletionAllowed(
+        tx,
+        pack.id,
+        pack.stepDefinition.requiresEvidence,
+      );
+
       // FR-26 / BR-08: pack final good quantities, never planned quantities or initial cut totals.
       const lastProduction = instance.stepInstances
         .filter(

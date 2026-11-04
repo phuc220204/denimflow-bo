@@ -135,3 +135,30 @@ export const stepQuantityPanelSchema = z.object({
   entries: z.array(stepQuantityEntrySchema),
 });
 export type StepQuantityPanelDto = z.infer<typeof stepQuantityPanelSchema>;
+
+export const evidenceUploadSchema = z
+  .object({
+    mimeType: z.enum(['image/jpeg', 'image/png', 'image/webp', 'application/pdf']),
+    sizeBytes: z
+      .number()
+      .int()
+      .min(1)
+      .max(5 * 1024 * 1024),
+  })
+  .strict();
+export type EvidenceUploadDto = z.infer<typeof evidenceUploadSchema>;
+export const attachEvidenceSchema = z
+  .object({ filePath: z.string().min(1).max(500), note: z.string().trim().max(1000).optional() })
+  .strict();
+export type AttachEvidenceDto = z.infer<typeof attachEvidenceSchema>;
+export const evidenceSchema = z.object({
+  id: z.string().uuid(),
+  stepInstanceId: z.string().uuid(),
+  filePath: z.string(),
+  mimeType: z.string(),
+  sizeBytes: z.number().int(),
+  note: z.string().nullable(),
+  uploadedBy: z.string().uuid(),
+  uploadedAt: z.string(),
+});
+export type EvidenceDto = z.infer<typeof evidenceSchema>;

@@ -132,6 +132,7 @@ enum ChangeRequestStatus {
 
 // id equals auth.users.id in Supabase. station_id is linked to stations.
 model Profile {
+  uploadedEvidence Evidence[]
   handoverRecords HandoverRecord[] @relation("UserHandoverRecords")
   id                       String                    @id @db.Uuid
   fullName                 String                    @map("full_name")
@@ -549,6 +550,7 @@ model WorkflowInstance {
 }
 
 model StepInstance {
+  evidence Evidence[]
   id               String           @id @default(uuid()) @db.Uuid
   instanceId       String           @map("instance_id") @db.Uuid
   stepDefinitionId String           @map("step_definition_id") @db.Uuid
@@ -692,4 +694,19 @@ model HandoverRecord {
   @@index([qcProfileId])
   @@index([handedOverBy])
   @@map("handover_records")
+}
+
+model Evidence {
+ id String @id @default(uuid()) @db.Uuid
+ stepInstanceId String @map("step_instance_id") @db.Uuid
+ filePath String @unique @map("file_path")
+ mimeType String @map("mime_type")
+ sizeBytes Int @map("size_bytes")
+ note String?
+ uploadedBy String @map("uploaded_by") @db.Uuid
+ uploadedAt DateTime @default(now()) @map("uploaded_at") @db.Timestamptz
+ step StepInstance @relation(fields: [stepInstanceId], references: [id], onDelete: Restrict)
+ uploader Profile @relation(fields: [uploadedBy], references: [id], onDelete: Restrict)
+ @@index([stepInstanceId])
+ @@map("evidence")
 }

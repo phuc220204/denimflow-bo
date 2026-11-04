@@ -382,3 +382,20 @@ describe('evaluateStepReadiness', () => {
     expect(snapshot.steps[0]?.status).toBe('PENDING');
   });
 });
+
+it('BR-15 opens an evidence-required step so evidence can be collected before completion', () => {
+  const result = evaluateStepReadiness({
+    steps: [
+      { id: 'previous', code: 'PREVIOUS', seq: 1, status: 'DONE' },
+      {
+        id: 'finishing',
+        code: 'FINISHING',
+        seq: 2,
+        status: 'PENDING',
+        requiresEvidence: true,
+        evidenceCount: 0,
+      },
+    ],
+  });
+  expect(result.newlyReadyStepCodes).toContain('FINISHING');
+});

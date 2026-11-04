@@ -1,6 +1,5 @@
 // Test-only host; never imported by main.ts or used by Render's start command.
 import 'reflect-metadata';
-import { existsSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -86,17 +85,12 @@ const { setupApp } = await import('../dist/app.setup.js');
 let builder = Test.createTestingModule({ imports: [AppModule] })
   .overrideProvider(AuthService)
   .useValue(auth);
-if (
-  existsSync(
-    fileURLToPath(new URL('../dist/modules/execution/evidence-storage.js', import.meta.url)),
-  )
-) {
-  const { EvidenceStorage } = await import('../dist/modules/execution/evidence-storage.js');
-  builder = builder.overrideProvider(EvidenceStorage).useValue({
-    sign: async () => ({ signedUrl: 'http://127.0.0.1:3101/test-storage' }),
-    info: async () => ({ mimeType: 'application/pdf', sizeBytes: 100 }),
-  });
-}
+// Full E2E requires the evidence feature; missing prerequisites fail startup.
+const { EvidenceStorage } = await import('../dist/modules/execution/evidence-storage.js');
+builder = builder.overrideProvider(EvidenceStorage).useValue({
+  sign: async () => ({ signedUrl: 'http://127.0.0.1:3101/test-storage' }),
+  info: async () => ({ mimeType: 'application/pdf', sizeBytes: 100 }),
+});
 const moduleRef = await builder.compile();
 const app = moduleRef.createNestApplication();
 setupApp(app);

@@ -87,6 +87,7 @@ for (const skipCleanWash of [false, true]) {
             });
         }
       }
+      if (definition.code === 'FINISHING') expect(definition.requiresEvidence).toBe(true);
       if (definition.requiresEvidence) {
         const signed = await call('post', `/steps/${current.id}/evidence/upload-url`, worker, {
           mimeType: 'application/pdf',

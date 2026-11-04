@@ -12,6 +12,7 @@ import {
   type WorklistItemDto,
   type WorklistQueryDto,
 } from '@denimflow/shared';
+import { BusinessRuleViolation } from '../../common/errors/business-rule-violation.js';
 import type { Prisma } from '../../generated/prisma/client.js';
 import type { AuthResponse } from '../auth/auth.service.js';
 import {
@@ -148,6 +149,17 @@ export class ExecutionService {
 
       // FR-13: quantity steps must balance (BR-08); cutting also creates the bundles (FR-15).
       await this.quantityService.closeOnComplete(tx, stepId, user.id);
+
+      // BR-15: serialize attachment and completion on the same step row.
+      await this.executionRepository.lockSteps(tx, [stepId]);
+      if (
+        step.stepDefinition.requiresEvidence &&
+        (await this.executionRepository.findEvidence(stepId, tx)).length === 0
+      )
+        throw new BusinessRuleViolation(
+          'BR-15',
+          'BR-15: Phải đính kèm ít nhất một bằng chứng trước khi hoàn thành',
+        );
 
       const nextStatus: StepStatus = step.stepDefinition.requiresQc ? 'WAITING_QC' : 'DONE';
       const completedAt = nextStatus === 'DONE' ? new Date() : null;

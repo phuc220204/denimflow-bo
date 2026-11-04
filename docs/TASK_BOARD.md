@@ -84,7 +84,7 @@ Cập nhật 2026-10-18: Sprint 1–3 và T4.1 đã vào `main` qua #26 (gộp, 
 | [T4.1](../.agents/tasks/S4-execution-gates-quantities.md) | Engine: chuỗi Gate (Chain of Responsibility) | FR-11, BR-14, BR-06, BR-08, BR-15 | T2.1, T3.4 | MVP | tmdzvkl | ✅ Đã merge (#26, chưa review) | #26 |
 | [T4.2](../.agents/tasks/S4-execution-gates-quantities.md) | Worklist, Start và Complete bước | FR-12, BR-11, BR-16 | T3.5, T4.1 | MVP | phuc220204 (làm lại từ #27 của tmdzvkl) | ✅ Đã merge | #43 |
 | [T4.3](../.agents/tasks/S4-execution-gates-quantities.md) | Nhập số lượng, bảo toàn số lượng (có test đồng thời) | FR-13, BR-07, BR-08, BR-09 | T4.2 | MVP | phuc220204 (làm lại từ #29 của tmdzvkl) | ✅ Đã merge | #44 |
-| [T4.4](../.agents/tasks/S4-execution-gates-quantities.md) | Bằng chứng (ảnh/file) cho bước | FR-14, BR-15 | T4.2 | Tuỳ chọn ☁️ | tmdzvkl | 🔄 PR mở, chồng trên #27 | #30 |
+| [T4.4](../.agents/tasks/S4-execution-gates-quantities.md) | Bằng chứng (ảnh/file) cho bước | FR-14, BR-15 | T4.2 | Tuỳ chọn ☁️ | tmdzvkl | ✅ Đã merge (owner exception) | #30 |
 | [T4.5](../.agents/tasks/S4-execution-gates-quantities.md) | Tách biệt nhiệm vụ (người làm không tự duyệt) | BR-11 | T4.2 | MVP | phuc220204 (làm lại từ #31 của tmdzvkl) | ✅ Đã merge | #45 |
 
 ### Sprint 5 — QC, làm lại, dashboard, bàn giao
@@ -94,10 +94,10 @@ Cập nhật 2026-10-18: Sprint 1–3 và T4.1 đã vào `main` qua #26 (gộp, 
 | [T5.1](../.agents/tasks/S5-qc-rework-dashboard.md) | Kiểm tra QC theo QC Profile | FR-16, BR-11, BR-19 | T4.2, T1.5 | MVP | phuc220204 (làm lại từ #32 của tmdzvkl) | 🔄 PR mới từ `main`, chờ review | thay #32 |
 | [T5.2](../.agents/tasks/S5-qc-rework-dashboard.md) | Định tuyến làm lại (rework), giới hạn số vòng | FR-17, BR-10 | T5.1 | MVP | tmdzvkl | ✅ Đã merge (owner exception) | #33 |
 | [T5.3](../.agents/tasks/S5-qc-rework-dashboard.md) | Ghi nhận lỗi (defects) | FR-18 | T5.1 | Tuỳ chọn | tmdzvkl | ✅ Đã merge (owner exception) | #34 |
-| [T5.4](../.agents/tasks/S5-qc-rework-dashboard.md) | Đóng gói và bàn giao | FR-26 | T5.1 | MVP |  | 🔄 Chờ CI | #37 |
+| [T5.4](../.agents/tasks/S5-qc-rework-dashboard.md) | Đóng gói và bàn giao | FR-26 | T5.1 | MVP |  | ✅ Đã merge (owner exception) | #37 |
 | [T5.5](../.agents/tasks/S5-qc-rework-dashboard.md) | Dashboard WIP | FR-21 | T3.5 | MVP | phuc220204 (làm lại từ #38 của tmdzvkl) | 🔄 PR mới từ `main`, chờ review | thay #38 |
 | [T5.6](../.agents/tasks/S5-qc-rework-dashboard.md) | Xem AuditLog | FR-25 | T0.4A | Tuỳ chọn | phuc220204 (làm lại từ #39 của tmdzvkl) | 🔄 PR mới từ `main`, chờ review | thay #39 |
-| [T5.7](../.agents/tasks/S5-qc-rework-dashboard.md) | E2E kịch bản demo và hoàn thiện | — | tất cả, T0.7 | MVP ☁️ | | ⏳ | 🔄 Draft: chờ #33/#37/#30 và nghiệm thu deploy | #41 |
+| [T5.7](../.agents/tasks/S5-qc-rework-dashboard.md) | E2E kịch bản demo và hoàn thiện | — | tất cả, T0.7 | MVP ☁️ |  | ⏳ E2E CI đầy đủ; chờ nghiệm thu deploy | #41 |
 
 ## Sơ đồ phụ thuộc
 

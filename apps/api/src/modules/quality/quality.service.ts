@@ -93,6 +93,15 @@ export class QualityService {
         }
       }
       await this.assertBundlesOfOrder(tx, dto, step.instance.order.id);
+      if (
+        dto.result === 'PASS' &&
+        step.stepDefinition.requiresEvidence &&
+        (await this.executionRepository.findEvidence(step.id, tx)).length === 0
+      )
+        throw new BusinessRuleViolation(
+          'BR-15',
+          'BR-15: Phải đính kèm bằng chứng trước khi duyệt QC',
+        );
 
       const evaluation = this.evaluateFor(step, dto);
       // BR-19: PASS only within the thresholds of the order's QC Profile (R-24).

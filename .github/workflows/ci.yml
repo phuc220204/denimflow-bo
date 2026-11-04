@@ -79,8 +79,8 @@ jobs:
       - name: Check shared package exports (CJS and ESM)
         run: pnpm --filter @denimflow/shared check:exports
 
-      - name: Install Chromium for E2E smoke
+      - name: Install Chromium for E2E
         run: pnpm --filter @denimflow/web exec playwright install --with-deps chromium
 
-      - name: Browser E2E smoke
-        run: pnpm --filter @denimflow/web test:e2e:smoke
+      - name: Browser E2E demo
+        run: pnpm --filter @denimflow/web test:e2e

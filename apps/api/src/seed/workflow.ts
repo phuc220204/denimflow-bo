@@ -178,6 +178,7 @@ export async function seedWorkflow(prisma: PrismaClient): Promise<void> {
             seq: 12,
             responsibleRole: 'STATION_OPERATOR' as const,
             stationType: 'FINISHING' as const,
+            requiresEvidence: true,
             isStart: false,
             isEnd: false,
             isMandatory: true,

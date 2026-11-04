@@ -5,13 +5,13 @@ Last updated: 2026-11-05
 
 ## Phase
 
-Sprint 0 remains open: Supabase prod has been created and GitHub Environment `production` exists; secrets, migration/seed, Render/Cloudflare deployment and cold-start verification are pending.
+MVP feature code is integrated; production deployment and demo rehearsal are pending. Sprint 0 is NOT done: Supabase prod exists and GitHub Environment `production` exists, but secrets, production migration/seed, hosting, public login/health and cold-start evidence remain to verify.
 
-Merged: S1–S3/T4.1 (#26, module review pending), T4.2 (#43), T4.3 (#44), T4.5 (#45), QC PASS (#46), audit (#47), dashboard (#48), deploy prep (#40), auth HTTP tests (#49).
+Merged: S1–S3/T4.1 (#26, module review pending), T4.2 (#43), T4.3 (#44), T4.5 (#45), QC PASS (#46), audit (#47), dashboard (#48), deploy prep (#40), auth HTTP tests (#49), rework (#33), defects (#34), handover (#37), evidence (#30).
 
-**Current #41 (T5.7):** conflict repair retains current main. Real Chromium smoke tests run in CI against a loopback-only fixture API and disposable Postgres. Full demo scenarios for FULL_PROCESS (REWORK then PASS) and SKIP_CLEAN_WASH passed locally on a temporary integration snapshot of #33/#34/#37/#30. This is not deployed-system acceptance. Keep #41 draft until its dependencies merge and full E2E is rerun on its actual branch.
+**Current #41 (T5.7):** real Chromium browser smoke and full FULL_PROCESS / SKIP_CLEAN_WASH scenarios now run against this branch's actual integrated API, web and disposable Postgres. CI requires the full suite, with external Auth/Storage substituted only in the loopback test host. Deployed-system acceptance is still pending.
 
-**Next:** finish the owner-authorized merge sequence (#33/#34/#37 merged; #30 awaiting CI); update #41 from main, run full E2E and merge after approval. Then production configuration and deployment. Owner authorized one-off admin merges after latest CI success; protect-main remains active. D1–D4 remain open.
+**Next:** complete #41 checks/merge, configure production secrets, migrate/seed via GitHub Environment, deploy Render/Cloudflare and rehearse PRD §6. Owner authorized one-off admin squash merges for #33/#34/#37/#30/#41 after latest-head CI success (2026-11-05); protect-main stays active. Independent module review remains debt (D4), not a claimed approval. D1–D4 remain open.
 
 ## Decisions (settled)
 
@@ -34,7 +34,6 @@ Merged: S1–S3/T4.1 (#26, module review pending), T4.2 (#43), T4.3 (#44), T4.5 
 | O1 | Deadline and demo date | Plan 6 sprints (S0..S5), compress if needed |
 | O4 | Parallel steps (Q11) in MVP? | No. MVP engine = sequential + conditional + rework loops. Parallel is stretch |
 | O5 | Custom branch (FR-27) and Hold/Cancel (FR-10) in MVP? | No (High priority, after MVP). `isCustom` is stored but the CUSTOM_REVIEW step is not built yet |
-| O6 | Evidence upload (FR-14) in MVP? | Gate check implemented, upload UI in Sprint 4 only if time remains |
 | O7 | QC threshold numbers (Q19) | Configurable per Style; seed placeholder values, marked as demo data |
 
 ## Sprint board
@@ -45,8 +44,8 @@ Merged: S1–S3/T4.1 (#26, module review pending), T4.2 (#43), T4.3 (#44), T4.5 
 | S1 | Auth + RBAC + master data | merged via #26, unreviewed; hotfix #28 |
 | S2 | Workflow engine core + designer MVP | merged via #26, unreviewed; seed fix #35 |
 | S3 | Order create / Confirm / snapshot | merged via #26, unreviewed |
-| S4 | Worklist, quantities, Gates | T4.1 (#26), T4.2 (#43), T4.3 (#44), T4.5 (#45) merged; T4.4 optional, last |
-| S5 | QC, rework, QC Profile, dashboard, handover, polish | T5.1 (#46), T5.5 (#48), T5.6 (#47) merged; #33/#34/#37/#30 await review; #41 draft pending dependencies |
+| S4 | Worklist, quantities, Gates | T4.1 (#26), T4.2 (#43), T4.3 (#44), T4.5 (#45), T4.4 (#30) merged |
+| S5 | QC, rework, dashboard, handover, demo | T5.1–T5.6 merged; T5.7 automated E2E in #41; production rehearsal pending |
 
 ## Known risks
 
