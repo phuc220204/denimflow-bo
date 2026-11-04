@@ -9,7 +9,9 @@ import {
   Param,
   Post,
   Put,
+  UseGuards,
 } from '@nestjs/common';
+import { AuthGuard } from '../auth/auth.guard.js';
 import { AuthService } from '../auth/auth.service.js';
 import { QcProfileType } from '../../generated/prisma/enums.js';
 import {
@@ -60,6 +62,7 @@ export class CatalogController {
   // ==========================================
 
   @Get('stations')
+  @UseGuards(AuthGuard)
   async getStations() {
     return this.catalogService.getStations();
   }
@@ -93,6 +96,7 @@ export class CatalogController {
   // ==========================================
 
   @Get('styles')
+  @UseGuards(AuthGuard)
   async getStyles() {
     return this.catalogService.getStyles();
   }
@@ -126,6 +130,7 @@ export class CatalogController {
   // ==========================================
 
   @Get('fabric-types')
+  @UseGuards(AuthGuard)
   async getFabricTypes() {
     return this.catalogService.getFabricTypes();
   }
@@ -159,6 +164,7 @@ export class CatalogController {
   // ==========================================
 
   @Get('color-options')
+  @UseGuards(AuthGuard)
   async getColorOptions() {
     return this.catalogService.getColorOptions();
   }
@@ -192,6 +198,7 @@ export class CatalogController {
   // ==========================================
 
   @Get('wash-types')
+  @UseGuards(AuthGuard)
   async getWashTypes() {
     return this.catalogService.getWashTypes();
   }
@@ -225,6 +232,7 @@ export class CatalogController {
   // ==========================================
 
   @Get('matrix')
+  @UseGuards(AuthGuard)
   async getMatrix() {
     return this.catalogService.getMatrix();
   }
@@ -237,11 +245,13 @@ export class CatalogController {
   }
 
   @Get('fabrics/:id/allowed-colors')
+  @UseGuards(AuthGuard)
   async getAllowedColors(@Param('id') id: string) {
     return this.catalogService.getAllowedColors(id);
   }
 
   @Get('fabric-types/:id/allowed-colors')
+  @UseGuards(AuthGuard)
   async getAllowedColorsAlias(@Param('id') id: string) {
     return this.catalogService.getAllowedColors(id);
   }
@@ -251,6 +261,7 @@ export class CatalogController {
   // ==========================================
 
   @Get('styles/:id/qc-profiles')
+  @UseGuards(AuthGuard)
   async getQcProfiles(@Param('id') id: string) {
     return this.catalogService.getQcProfiles(id);
   }

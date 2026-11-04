@@ -16,9 +16,17 @@ const mockOperator = {
   token: 'operator-token',
 };
 
+const mockManager = {
+  ...mockOperator,
+  id: 'manager-id',
+  role: Role.MANAGER,
+  token: 'manager-token',
+};
+let currentUser: Omit<typeof mockOperator, 'role'> & { role: Role } = mockOperator;
+
 vi.mock('../../lib/auth-context', () => ({
   useAuth: () => ({
-    user: mockOperator,
+    user: currentUser,
     token: 'operator-token',
     isLoading: false,
     logout: vi.fn(),
@@ -103,6 +111,7 @@ function renderWithProviders() {
 describe('WorklistPage (T4.2, FR-12)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    currentUser = mockOperator;
   });
 
   it('renders worklist cards with step code, name, and order info', async () => {
@@ -150,7 +159,7 @@ describe('WorklistPage (T4.2, FR-12)', () => {
     const completeSpy = vi.spyOn(api, 'completeStepApi').mockResolvedValue({
       id: 'step-sew-1',
       status: 'WAITING_QC',
-      newlyReadyStepCodes: ['WASHING'],
+      newlyReadyStepCodes: [],
       newlySkippedStepCodes: [],
     });
 
@@ -164,8 +173,21 @@ describe('WorklistPage (T4.2, FR-12)', () => {
 
     await waitFor(() => {
       expect(completeSpy).toHaveBeenCalledWith('step-sew-1', 'operator-token');
-      expect(screen.getByText(/Đã xác nhận hoàn thành công đoạn!/)).toBeDefined();
+      expect(screen.getByText('Đã hoàn thành công đoạn, đang chờ QC kiểm tra.')).toBeDefined();
     });
+  });
+
+  it('shows no Start/Complete buttons to a role that does not own the steps', async () => {
+    currentUser = mockManager;
+    vi.spyOn(api, 'fetchWorklistApi').mockResolvedValue(mockWorklistItems);
+
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText('Trải và Cắt vải (CUTTING)')).toBeDefined();
+    });
+    expect(screen.queryByText('Bắt đầu làm việc')).toBeNull();
+    expect(screen.queryByText('Hoàn thành công đoạn')).toBeNull();
   });
 
   it('displays empty state card when worklist is empty', async () => {
@@ -175,117 +197,6 @@ describe('WorklistPage (T4.2, FR-12)', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Hiện không có công việc nào')).toBeDefined();
-    });
-  });
-
-  it('T4.3: opens quantity modal and submits quantity entry successfully (FR-13, BR-08)', async () => {
-    vi.spyOn(api, 'fetchWorklistApi').mockResolvedValue(mockWorklistItems);
-    const recordQtySpy = vi.spyOn(api, 'recordQuantityApi').mockResolvedValue({
-      id: 'entry-1',
-      stepInstanceId: 'step-sew-1',
-      bundleId: null,
-      size: '30',
-      qtyGood: 50,
-      qtyDefect: 0,
-      qtySent: null,
-      qtyReceived: null,
-      mismatchReason: null,
-      note: null,
-      enteredBy: mockOperator.id,
-      enteredAt: new Date().toISOString(),
-    });
-
-    renderWithProviders();
-
-    await waitFor(() => {
-      expect(screen.getByText('Nhập sản lượng (FR-13)')).toBeDefined();
-    });
-
-    fireEvent.click(screen.getByText('Nhập sản lượng (FR-13)'));
-
-    expect(screen.getByText('Ghi nhận sản lượng (SEWING)')).toBeDefined();
-
-    fireEvent.click(screen.getByText('Xác nhận ghi nhận'));
-
-    await waitFor(() => {
-      expect(recordQtySpy).toHaveBeenCalledWith(
-        'step-sew-1',
-        expect.objectContaining({ size: '30', qtyGood: 0 }),
-        'operator-token',
-      );
-    });
-  });
-
-  it('T4.3: triggers bundle generation for cutting step (FR-15)', async () => {
-    vi.spyOn(api, 'fetchWorklistApi').mockResolvedValue(mockWorklistItems);
-    const bundleSpy = vi.spyOn(api, 'generateBundlesApi').mockResolvedValue([
-      {
-        id: 'b-1',
-        orderId: 'order-1',
-        bundleCode: 'PO-20261018-001-B001',
-        size: '30',
-        qty: 50,
-        currentStepInstanceId: 'step-cut-1',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-    ]);
-
-    renderWithProviders();
-
-    await waitFor(() => {
-      expect(screen.getByText('Tạo kiện hàng cắt (FR-15)')).toBeDefined();
-    });
-
-    fireEvent.click(screen.getByText('Tạo kiện hàng cắt (FR-15)'));
-
-    await waitFor(() => {
-      expect(bundleSpy).toHaveBeenCalledWith('step-cut-1', 'operator-token');
-      expect(screen.getByText(/Đã tạo thành công 1 kiện hàng/)).toBeDefined();
-    });
-  });
-
-  it('T4.4: opens evidence modal and attaches evidence successfully (FR-14, BR-15)', async () => {
-    const itemsWithEvidence: api.WorklistItemDto[] = [
-      {
-        ...mockWorklistItems[1]!,
-        id: 'step-fin-1',
-        stepCode: 'FINISHING',
-        stepName: 'Hoàn thiện',
-        requiresEvidence: true,
-      },
-    ];
-
-    vi.spyOn(api, 'fetchWorklistApi').mockResolvedValue(itemsWithEvidence);
-    const attachSpy = vi.spyOn(api, 'attachEvidenceApi').mockResolvedValue({
-      id: 'ev-1',
-      stepInstanceId: 'step-fin-1',
-      filePath: 'orders/order-1/evidence/finishing-proof.jpg',
-      note: 'Finish check',
-      uploadedBy: mockOperator.id,
-      uploadedAt: new Date().toISOString(),
-    });
-
-    renderWithProviders();
-
-    await waitFor(() => {
-      expect(screen.getByText('Đính kèm minh chứng (BR-15)')).toBeDefined();
-    });
-
-    fireEvent.click(screen.getByText('Đính kèm minh chứng (BR-15)'));
-
-    expect(screen.getByText('Đính kèm minh chứng (FINISHING)')).toBeDefined();
-
-    fireEvent.click(screen.getByText('Lưu minh chứng'));
-
-    await waitFor(() => {
-      expect(attachSpy).toHaveBeenCalledWith(
-        'step-fin-1',
-        expect.objectContaining({
-          filePath: 'orders/order-1/evidence/finishing-proof.jpg',
-        }),
-        'operator-token',
-      );
     });
   });
 });

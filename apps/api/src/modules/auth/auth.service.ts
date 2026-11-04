@@ -1,10 +1,19 @@
-import { ForbiddenException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Inject,
+  Injectable,
+  ServiceUnavailableException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { APP_CONFIG, type AppConfig } from '../../config/env.schema.js';
 import { PrismaService } from '../../infrastructure/prisma/prisma.service.js';
 import { type LoginDto } from './auth.dto.js';
 
 type Uuid = `${string}-${string}-${string}-${string}-${string}`;
+
+const AUTH_NOT_CONFIGURED =
+  'Dịch vụ xác thực chưa được cấu hình (thiếu SUPABASE_URL hoặc SUPABASE_SERVICE_ROLE_KEY)';
 
 export interface AuthResponse {
   accessToken: string;
@@ -44,6 +53,8 @@ export class AuthService {
   }
 
   async login(dto: LoginDto): Promise<AuthResponse> {
+    // Every login goes through Supabase Auth. There is no local fallback: a password-less
+    // path would be a back door whenever the Supabase variables are missing.
     if (this.supabase) {
       const { data, error } = await this.supabase.auth.signInWithPassword({
         email: dto.email,
@@ -83,34 +94,7 @@ export class AuthService {
       };
     }
 
-    // In production, Supabase must be configured
-    if (this.config.NODE_ENV === 'production') {
-      throw new UnauthorizedException('Dịch vụ xác thực Supabase chưa được cấu hình');
-    }
-
-    // Local dev/test fallback when Supabase is not configured
-    const profile = await this.prisma.profile.findUnique({
-      where: { email: dto.email },
-    });
-
-    if (!profile) {
-      throw new UnauthorizedException('Email hoặc mật khẩu không chính xác');
-    }
-
-    if (!profile.isActive) {
-      throw new ForbiddenException('Tài khoản đã bị tạm khóa bởi Quản trị viên');
-    }
-
-    return {
-      accessToken: `local-token-${profile.id}`,
-      user: {
-        id: profile.id,
-        email: profile.email,
-        fullName: profile.fullName,
-        role: profile.role,
-        isActive: profile.isActive,
-      },
-    };
+    throw new ServiceUnavailableException(AUTH_NOT_CONFIGURED);
   }
 
   async getMe(authHeader?: string): Promise<AuthResponse['user']> {
@@ -120,55 +104,34 @@ export class AuthService {
 
     const token = authHeader.replace('Bearer ', '').trim();
 
-    // 1. Supabase verified token flow
-    if (this.supabase) {
-      const { data, error } = await this.supabase.auth.getUser(token);
-      if (!error && data.user) {
-        const uuid = data.user.id as unknown as Uuid;
-        const profile = await this.prisma.profile.findUnique({
-          where: { id: uuid },
-        });
-
-        if (!profile) {
-          throw new UnauthorizedException('Tài khoản không tồn tại trong hệ thống');
-        }
-        if (!profile.isActive) {
-          throw new ForbiddenException('Tài khoản đã bị tạm khóa bởi Quản trị viên');
-        }
-
-        return {
-          id: profile.id,
-          email: profile.email,
-          fullName: profile.fullName,
-          role: profile.role,
-          isActive: profile.isActive,
-        };
-      }
+    if (!this.supabase) {
+      throw new ServiceUnavailableException(AUTH_NOT_CONFIGURED);
     }
 
-    // 2. Local mock token flow (ONLY in development/test, NEVER in production)
-    if (this.config.NODE_ENV !== 'production' && token.startsWith('local-token-')) {
-      const id = token.replace('local-token-', '') as unknown as Uuid;
-      const profile = await this.prisma.profile.findUnique({
-        where: { id },
-      });
-
-      if (!profile) {
-        throw new UnauthorizedException('Phiên đăng nhập không hợp lệ');
-      }
-      if (!profile.isActive) {
-        throw new ForbiddenException('Tài khoản đã bị tạm khóa bởi Quản trị viên');
-      }
-
-      return {
-        id: profile.id,
-        email: profile.email,
-        fullName: profile.fullName,
-        role: profile.role,
-        isActive: profile.isActive,
-      };
+    // The token is verified by Supabase; the role always comes from `profiles` (AGENTS.md rule 7).
+    const { data, error } = await this.supabase.auth.getUser(token);
+    if (error || !data.user) {
+      throw new UnauthorizedException('Phiên đăng nhập không hợp lệ hoặc đã hết hạn');
     }
 
-    throw new UnauthorizedException('Phiên đăng nhập không hợp lệ hoặc đã hết hạn');
+    const uuid = data.user.id as unknown as Uuid;
+    const profile = await this.prisma.profile.findUnique({
+      where: { id: uuid },
+    });
+
+    if (!profile) {
+      throw new UnauthorizedException('Tài khoản không tồn tại trong hệ thống');
+    }
+    if (!profile.isActive) {
+      throw new ForbiddenException('Tài khoản đã bị tạm khóa bởi Quản trị viên');
+    }
+
+    return {
+      id: profile.id,
+      email: profile.email,
+      fullName: profile.fullName,
+      role: profile.role,
+      isActive: profile.isActive,
+    };
   }
 }

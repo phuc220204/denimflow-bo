@@ -24,28 +24,43 @@ import {
   type AttachAcknowledgementDto,
   type ConfirmOrderResponseDto,
   type CuttingGateResultDto,
+  type DashboardWipSummaryDto,
   type RequestStatus,
   type CompleteStepResponseDto,
+  type RecordQuantityEntryDto,
   type StartStepResponseDto,
+  type StepQuantityEntryDto,
+  type StepQuantityPanelDto,
+  type QcEvaluationDto,
+  type QcEvaluationInputDto,
+  type QcInspectionDto,
+  type RecordQcInspectionDto,
+  type RecordQcInspectionResponseDto,
   type StepStatus,
   type WorklistItemDto,
-  type BundleDto,
-  type RecordQuantityEntryDto,
-  type StepQuantityEntryDto,
-  type AttachEvidenceDto,
-  type EvidenceDto,
+  type AuditLogFilterOptionsDto,
+  type AuditLogItemDto,
+  type AuditLogListResponseDto,
+  type AuditLogQueryDto,
 } from '@denimflow/shared';
 
 export type {
+  AuditLogFilterOptionsDto,
+  AuditLogItemDto,
+  AuditLogListResponseDto,
+  AuditLogQueryDto,
   CompleteStepResponseDto,
+  RecordQuantityEntryDto,
   StartStepResponseDto,
+  StepQuantityEntryDto,
+  StepQuantityPanelDto,
+  QcEvaluationDto,
+  QcEvaluationInputDto,
+  QcInspectionDto,
+  RecordQcInspectionDto,
+  RecordQcInspectionResponseDto,
   StepStatus,
   WorklistItemDto,
-  BundleDto,
-  RecordQuantityEntryDto,
-  StepQuantityEntryDto,
-  AttachEvidenceDto,
-  EvidenceDto,
 };
 
 export interface UserProfile {
@@ -135,6 +150,8 @@ export interface StyleItem {
   name: string;
   fitType?: string | null;
   hasEmbroidery: boolean;
+  // BR-07: the cut may exceed the plan by this percentage (R-19)
+  cutTolerancePercent?: number;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -1243,81 +1260,183 @@ export async function completeStepApi(
   return data;
 }
 
+// ==========================================
+// QUANTITY ENTRY API CLIENT (T4.3, FR-13)
+// ==========================================
+
+export async function fetchQuantityPanelApi(
+  stepId: string,
+  token?: string | null,
+): Promise<StepQuantityPanelDto> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/quantities`, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tải số lượng của công đoạn');
+  return data;
+}
+
 export async function recordQuantityApi(
   stepId: string,
-  dto: RecordQuantityEntryDto,
+  body: RecordQuantityEntryDto,
   token?: string | null,
 ): Promise<StepQuantityEntryDto> {
   const res = await fetch(`${API_BASE}/steps/${stepId}/quantities`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(dto),
+    body: JSON.stringify(body),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message || 'Không thể ghi nhận sản lượng');
+  if (!res.ok) throw new Error(data.message || 'Không thể ghi nhận số lượng');
   return data;
 }
 
-export async function fetchStepQuantitiesApi(
+export async function reverseQuantityApi(
   stepId: string,
+  entryId: string,
+  reason: string,
   token?: string | null,
-): Promise<StepQuantityEntryDto[]> {
-  const res = await fetch(`${API_BASE}/steps/${stepId}/quantities`, {
-    headers: getAuthHeaders(token),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || 'Không thể tải lịch sử sản lượng');
-  return data;
-}
-
-export async function generateBundlesApi(
-  stepId: string,
-  token?: string | null,
-): Promise<BundleDto[]> {
-  const res = await fetch(`${API_BASE}/steps/${stepId}/bundles/generate`, {
+): Promise<StepQuantityEntryDto> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/quantities/${entryId}/reverse`, {
     method: 'POST',
     headers: getAuthHeaders(token),
+    body: JSON.stringify({ reason }),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message || 'Không thể tạo kiện hàng');
+  if (!res.ok) throw new Error(data.message || 'Không thể huỷ dòng nhập');
   return data;
 }
 
-export async function fetchStepBundlesApi(
-  stepId: string,
-  token?: string | null,
-): Promise<BundleDto[]> {
-  const res = await fetch(`${API_BASE}/steps/${stepId}/bundles`, {
-    headers: getAuthHeaders(token),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || 'Không thể tải danh sách kiện');
-  return data;
-}
+// ==========================================
+// QC INSPECTION API CLIENT (T5.1, FR-16)
+// ==========================================
 
-export async function attachEvidenceApi(
+export async function evaluateQcApi(
   stepId: string,
-  dto: AttachEvidenceDto,
+  body: QcEvaluationInputDto,
   token?: string | null,
-): Promise<EvidenceDto> {
-  const res = await fetch(`${API_BASE}/steps/${stepId}/evidence`, {
+): Promise<QcEvaluationDto> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/qc/evaluate`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(dto),
+    body: JSON.stringify(body),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message || 'Không thể đính kèm minh chứng');
+  if (!res.ok) throw new Error(data.message || 'Không thể đánh giá kết quả QC');
   return data;
 }
 
-export async function fetchStepEvidenceApi(
+export async function recordQcInspectionApi(
+  stepId: string,
+  body: RecordQcInspectionDto,
+  token?: string | null,
+): Promise<RecordQcInspectionResponseDto> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/qc/inspections`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể ghi nhận phiếu kiểm tra QC');
+  return data;
+}
+
+export async function fetchQcInspectionsApi(
   stepId: string,
   token?: string | null,
-): Promise<EvidenceDto[]> {
-  const res = await fetch(`${API_BASE}/steps/${stepId}/evidence`, {
+): Promise<QcInspectionDto[]> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/qc/inspections`, {
     headers: getAuthHeaders(token),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message || 'Không thể tải danh sách minh chứng');
+  if (!res.ok) throw new Error(data.message || 'Không thể tải lịch sử kiểm tra QC');
   return data;
+}
+
+// ==========================================
+// AUDIT LOG VIEWER API CLIENT (T5.6, FR-25)
+// ==========================================
+
+export async function fetchAuditLogsApi(
+  query: Partial<AuditLogQueryDto>,
+  token?: string | null,
+): Promise<AuditLogListResponseDto> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined && value !== '') params.append(key, String(value));
+  }
+
+  const qs = params.toString() ? `?${params.toString()}` : '';
+  const res = await fetch(`${API_BASE}/audit${qs}`, {
+    headers: getAuthHeaders(token),
+  });
+  // A proxy or crash page may answer without JSON; keep the Vietnamese message then.
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Không thể tải nhật ký kiểm toán');
+  return data;
+}
+
+export async function fetchAuditFilterOptionsApi(
+  token?: string | null,
+): Promise<AuditLogFilterOptionsDto> {
+  const res = await fetch(`${API_BASE}/audit/filter-options`, {
+    headers: getAuthHeaders(token),
+  });
+  // A proxy or crash page may answer without JSON; keep the Vietnamese message then.
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Không thể tải bộ lọc nhật ký');
+  return data;
+}
+
+// ==========================================
+// DASHBOARD API CLIENT (T5.5, FR-21)
+// ==========================================
+
+export async function fetchDashboardWipApi(token?: string | null): Promise<DashboardWipSummaryDto> {
+  const res = await fetch(`${API_BASE}/dashboard/wip`, {
+    headers: getAuthHeaders(token),
+  });
+  // A proxy or crash page may answer without JSON; keep the Vietnamese message then.
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Không thể tải số liệu bảng điều khiển');
+  return data;
+}
+
+export async function fetchEvidenceApi(
+  stepId: string,
+  token?: string | null,
+): Promise<import('@denimflow/shared').EvidenceDto[]> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/evidence`, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Không thể tải bằng chứng');
+  return data;
+}
+export async function uploadEvidenceApi(
+  stepId: string,
+  file: Blob,
+  token?: string | null,
+): Promise<import('@denimflow/shared').EvidenceDto> {
+  const signed = await fetch(`${API_BASE}/steps/${stepId}/evidence/upload-url`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify({ mimeType: file.type, sizeBytes: file.size }),
+  });
+  const data = await signed.json().catch(() => ({}));
+  if (!signed.ok) throw new Error(data.message || 'Không thể tạo đường dẫn tải lên');
+  const upload = await fetch(data.signedUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': file.type },
+    body: file,
+  });
+  if (!upload.ok) throw new Error('Không thể tải file lên Storage');
+  const attached = await fetch(`${API_BASE}/steps/${stepId}/evidence`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify({ filePath: data.filePath }),
+  });
+  const result = await attached.json().catch(() => ({}));
+  if (!attached.ok) throw new Error(result.message || 'Không thể đính kèm file');
+  return result;
 }
