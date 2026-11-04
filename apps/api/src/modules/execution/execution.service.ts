@@ -70,6 +70,7 @@ export class ExecutionService {
 
   async startStep(stepId: string, user: CurrentUser): Promise<StartStepResponseDto> {
     return this.executionRepository.runInTransaction(async (tx) => {
+      await this.executionRepository.lockSteps(tx, [stepId]);
       const step = await this.loadStep(tx, stepId);
       await assertMayWork(this.executionRepository, tx, step.stepDefinition, user);
 
@@ -141,6 +142,10 @@ export class ExecutionService {
         );
       }
 
+      // FR-26: handover atomically completes packing, instance and order.
+      if (step.stepDefinition.code === 'PACK_HANDOVER')
+        throw new ConflictException('Hãy hoàn tất bước đóng gói bằng biên bản bàn giao');
+
       // FR-13: quantity steps must balance (BR-08); cutting also creates the bundles (FR-15).
       await this.quantityService.closeOnComplete(tx, stepId, user.id);
 
@@ -185,6 +190,8 @@ export class ExecutionService {
     if (!step) {
       throw new NotFoundException('Không tìm thấy bước sản xuất');
     }
+    if (step.instance.requiresPlannerReview)
+      throw new ConflictException('Đơn hàng đang chờ Điều độ sản xuất xử lý ngoại lệ QC');
     return step;
   }
 
@@ -299,6 +306,8 @@ function toWorklistItem(step: WorklistStep): WorklistItemDto {
     completedAt: step.completedAt?.toISOString() ?? null,
     performedBy: step.performedBy,
     reworkCount: step.reworkCount,
+    requiresPlannerReview: step.instance.requiresPlannerReview,
+    plannerReviewReason: step.instance.plannerReviewReason,
     requiresEvidence: step.stepDefinition.requiresEvidence,
     requiresQc: step.stepDefinition.requiresQc,
     isMandatory: step.stepDefinition.isMandatory,

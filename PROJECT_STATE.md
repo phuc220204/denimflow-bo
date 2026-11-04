@@ -11,7 +11,7 @@ Merged: S1–S3/T4.1 (#26, module review pending), T4.2 (#43), T4.3 (#44), T4.5 
 
 **Current #41 (T5.7):** conflict repair retains current main. Real Chromium smoke tests run in CI against a loopback-only fixture API and disposable Postgres. Full demo scenarios for FULL_PROCESS (REWORK then PASS) and SKIP_CLEAN_WASH passed locally on a temporary integration snapshot of #33/#34/#37/#30. This is not deployed-system acceptance. Keep #41 draft until its dependencies merge and full E2E is rerun on its actual branch.
 
-**Next:** independent reviews and merges for #33/#34/#37/#30; update #41 from main, run full E2E and merge after approval. Then production configuration and deployment. No admin bypass. D1–D4 remain open.
+**Next:** finish the owner-authorized merge sequence (#33/#34/#37 merged; #30 awaiting CI); update #41 from main, run full E2E and merge after approval. Then production configuration and deployment. Owner authorized one-off admin merges after latest CI success; protect-main remains active. D1–D4 remain open.
 
 ## Decisions (settled)
 

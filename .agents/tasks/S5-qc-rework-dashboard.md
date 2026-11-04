@@ -18,10 +18,14 @@ Do: REWORK/REJECT requires a target step and a reason; transition kind REWORK; `
 Acceptance:
 - [ ] Loop limit enforced; reason mandatory; audit rows written.
 
+Implementation updated on existing PR #33: Rework routing, loop limits and Planner exception flag; QC path invalidation preserves append-only quantity entries. Pending CI/review; production acceptance is not yet claimed.
+
 ### T5.3 Defects   [agent]
 Branch: `feat/quality-defects`
 FR/BR: FR-18 (High, optional)
 Do: defect records per inspection and bundle; simple list.
+
+Implementation updated on existing PR #34: Read-only order defects joined to inspection, bundle and inspector; existing QC schema is reused. Pending CI/review; production acceptance is not yet claimed.
 
 ### T5.4 Packing and handover   [agent]
 Branch: `feat/order-handover`
@@ -30,6 +34,8 @@ Do: after FINAL_QC pass: packing list by size, handover record that states the Q
 Acceptance:
 - [ ] Handover cannot be created while FINAL_QC is not DONE.
 - [ ] Handover record shows FULL_PROCESS or SKIP_CLEAN_WASH.
+
+Implementation updated on existing PR #37: Planner-only handover after all predecessors and FINAL_QC are DONE/SKIPPED; packing uses final net good entries by size, with atomic completion and audit. Pending CI/review; production acceptance is not yet claimed.
 
 ### T5.5 Dashboard   [agent]
 Branch: `feat/dashboard-wip`

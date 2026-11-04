@@ -39,6 +39,16 @@ describe('QcPanel (T5.1, FR-16)', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.spyOn(api, 'fetchQcInspectionsApi').mockResolvedValue([]);
+    vi.spyOn(api, 'fetchReworkTargetsApi').mockResolvedValue([
+      {
+        id: 'target-1',
+        code: 'FINISHING',
+        name: 'Hoàn thiện',
+        seq: 12,
+        reworkCount: 0,
+        maxRework: 2,
+      },
+    ]);
   });
 
   it('previews the proposal and only lets the inspector confirm a PASS (BR-19)', async () => {
@@ -94,6 +104,36 @@ describe('QcPanel (T5.1, FR-16)', () => {
       ),
     );
     expect(onPassed).toHaveBeenCalledWith(expect.stringContaining('CLEAN_WASH'));
+  });
+
+  it('BR-10 sends the selected target and reason for REWORK', async () => {
+    vi.spyOn(api, 'evaluateQcApi').mockResolvedValue(evaluation('REWORK'));
+    const recordSpy = vi.spyOn(api, 'recordQcInspectionApi').mockResolvedValue({
+      inspection: { result: 'REWORK' } as never,
+      stepStatus: 'PENDING',
+      newlyReadyStepCodes: [],
+      newlySkippedStepCodes: [],
+    });
+    renderPanel();
+    fireEvent.change(screen.getByLabelText('Cỡ mẫu'), { target: { value: '20' } });
+    fireEvent.click(screen.getByText('Xem đề xuất'));
+    await screen.findByText(/vượt ngưỡng FULL_PROCESS/);
+    fireEvent.change(screen.getByLabelText('Bước quay lại'), { target: { value: 'target-1' } });
+    fireEvent.change(screen.getByLabelText('Lý do làm lại / loại'), {
+      target: { value: 'Sửa độ co' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Làm lại' }));
+    await waitFor(() =>
+      expect(recordSpy).toHaveBeenCalledWith(
+        'step-sew',
+        expect.objectContaining({
+          result: 'REWORK',
+          reworkTargetStepId: 'target-1',
+          reason: 'Sửa độ co',
+        }),
+        'qc-token',
+      ),
+    );
   });
 
   it('drops the preview when an input changes', async () => {

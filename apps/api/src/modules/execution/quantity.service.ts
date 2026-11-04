@@ -363,6 +363,8 @@ export class QuantityService {
     if (!tracksQuantities(step.stepDefinition)) {
       throw new BadRequestException(`Bước ${step.stepDefinition.code} không nhập số lượng`);
     }
+    if (step.instance.requiresPlannerReview)
+      throw new ConflictException('Đơn hàng đang chờ Điều độ sản xuất xử lý ngoại lệ QC');
     return step;
   }
 

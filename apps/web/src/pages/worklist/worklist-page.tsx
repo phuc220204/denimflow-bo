@@ -1,3 +1,4 @@
+import { i18n } from '../../lib/i18n/dictionary';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertCircle,
@@ -118,6 +119,7 @@ export const WorklistPage: React.FC = () => {
     item.responsibleRole === 'STATION_OPERATOR' && Boolean(item.stationType);
   // FR-16 / R-25: the inspector checks steps waiting for QC and QC-type steps they started.
   const canInspect = (item: WorklistItemDto) =>
+    !item.requiresPlannerReview &&
     user?.role === 'QC_INSPECTOR' &&
     (item.status === 'WAITING_QC' || (item.stepType === 'QC' && item.status === 'IN_PROGRESS'));
 
@@ -296,31 +298,43 @@ export const WorklistPage: React.FC = () => {
                     </div>
                   )}
 
+                  {item.stepCode === 'PACK_HANDOVER' && (
+                    <p className="text-text-muted">{i18n.handover.completeInOrders}</p>
+                  )}
                   {/* Actions */}
                   <div className="pt-2">
-                    {canWork(item) && (item.status === 'READY' || item.status === 'REWORK') && (
-                      <Button
-                        className="w-full flex items-center justify-center gap-2"
-                        size="sm"
-                        disabled={isPendingAction}
-                        onClick={() => handleStart(item.id)}
-                      >
-                        <Play className="h-4 w-4" />
-                        Bắt đầu làm việc
-                      </Button>
+                    {item.requiresPlannerReview && (
+                      <p role="alert" className="text-danger-text">
+                        {i18n.rework.review}: {item.plannerReviewReason}
+                      </p>
                     )}
+                    {canWork(item) &&
+                      !item.requiresPlannerReview &&
+                      (item.status === 'READY' || item.status === 'REWORK') && (
+                        <Button
+                          className="w-full flex items-center justify-center gap-2"
+                          size="sm"
+                          disabled={isPendingAction}
+                          onClick={() => handleStart(item.id)}
+                        >
+                          <Play className="h-4 w-4" />
+                          Bắt đầu làm việc
+                        </Button>
+                      )}
 
-                    {tracksQuantities(item) && item.status === 'IN_PROGRESS' && (
-                      <Button
-                        variant="outline"
-                        className="w-full mb-2 flex items-center justify-center gap-2"
-                        size="sm"
-                        onClick={() => setQuantityStepId(showQuantities ? null : item.id)}
-                      >
-                        <ClipboardList className="h-4 w-4" />
-                        {showQuantities ? 'Đóng nhập số lượng' : 'Nhập số lượng'}
-                      </Button>
-                    )}
+                    {tracksQuantities(item) &&
+                      !item.requiresPlannerReview &&
+                      item.status === 'IN_PROGRESS' && (
+                        <Button
+                          variant="outline"
+                          className="w-full mb-2 flex items-center justify-center gap-2"
+                          size="sm"
+                          onClick={() => setQuantityStepId(showQuantities ? null : item.id)}
+                        >
+                          <ClipboardList className="h-4 w-4" />
+                          {showQuantities ? 'Đóng nhập số lượng' : 'Nhập số lượng'}
+                        </Button>
+                      )}
 
                     {canInspect(item) && (
                       <Button
@@ -334,18 +348,22 @@ export const WorklistPage: React.FC = () => {
                       </Button>
                     )}
 
-                    {canWork(item) && item.status === 'IN_PROGRESS' && item.stepType !== 'QC' && (
-                      <Button
-                        variant="primary"
-                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-2"
-                        size="sm"
-                        disabled={isPendingAction}
-                        onClick={() => handleComplete(item.id)}
-                      >
-                        <CheckCircle2 className="h-4 w-4" />
-                        Hoàn thành công đoạn
-                      </Button>
-                    )}
+                    {canWork(item) &&
+                      !item.requiresPlannerReview &&
+                      item.status === 'IN_PROGRESS' &&
+                      item.stepType !== 'QC' &&
+                      item.stepCode !== 'PACK_HANDOVER' && (
+                        <Button
+                          variant="primary"
+                          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-2"
+                          size="sm"
+                          disabled={isPendingAction}
+                          onClick={() => handleComplete(item.id)}
+                        >
+                          <CheckCircle2 className="h-4 w-4" />
+                          Hoàn thành công đoạn
+                        </Button>
+                      )}
 
                     {item.status === 'WAITING_QC' && !canInspect(item) && (
                       <div className="text-center py-1 text-xs text-purple-700 font-medium">

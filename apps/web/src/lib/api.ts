@@ -1401,3 +1401,53 @@ export async function fetchDashboardWipApi(token?: string | null): Promise<Dashb
   if (!res.ok) throw new Error(data.message || 'Không thể tải số liệu bảng điều khiển');
   return data;
 }
+
+export async function fetchOrderDefectsApi(
+  orderId: string,
+  token?: string | null,
+): Promise<import('@denimflow/shared').OrderDefectItemDto[]> {
+  const res = await fetch(`${API_BASE}/quality/orders/${orderId}/defects`, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Không thể tải danh sách lỗi QC');
+  return data;
+}
+
+export async function fetchReworkTargetsApi(
+  stepId: string,
+  token?: string | null,
+): Promise<import('@denimflow/shared').ReworkTargetDto[]> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/qc/rework-targets`, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Không thể tải tuyến làm lại');
+  return data;
+}
+
+export async function fetchHandoverApi(
+  orderId: string,
+  token?: string | null,
+): Promise<import('@denimflow/shared').HandoverRecordResponseDto | null> {
+  const res = await fetch(`${API_BASE}/orders/${orderId}/handover`, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Không thể tải biên bản bàn giao');
+  return data;
+}
+export async function createHandoverApi(
+  orderId: string,
+  body: import('@denimflow/shared').CreateHandoverDto,
+  token?: string | null,
+): Promise<import('@denimflow/shared').HandoverRecordResponseDto> {
+  const res = await fetch(`${API_BASE}/orders/${orderId}/handover`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Không thể tạo biên bản bàn giao');
+  return data;
+}

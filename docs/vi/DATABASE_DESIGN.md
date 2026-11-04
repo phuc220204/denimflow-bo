@@ -248,3 +248,12 @@ Chạy bằng `pnpm --filter @denimflow/api db:seed` (build rồi chạy `dist/s
 | `conditionExpr` dạng biểu thức | JSON AST trong `jsonb` | R-09 |
 | các trường `fileUrl` | `file_path` trong bucket private | R-15 |
 | (không có) | `handover_records`, `bom_norms` | R-16 |
+
+
+### T5.2 integration (#33, 2026-11-05)
+
+`workflow_instances.requires_planner_review` và `planner_review_reason` lưu ngoại lệ QC, không đổi trạng thái đơn. REJECT hoặc hết số vòng sẽ flag instance; vẫn hiển thị và không tự chạy tiếp. Giữ quantity hiện tại; làm lại không nhận lại cùng sản phẩm. Sửa số dùng reversal entries hiện có. RLS giữ nguyên.
+
+### T5.4 integration (#37, 2026-11-05)
+
+`handover_records` duy nhất theo đơn, lưu QC Profile đã chốt, packing list và người bàn giao; bật RLS không policy và FK RESTRICT. Khoá các step theo ID tăng dần rồi khoá đơn, sau đó đọc lại quantity cuối; cùng hướng khoá với bắt đầu cắt.
