@@ -39,6 +39,12 @@ export class QualityController {
     return this.qualityService.recordInspection(id, recordQcInspectionSchema.parse(rawBody), user);
   }
 
+  @Get('rework-targets')
+  @Roles(Role.QC_INSPECTOR)
+  listReworkTargets(@Param('id') id: string) {
+    return this.qualityService.listReworkTargets(id);
+  }
+
   @Get('inspections')
   listInspections(@Param('id') id: string) {
     return this.qualityService.listInspections(id);

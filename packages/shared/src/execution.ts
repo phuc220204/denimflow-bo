@@ -28,6 +28,8 @@ export const worklistItemSchema = z.object({
   completedAt: z.string().nullable().optional(),
   performedBy: z.string().nullable().optional(),
   reworkCount: z.number(),
+  requiresPlannerReview: z.boolean().optional(),
+  plannerReviewReason: z.string().nullable().optional(),
   requiresEvidence: z.boolean(),
   requiresQc: z.boolean(),
   isMandatory: z.boolean(),

@@ -1402,6 +1402,30 @@ export async function fetchDashboardWipApi(token?: string | null): Promise<Dashb
   return data;
 }
 
+export async function fetchOrderDefectsApi(
+  orderId: string,
+  token?: string | null,
+): Promise<import('@denimflow/shared').OrderDefectItemDto[]> {
+  const res = await fetch(`${API_BASE}/quality/orders/${orderId}/defects`, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Không thể tải danh sách lỗi QC');
+  return data;
+}
+
+export async function fetchReworkTargetsApi(
+  stepId: string,
+  token?: string | null,
+): Promise<import('@denimflow/shared').ReworkTargetDto[]> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/qc/rework-targets`, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Không thể tải tuyến làm lại');
+  return data;
+}
+
 export async function fetchEvidenceApi(
   stepId: string,
   token?: string | null,

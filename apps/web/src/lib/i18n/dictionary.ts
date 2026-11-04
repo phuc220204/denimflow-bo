@@ -133,6 +133,23 @@ export const i18n = {
     connected: 'Đã kết nối',
     disconnected: 'Mất kết nối',
   },
+  orderDefects: {
+    title: 'Lỗi QC của đơn hàng',
+    close: 'Đóng',
+    empty: 'Chưa có lỗi QC',
+    step: 'Công đoạn',
+    bundle: 'Bó',
+    type: 'Loại lỗi',
+    qty: 'Số lượng',
+    inspector: 'Người kiểm tra',
+    action: 'Lỗi QC',
+  },
+  rework: {
+    review: 'Cần Điều độ sản xuất xử lý QC',
+    target: 'Bước quay lại',
+    choose: 'Chọn công đoạn',
+    reason: 'Lý do làm lại / loại',
+  },
   evidence: {
     upload: 'Đính kèm bằng chứng',
     limit: 'Ảnh JPG/PNG/WebP hoặc PDF, tối đa 5 MB sau khi nén.',

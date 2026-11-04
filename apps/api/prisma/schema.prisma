@@ -530,6 +530,8 @@ model CustomerAcknowledgement {
 }
 
 model WorkflowInstance {
+  requiresPlannerReview Boolean @default(false) @map("requires_planner_review")
+  plannerReviewReason String? @map("planner_review_reason")
   id            String          @id @default(uuid()) @db.Uuid
   orderId       String          @unique @map("order_id") @db.Uuid
   versionId     String          @map("version_id") @db.Uuid
