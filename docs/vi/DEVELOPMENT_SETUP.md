@@ -102,43 +102,59 @@ Lưu ý free tier: project bị pause sau khoảng một tuần không hoạt đ
 
 ## 6. Deploy API lên Render
 
-1. Render → New → **Web Service** → kết nối repo GitHub. Instance type **Free**. Cùng region với Supabase nếu có thể.
-2. Root directory: thư mục gốc của repo (lockfile của monorepo nằm ở gốc).
-3. Build command (điều chỉnh theo script cuối cùng):
+1. Render → New → **Web Service** → kết nối repo GitHub. Instance type **Free**, region **Singapore** (cùng Supabase).
+2. **Root Directory:** để trống (root của repo; lockfile và workspace pnpm nằm ở đó).
+3. **Build Command** (gọi pnpm đúng version ghim trong `package.json`; docs của Render không đảm bảo có pnpm/corepack nên dùng `npx`):
    ```
-   corepack enable && pnpm install --frozen-lockfile && pnpm --filter @denimflow/shared build && pnpm --filter @denimflow/engine build && pnpm --filter @denimflow/api db:generate && pnpm --filter @denimflow/api build
+   npx --yes pnpm@12.14.0 install --frozen-lockfile && npx --yes pnpm@12.14.0 --filter "@denimflow/api..." build
    ```
-4. Start command: `node apps/api/dist/main.js`
-5. Health check path: `/health`.
-6. Environment: toàn bộ biến của `apps/api/.env` **với giá trị production**, thêm `NODE_VERSION` khớp `.nvmrc`. Đặt `CORS_ORIGINS` là URL web đã deploy.
-7. Auto-deploy từ `main`.
+   Bước install chạy `prisma generate` (`postinstall` của API); `--filter "@denimflow/api..."` build `shared`, `engine` rồi API theo đúng thứ tự phụ thuộc.
+4. **Start Command:** `node apps/api/dist/main.js`
+5. **Health Check Path:** `/health`.
+6. **Environment:** `NODE_ENV=production`, `NODE_VERSION=24` (Render đọc `NODE_VERSION` trước `.nvmrc`), và mọi biến của `apps/api/.env` với giá trị **production**: `DATABASE_URL` (transaction pooler của `denimflow-prod`), `DIRECT_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_STORAGE_BUCKET`, `CORS_ORIGINS` (URL web đã deploy). `PORT` do Render tự cấp. API khi chạy không cần `SEED_DEFAULT_PASSWORD`.
+7. **Auto-Deploy:** khi có commit vào `main`. Tuỳ chọn **Build Filters** (đường dẫn tính từ root repo): include `apps/api/**`, `packages/**`, `pnpm-lock.yaml`.
 
-**Không** chạy migration trong start command (mỗi lần thức dậy sẽ chạy lại). Hành vi của instance free: ngủ sau 15 phút không có traffic, mất khoảng 1 phút để thức; có giới hạn số giờ instance mỗi tháng (một service chạy liên tục thì vừa đủ; đừng thêm service thứ hai). Trước buổi demo, hãy mở URL `/health` sớm vài phút.
+**Không** chạy migration trong start command (mỗi lần thức dậy sẽ chạy lại): dùng workflow `migrate.yml` (§8). Hành vi của instance free: ngủ sau 15 phút không có truy cập, mất khoảng 1 phút để thức; số giờ chạy mỗi tháng có giới hạn (vừa đủ một service luôn bật; đừng thêm service thứ hai). Trước buổi demo, mở URL `/health` trước vài phút.
 
-## 7. Deploy web lên Cloudflare
+## 7. Deploy web lên Cloudflare (Workers static assets)
 
-Quyết định O2: Pages hay Workers static assets. Tài liệu Cloudflare hiện khuyến nghị Workers cho dự án mới trong khi Pages vẫn được hỗ trợ; hãy ghi lựa chọn vào một ADR.
+Quyết định O2: **Workers với static assets** ([ADR 0001](../adr/0001-web-on-cloudflare-workers-static-assets.md)). Worker được mô tả trong `apps/web/wrangler.jsonc` (asset lấy từ `./dist`, SPA fallback `not_found_handling = "single-page-application"`).
 
-Cài đặt (áp dụng cho cả hai lựa chọn):
-- Build: `pnpm --filter @denimflow/web build` (bước install có thể do nền tảng tự chạy; xem build log).
-- Output directory: `apps/web/dist`.
-- Biến lúc build: `VITE_API_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `NODE_VERSION`.
-- **SPA fallback:** mọi đường dẫn không tồn tại phải trả về `index.html`, nếu không thì refresh `/orders` sẽ ra 404. Với Workers static assets đó là cài đặt `not_found_handling = "single-page-application"` trong config Wrangler; hãy kiểm tra hành vi hiện tại trong tài liệu của lựa chọn bạn dùng.
-- Production branch: `main`; mỗi PR có preview deployment.
+Cloudflare dashboard → **Workers & Pages** → Create → import repo GitHub (Workers Builds). Cấu hình (Settings → Build):
 
-Sau lần deploy đầu: thêm URL web vào redirect URL của Supabase Auth và vào `CORS_ORIGINS` của API.
+| Trường | Giá trị |
+|---|---|
+| Git branch | `main` (pull request có bản build preview) |
+| Root directory | để trống (root của repo) |
+| Build command | `pnpm --filter "@denimflow/web..." build` |
+| Deploy command | `npx wrangler deploy --config apps/web/wrangler.jsonc` |
+| Preview command | giữ mặc định (chỉ dùng cho bản preview của pull request) |
+| Build variables | `PNPM_VERSION=12.14.0` (image build mặc định pnpm 10), `NODE_VERSION=24`, `VITE_API_URL` (URL Render), `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (publishable key của `denimflow-prod`) |
+
+Các giá trị `VITE_*` được đóng gói vào bundle lúc build: đổi giá trị thì phải build lại. Không bao giờ đặt secret ở đây.
+
+Sau lần deploy đầu: thêm URL web vào `CORS_ORIGINS` của API (Render) và vào Supabase (`denimflow-prod`) → Authentication → URL Configuration (Site URL và redirect URLs).
 
 ## 8. CI/CD (GitHub Actions)
 
 | Workflow | Kích hoạt | Làm gì |
 |---|---|---|
-| `ci.yml` | PR, push lên `main` | Một job tên **`CI`**: install (có cache, `--frozen-lockfile`), format check, lint, typecheck, test (Postgres 17 service container qua `TEST_DATABASE_URL`), build, kiểm tra export CJS/ESM của shared |
-| `migrate.yml` | thủ công (`workflow_dispatch`) | `prisma migrate deploy` lên production bằng `DIRECT_URL` lưu trong Actions secret; có thể đặt sau một environment được bảo vệ |
-| `keep-alive.yml` | theo lịch (~10 phút), thủ công | `curl` tới `/health` của API để giảm cold start của Render và việc Supabase bị pause. URL nằm trong repository variable `API_HEALTH_URL` (Settings → Secrets and variables → Actions → Variables), đặt sau lần deploy đầu (T0.7); job được skip khi biến còn trống |
+| `ci.yml` | PR, push lên `main` | Một job tên **`CI`** (bắt buộc theo ruleset `protect-main`): install (có cache, `--frozen-lockfile`), format check, lint, typecheck, test (Postgres 17 service container qua `TEST_DATABASE_URL`), build, kiểm tra export CJS/ESM của shared |
+| `migrate.yml` | thủ công (`workflow_dispatch`) | Chạy trong GitHub Environment **`production`**: `prisma migrate deploy` với `PROD_DIRECT_URL`; bật input `seed` thì chạy thêm `db:seed` |
+| `keep-alive.yml` | theo lịch (~10 phút), thủ công | `curl` tới `/health` của API để giảm cold start của Render và việc Supabase bị pause. URL nằm trong repository variable `API_HEALTH_URL` (Settings → Secrets and variables → Actions → Variables); job được skip khi biến còn trống |
+
+Secret của environment **`production`** (Settings → Environments → production; muốn có bước duyệt tay thì thêm required reviewers ở đó):
+
+| Secret | Giá trị |
+|---|---|
+| `PROD_DIRECT_URL` | Chuỗi kết nối session pooler (hoặc direct) của `denimflow-prod` |
+| `PROD_SUPABASE_URL` | `https://<prod-ref>.supabase.co` (chỉ dùng cho seed) |
+| `PROD_SUPABASE_SERVICE_ROLE_KEY` | Secret key của `denimflow-prod` (chỉ dùng cho seed) |
+| `PROD_SEED_DEFAULT_PASSWORD` | Mật khẩu các tài khoản demo trên prod, ≥ 12 ký tự, **khác dev** (chỉ dùng cho seed) |
 
 Các workflow dùng `permissions: contents: read`, và action được ghim theo SHA commit đầy đủ (comment ghi version); khi nâng cấp thì đổi cả hai. GitHub có thể trễ lịch chạy và tắt lịch trên repo public không có hoạt động trong 60 ngày; keep-alive là tiện ích, không phải bảo đảm. Ping mỗi 10 phút giữ Render thức khoảng 744 giờ/tháng, nằm trong 750 giờ miễn phí cho một service.
 
-Sau lần `ci.yml` xanh đầu tiên: thêm **Require status checks to pass** vào ruleset `protect-main` và chọn check **`CI`** (việc của owner, T0.8).
+Ruleset `protect-main` bắt buộc check **`CI`** và 1 approval trước khi merge (T0.8). `.github/CODEOWNERS` tự động mời owner review.
 
 ## 9. Xử lý sự cố
 

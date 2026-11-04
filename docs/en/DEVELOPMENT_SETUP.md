@@ -102,43 +102,59 @@ Free-tier reminders: a project pauses after about a week of inactivity (restore 
 
 ## 6. Deploy the API on Render
 
-1. Render → New → **Web Service** → connect the GitHub repo. Instance type **Free**. Same region as Supabase if possible.
-2. Root directory: repository root (the monorepo lockfile is at the root).
-3. Build command (adjust to the final scripts):
+1. Render → New → **Web Service** → connect the GitHub repo. Instance type **Free**, region **Singapore** (same as Supabase).
+2. **Root Directory:** empty (repository root; the pnpm lockfile and workspace live there).
+3. **Build Command** (pnpm is called at the exact version pinned in `package.json`; Render's docs do not promise pnpm/corepack, so `npx` fetches it):
    ```
-   corepack enable && pnpm install --frozen-lockfile && pnpm --filter @denimflow/shared build && pnpm --filter @denimflow/engine build && pnpm --filter @denimflow/api db:generate && pnpm --filter @denimflow/api build
+   npx --yes pnpm@12.14.0 install --frozen-lockfile && npx --yes pnpm@12.14.0 --filter "@denimflow/api..." build
    ```
-4. Start command: `node apps/api/dist/main.js`
-5. Health check path: `/health`.
-6. Environment: all variables of `apps/api/.env` **with production values**, plus `NODE_VERSION` matching `.nvmrc`. Set `CORS_ORIGINS` to the deployed web URL.
-7. Auto-deploy from `main`.
+   The install runs `prisma generate` (API `postinstall`); `--filter "@denimflow/api..."` builds `shared`, `engine` and the API in dependency order.
+4. **Start Command:** `node apps/api/dist/main.js`
+5. **Health Check Path:** `/health`.
+6. **Environment:** `NODE_ENV=production`, `NODE_VERSION=24` (Render reads `NODE_VERSION` before `.nvmrc`), and every variable of `apps/api/.env` with **production** values: `DATABASE_URL` (transaction pooler of `denimflow-prod`), `DIRECT_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_STORAGE_BUCKET`, `CORS_ORIGINS` (the deployed web URL). `PORT` is injected by Render. `SEED_DEFAULT_PASSWORD` is not needed by the running API.
+7. **Auto-Deploy:** on commit to `main`. Optional **Build Filters** (paths relative to the repo root): include `apps/api/**`, `packages/**`, `pnpm-lock.yaml`.
 
-Do **not** run migrations in the start command (every wake-up would run them). Free instance behavior: sleeps after 15 minutes without traffic, about 1 minute to wake; limited instance hours per month (one always-on service fits; do not add a second service). Before a demo, open the `/health` URL a few minutes early.
+Do **not** run migrations in the start command (every wake-up would run them): use the `migrate.yml` workflow (§8). Free instance behavior: sleeps after 15 minutes without traffic, about 1 minute to wake; limited instance hours per month (one always-on service fits; do not add a second service). Before a demo, open the `/health` URL a few minutes early.
 
-## 7. Deploy the web on Cloudflare
+## 7. Deploy the web on Cloudflare (Workers static assets)
 
-Decision O2: Pages or Workers static assets. Cloudflare's docs currently recommend Workers for new projects while Pages remains supported; record the choice in an ADR.
+Decision O2: **Workers with static assets** ([ADR 0001](../adr/0001-web-on-cloudflare-workers-static-assets.md)). The Worker is described by `apps/web/wrangler.jsonc` (assets from `./dist`, SPA fallback `not_found_handling = "single-page-application"`).
 
-Settings (either option):
-- Build: `pnpm --filter @denimflow/web build` (install may be run by the platform; check its build log).
-- Output directory: `apps/web/dist`.
-- Build-time variables: `VITE_API_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `NODE_VERSION`.
-- **SPA fallback:** every unknown path must serve `index.html`, otherwise refreshing `/orders` returns 404. For Workers static assets this is the `not_found_handling = "single-page-application"` setting in the Wrangler config; verify the current behavior in the docs for the option you choose.
-- Production branch: `main`; PRs get preview deployments.
+Cloudflare dashboard → **Workers & Pages** → Create → import the GitHub repository (Workers Builds). Settings (Settings → Build):
 
-After the first deploy: add the web URL to Supabase Auth redirect URLs and to the API `CORS_ORIGINS`.
+| Field | Value |
+|---|---|
+| Git branch | `main` (pull requests get preview builds) |
+| Root directory | empty (repository root) |
+| Build command | `pnpm --filter "@denimflow/web..." build` |
+| Deploy command | `npx wrangler deploy --config apps/web/wrangler.jsonc` |
+| Preview command | keep the default (only used for pull-request preview builds) |
+| Build variables | `PNPM_VERSION=12.14.0` (the build image defaults to pnpm 10), `NODE_VERSION=24`, `VITE_API_URL` (Render URL), `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (publishable key of `denimflow-prod`) |
+
+`VITE_*` values are compiled into the bundle at build time: changing them needs a new build. Never put a secret there.
+
+After the first deploy: add the web URL to the API `CORS_ORIGINS` (Render) and to Supabase (`denimflow-prod`) → Authentication → URL Configuration (Site URL and redirect URLs).
 
 ## 8. CI/CD (GitHub Actions)
 
 | Workflow | Trigger | What it does |
 |---|---|---|
-| `ci.yml` | PR, push to `main` | One job named **`CI`**: install (cached, `--frozen-lockfile`), format check, lint, typecheck, test (Postgres 17 service container via `TEST_DATABASE_URL`), build, shared CJS/ESM export check |
-| `migrate.yml` | manual (`workflow_dispatch`) | `prisma migrate deploy` against production using the `DIRECT_URL` stored as an Actions secret; optionally gated by a protected environment |
-| `keep-alive.yml` | schedule (~10 min), manual | `curl` the API `/health` to reduce Render cold starts and Supabase pauses. URL in the repository variable `API_HEALTH_URL` (Settings → Secrets and variables → Actions → Variables), set after the first deploy (T0.7); the job is skipped while it is empty |
+| `ci.yml` | PR, push to `main` | One job named **`CI`** (required by the `protect-main` ruleset): install (cached, `--frozen-lockfile`), format check, lint, typecheck, test (Postgres 17 service container via `TEST_DATABASE_URL`), build, shared CJS/ESM export check |
+| `migrate.yml` | manual (`workflow_dispatch`) | Runs in the GitHub Environment **`production`**: `prisma migrate deploy` with `PROD_DIRECT_URL`; with the `seed` input also `db:seed` |
+| `keep-alive.yml` | schedule (~10 min), manual | `curl` the API `/health` to reduce Render cold starts and Supabase pauses. URL in the repository variable `API_HEALTH_URL` (Settings → Secrets and variables → Actions → Variables); the job is skipped while it is empty |
+
+Secrets of the **`production`** environment (Settings → Environments → production; add required reviewers there for a manual gate):
+
+| Secret | Value |
+|---|---|
+| `PROD_DIRECT_URL` | Session pooler (or direct) connection string of `denimflow-prod` |
+| `PROD_SUPABASE_URL` | `https://<prod-ref>.supabase.co` (seed only) |
+| `PROD_SUPABASE_SERVICE_ROLE_KEY` | Secret key of `denimflow-prod` (seed only) |
+| `PROD_SEED_DEFAULT_PASSWORD` | Password of the prod demo accounts, ≥ 12 chars, **different from dev** (seed only) |
 
 Workflows use `permissions: contents: read`, and actions are pinned to full commit SHAs (the comment shows the version); update both together. GitHub may delay scheduled runs and disables schedules in public repositories after 60 days without activity; the keep-alive is a convenience, not a guarantee. Pinging every 10 minutes keeps the Render instance awake about 744 h/month, within the 750 free hours for one service.
 
-After the first green `ci.yml`: add **Require status checks to pass** to the `protect-main` ruleset and select the check **`CI`** (owner task T0.8).
+The `protect-main` ruleset requires the **`CI`** check and 1 approval before merging (T0.8). `.github/CODEOWNERS` requests the owner's review automatically.
 
 ## 9. Troubleshooting
 

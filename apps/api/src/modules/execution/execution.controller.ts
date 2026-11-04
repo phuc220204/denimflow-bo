@@ -1,93 +1,91 @@
-import { Body, Controller, Get, Headers, Inject, Param, Post, Query } from '@nestjs/common';
 import {
-  approveQcSchema,
-  attachEvidenceSchema,
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Inject,
+  Param,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import {
   recordQuantityEntrySchema,
+  reverseQuantityEntrySchema,
+  Role,
   worklistQuerySchema,
 } from '@denimflow/shared';
-import { AuthService } from '../auth/auth.service.js';
+import { AuthGuard } from '../auth/auth.guard.js';
+import type { AuthResponse } from '../auth/auth.service.js';
+import { CurrentUser } from '../auth/current-user.decorator.js';
+import { Roles } from '../auth/roles.decorator.js';
 import { ExecutionService } from './execution.service.js';
+import { QuantityService } from './quantity.service.js';
+
+// Roles that own steps in a template (responsible_role). The service also checks that the user
+// has exactly the step's role and, for operators, the step's station. The Process Engineer owns
+// no step but is let through so the service answers with BR-11 instead of a generic 403.
+const STEP_WORKERS = [
+  Role.STATION_OPERATOR,
+  Role.QC_INSPECTOR,
+  Role.PRODUCTION_PLANNER,
+  Role.PROCESS_ENGINEER,
+];
 
 @Controller()
+@UseGuards(AuthGuard)
 export class ExecutionController {
   constructor(
     @Inject(ExecutionService) private readonly executionService: ExecutionService,
-    @Inject(AuthService) private readonly authService: AuthService,
+    @Inject(QuantityService) private readonly quantityService: QuantityService,
   ) {}
 
   @Get('worklist')
-  async getWorklist(@Query() rawQuery: unknown, @Headers('authorization') authHeader?: string) {
-    const user = await this.authService.getMe(authHeader);
+  getWorklist(@Query() rawQuery: unknown, @CurrentUser() user: AuthResponse['user']) {
     const query = worklistQuerySchema.parse(rawQuery);
-    return this.executionService.getWorklist(user.id, query);
+    return this.executionService.getWorklist(user, query);
   }
 
   @Post('steps/:id/start')
-  async startStep(@Param('id') id: string, @Headers('authorization') authHeader?: string) {
-    const user = await this.authService.getMe(authHeader);
-    return this.executionService.startStep(id, user.id, user.role);
+  @HttpCode(HttpStatus.OK)
+  @Roles(...STEP_WORKERS)
+  startStep(@Param('id') id: string, @CurrentUser() user: AuthResponse['user']) {
+    return this.executionService.startStep(id, user);
   }
 
   @Post('steps/:id/complete')
-  async completeStep(@Param('id') id: string, @Headers('authorization') authHeader?: string) {
-    const user = await this.authService.getMe(authHeader);
-    return this.executionService.completeStep(id, user.id, user.role);
-  }
-
-  @Post('steps/:id/qc-approve')
-  async approveQc(
-    @Param('id') id: string,
-    @Body() rawBody: unknown,
-    @Headers('authorization') authHeader?: string,
-  ) {
-    const user = await this.authService.getMe(authHeader);
-    const body = approveQcSchema.parse(rawBody ?? {});
-    return this.executionService.approveQc(id, user.id, user.role, body.notes);
-  }
-
-  @Post('steps/:id/quantities')
-  async recordQuantity(
-    @Param('id') id: string,
-    @Body() rawBody: unknown,
-    @Headers('authorization') authHeader?: string,
-  ) {
-    const user = await this.authService.getMe(authHeader);
-    const body = recordQuantityEntrySchema.parse(rawBody);
-    return this.executionService.recordQuantity(id, body, user.id, user.role);
+  @HttpCode(HttpStatus.OK)
+  @Roles(...STEP_WORKERS)
+  completeStep(@Param('id') id: string, @CurrentUser() user: AuthResponse['user']) {
+    return this.executionService.completeStep(id, user);
   }
 
   @Get('steps/:id/quantities')
-  async getQuantities(@Param('id') id: string, @Headers('authorization') authHeader?: string) {
-    await this.authService.getMe(authHeader);
-    return this.executionService.getQuantityEntries(id);
+  getQuantityPanel(@Param('id') id: string, @CurrentUser() user: AuthResponse['user']) {
+    return this.quantityService.getQuantityPanel(id, user);
   }
 
-  @Post('steps/:id/bundles/generate')
-  async generateBundles(@Param('id') id: string, @Headers('authorization') authHeader?: string) {
-    const user = await this.authService.getMe(authHeader);
-    return this.executionService.generateBundles(id, user.id);
-  }
-
-  @Get('steps/:id/bundles')
-  async getBundles(@Param('id') id: string, @Headers('authorization') authHeader?: string) {
-    await this.authService.getMe(authHeader);
-    return this.executionService.getBundles(id);
-  }
-
-  @Post('steps/:id/evidence')
-  async attachEvidence(
+  // FR-13: only station operators enter quantities (PRD §4); the service checks the station.
+  @Post('steps/:id/quantities')
+  @Roles(Role.STATION_OPERATOR)
+  recordQuantity(
     @Param('id') id: string,
     @Body() rawBody: unknown,
-    @Headers('authorization') authHeader?: string,
+    @CurrentUser() user: AuthResponse['user'],
   ) {
-    const user = await this.authService.getMe(authHeader);
-    const body = attachEvidenceSchema.parse(rawBody);
-    return this.executionService.attachEvidence(id, body, user.id);
+    return this.quantityService.recordQuantity(id, recordQuantityEntrySchema.parse(rawBody), user);
   }
 
-  @Get('steps/:id/evidence')
-  async getEvidence(@Param('id') id: string, @Headers('authorization') authHeader?: string) {
-    await this.authService.getMe(authHeader);
-    return this.executionService.getEvidence(id);
+  @Post('steps/:id/quantities/:entryId/reverse')
+  @Roles(Role.STATION_OPERATOR)
+  reverseQuantity(
+    @Param('id') id: string,
+    @Param('entryId') entryId: string,
+    @Body() rawBody: unknown,
+    @CurrentUser() user: AuthResponse['user'],
+  ) {
+    const body = reverseQuantityEntrySchema.parse(rawBody);
+    return this.quantityService.reverseEntry(id, entryId, body, user);
   }
 }

@@ -293,6 +293,36 @@ export function evaluateStepReadiness(
   const chain = customChain ?? createDefaultGateChain();
   const sorted = [...snapshot.steps].sort((a, b) => a.seq - b.seq);
   const stepsById = new Map<string, StepInstanceSnapshot>(sorted.map((s) => [s.id, s]));
+  const indexById = new Map<string, number>(sorted.map((s, i) => [s.id, i]));
+
+  // Direct predecessors: explicit IDs, or the previous step in sequence.
+  const directPredecessors = (i: number): StepInstanceSnapshot[] => {
+    const step = sorted[i]!;
+    if (step.predecessorIds && step.predecessorIds.length > 0) {
+      return step.predecessorIds
+        .map((pid) => stepsById.get(pid))
+        .filter((p): p is StepInstanceSnapshot => Boolean(p));
+    }
+    return i > 0 ? [sorted[i - 1]!] : [];
+  };
+
+  // BR-14: a SKIPPED step is passed through, so the steps before it must still be complete.
+  // Otherwise skipping EMBROIDERY would open SEWING while CUTTING is still pending.
+  const effectivePredecessors = (i: number, seen = new Set<string>()): StepInstanceSnapshot[] => {
+    const result: StepInstanceSnapshot[] = [];
+    for (const pred of directPredecessors(i)) {
+      if (seen.has(pred.id)) {
+        continue;
+      }
+      seen.add(pred.id);
+      if (pred.status === 'SKIPPED') {
+        result.push(...effectivePredecessors(indexById.get(pred.id)!, seen));
+      } else {
+        result.push(pred);
+      }
+    }
+    return result;
+  };
 
   const changes: StepReadinessChange[] = [];
   const newlyReadyStepCodes: string[] = [];
@@ -303,16 +333,6 @@ export function evaluateStepReadiness(
     const step = sorted[i]!;
     if (step.status !== 'PENDING') {
       continue;
-    }
-
-    // Determine predecessors (by explicit IDs or by previous steps in sequence)
-    let predecessors: StepInstanceSnapshot[] = [];
-    if (step.predecessorIds && step.predecessorIds.length > 0) {
-      predecessors = step.predecessorIds
-        .map((pid) => stepsById.get(pid))
-        .filter((p): p is StepInstanceSnapshot => Boolean(p));
-    } else if (i > 0) {
-      predecessors = [sorted[i - 1]!];
     }
 
     // 1. Evaluate condition if present
@@ -360,7 +380,7 @@ export function evaluateStepReadiness(
     const context: GateCheckContext = {
       targetStep: step,
       allSteps: sorted,
-      predecessorSteps: predecessors,
+      predecessorSteps: effectivePredecessors(i),
       fabricBomLine: snapshot.fabricBomLine,
       evidenceCount: step.evidenceCount,
     };

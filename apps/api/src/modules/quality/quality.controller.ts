@@ -1,48 +1,52 @@
-import { Body, Controller, Get, Headers, Inject, Param, Post } from '@nestjs/common';
-import { evaluateQcInspectionInputSchema, recordQcInspectionSchema } from '@denimflow/shared';
-import { AuthService } from '../auth/auth.service.js';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Inject,
+  Param,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
+import { qcEvaluationInputSchema, recordQcInspectionSchema, Role } from '@denimflow/shared';
+import { AuthGuard } from '../auth/auth.guard.js';
+import type { AuthResponse } from '../auth/auth.service.js';
+import { CurrentUser } from '../auth/current-user.decorator.js';
+import { Roles } from '../auth/roles.decorator.js';
 import { QualityService } from './quality.service.js';
 
-@Controller('quality')
+// FR-16: only the QC Inspector evaluates and decides (PRD §4); anyone logged in may read history.
+@Controller('steps/:id/qc')
+@UseGuards(AuthGuard)
 export class QualityController {
-  constructor(
-    @Inject(QualityService) private readonly qualityService: QualityService,
-    @Inject(AuthService) private readonly authService: AuthService,
-  ) {}
+  constructor(@Inject(QualityService) private readonly qualityService: QualityService) {}
 
-  @Post('evaluate/:stepInstanceId')
-  async evaluateInspection(
-    @Param('stepInstanceId') stepInstanceId: string,
-    @Body() rawBody: unknown,
-    @Headers('authorization') authHeader?: string,
-  ) {
-    await this.authService.getMe(authHeader);
-    const body = evaluateQcInspectionInputSchema.parse(rawBody);
-    return this.qualityService.evaluateInspection(stepInstanceId, body);
+  @Post('evaluate')
+  @HttpCode(HttpStatus.OK)
+  @Roles(Role.QC_INSPECTOR)
+  evaluate(@Param('id') id: string, @Body() rawBody: unknown) {
+    return this.qualityService.evaluate(id, qcEvaluationInputSchema.parse(rawBody));
   }
 
   @Post('inspections')
-  async recordInspection(@Body() rawBody: unknown, @Headers('authorization') authHeader?: string) {
-    const user = await this.authService.getMe(authHeader);
-    const body = recordQcInspectionSchema.parse(rawBody);
-    return this.qualityService.recordInspection(body, user.id, user.role);
+  @Roles(Role.QC_INSPECTOR)
+  recordInspection(
+    @Param('id') id: string,
+    @Body() rawBody: unknown,
+    @CurrentUser() user: AuthResponse['user'],
+  ) {
+    return this.qualityService.recordInspection(id, recordQcInspectionSchema.parse(rawBody), user);
   }
 
-  @Get('inspections/:stepInstanceId')
-  async getInspections(
-    @Param('stepInstanceId') stepInstanceId: string,
-    @Headers('authorization') authHeader?: string,
-  ) {
-    await this.authService.getMe(authHeader);
-    return this.qualityService.getInspections(stepInstanceId);
+  @Get('rework-targets')
+  @Roles(Role.QC_INSPECTOR)
+  listReworkTargets(@Param('id') id: string) {
+    return this.qualityService.listReworkTargets(id);
   }
 
-  @Get('rework-targets/:stepInstanceId')
-  async getReworkTargets(
-    @Param('stepInstanceId') stepInstanceId: string,
-    @Headers('authorization') authHeader?: string,
-  ) {
-    await this.authService.getMe(authHeader);
-    return this.qualityService.getReworkTargets(stepInstanceId);
+  @Get('inspections')
+  listInspections(@Param('id') id: string) {
+    return this.qualityService.listInspections(id);
   }
 }

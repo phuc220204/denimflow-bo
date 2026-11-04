@@ -82,7 +82,7 @@ Notation: `PK`, `FK → table`, `UQ`, `NN` (not null), `CK` (check). Unlisted co
 |---|---|
 | `profiles` | `id uuid PK` (= Supabase `auth.users.id`), `full_name NN`, `email NN UQ`, `role Role NN`, `station_id FK → stations NULL`, `is_active NN default true`. Implementation: `station_id` is added in Sprint 1 together with `stations`; no FK to `auth.users`, so migrations also run on plain Postgres (tests, CI) |
 | `stations` | `id PK`, `code NN UQ`, `name NN`, `station_type StationType NN`, `is_outsourced NN default false` |
-| `styles` | `id PK`, `style_code NN UQ`, `name NN`, `fit_type`, `default_template_id FK → workflow_templates NULL`, `has_embroidery NN default false`, `is_active NN` |
+| `styles` | `id PK`, `style_code NN UQ`, `name NN`, `fit_type`, `default_template_id FK → workflow_templates NULL`, `has_embroidery NN default false`, `cut_tolerance_percent numeric(5,2) NN default 5 CK 0..100` (BR-07, R-19), `is_active NN` |
 | `fabric_types` | `id PK`, `code NN UQ`, `weight_oz numeric(4,1)`, `composition`, `stretch_type StretchType NN` |
 | `color_options` | `id PK`, `code NN UQ`, `name NN`, `color_family` |
 | `fabric_color_rules` | `id PK`, `fabric_type_id FK NN`, `color_id FK NN`, `is_allowed NN`; **UQ(fabric_type_id, color_id)** |
@@ -119,12 +119,12 @@ Notation: `PK`, `FK → table`, `UQ`, `NN` (not null), `CK` (check). Unlisted co
 | Table | Columns |
 |---|---|
 | `workflow_instances` | `id PK`, `order_id FK NN UQ`, `version_id FK NN`, `status InstanceStatus NN` |
-| `step_instances` | `id PK`, `instance_id FK NN`, `step_definition_id FK NN`, `status StepStatus NN default PENDING`, `assigned_to FK NULL`, `performed_by FK NULL`, `started_at`, `completed_at`, `qty_in int NULL`, `qty_good int NULL`, `qty_defect int NULL`, `rework_count smallint NN default 0`; **UQ(instance_id, step_definition_id)**; **CK** quantities ≥ 0 |
-| `bundles` | `id PK`, `order_id FK NN`, `bundle_code NN`, `size NN`, `qty int NN CK > 0`, `current_step_instance_id FK NULL`; **UQ(order_id, bundle_code)** |
-| `step_quantity_entries` | `id PK`, `step_instance_id FK NN`, `bundle_id FK NULL`, `size NULL`, `qty_good int NN CK ≥ 0`, `qty_defect int NN CK ≥ 0`, `note`, `entered_by FK NN`, `entered_at NN` — append-only (R-03) |
+| `step_instances` | `id PK`, `instance_id FK NN`, `step_definition_id FK NN`, `status StepStatus NN default PENDING`, `assigned_to FK NULL`, `performed_by FK NULL`, `completed_by FK NULL RESTRICT` (BR-11, R-23), `started_at`, `completed_at`, `qty_in int NULL`, `qty_good int NULL`, `qty_defect int NULL`, `rework_count smallint NN default 0`; **UQ(instance_id, step_definition_id)**; **CK** quantities ≥ 0; **CK** `qty_good + qty_defect ≤ qty_in` (BR-08) |
+| `bundles` | `id PK`, `order_id FK NN RESTRICT`, `bundle_code NN`, `size NN`, `qty int NN CK > 0`, `created_at`; **UQ(order_id, bundle_code)**. Created from the good pieces cut per size when CUTTING completes, 50 per bundle (R-20). No `current_step_instance_id`: WIP per bundle is derived from the entries |
+| `step_quantity_entries` | `id PK`, `step_instance_id FK NN`, `bundle_id FK NULL`, `size NULL` (exactly one of the two: size at cutting, bundle later), `qty_good int NN`, `qty_defect int NN`, `qty_sent int NULL`, `qty_received int NULL`, `mismatch_reason`, `note`, `reverses_entry_id FK NULL UQ`, `entered_by FK NN`, `entered_at NN`; all FKs RESTRICT. **CK**: normal rows ≥ 0 and count at least one piece; a reversal row (R-22) is ≤ 0 and needs `note`; sent/received both or neither, `qty_good + qty_defect = qty_received`, received ≤ sent, mismatch needs `mismatch_reason` (BR-09). Append-only via trigger (R-03): a mistake is cancelled with a reversal row |
 | `evidence` | `id PK`, `step_instance_id FK NN`, `file_path NN`, `note`, `uploaded_by FK NN`, `uploaded_at NN` |
-| `qc_inspections` | `id PK`, `step_instance_id FK NN`, `inspector_id FK NN`, `qc_profile_id FK NULL`, `sample_size int NN`, `measured_shrinkage_percent numeric(5,2) NULL`, `measured_color_fading_level smallint NULL`, `result QcResult NN`, `rework_target_step_id FK → step_instances NULL`, `reason`, `notes` |
-| `defects` | `id PK`, `inspection_id FK NN`, `bundle_id FK NULL`, `defect_type NN`, `qty int NN CK > 0` |
+| `qc_inspections` | `id PK`, `step_instance_id FK NN`, `inspector_id FK NN`, `qc_profile_id FK NULL`, `sample_size int NN CK > 0`, `measured_shrinkage_percent numeric(5,2) NULL CK 0..100`, `measured_color_fading_level smallint NULL CK 0..5`, `proposed_result QcResult NN`, `result QcResult NN`, `rework_target_step_id FK → step_instances NULL`, `reason`, `notes`, `created_at`; all FKs RESTRICT. `proposed_result` keeps what the engine proposed from the QC Profile next to the inspector's `result` (R-24). Append-only via trigger (R-25) |
+| `defects` | `id PK`, `inspection_id FK NN`, `bundle_id FK NULL`, `defect_type NN`, `qty int NN CK > 0`, `created_at`; all FKs RESTRICT. Append-only via trigger (R-25) |
 | `audit_logs` | `id bigint PK` auto-increment (`bigserial`, Prisma `autoincrement()`), `entity_type NN`, `entity_id uuid NN`, `action NN`, `old_value jsonb`, `new_value jsonb`, `actor_id uuid NULL` (NULL = system), `created_at NN default now()` — **append-only** |
 | `workflow_change_requests` *(post-MVP)* | `id PK`, `instance_id FK`, `requested_by FK`, `payload jsonb`, `status ChangeRequestStatus`, `approved_by FK NULL` |
 
@@ -193,13 +193,16 @@ COMMIT                                                          -- any error ⇒
 
 ```
 BEGIN
- 1. SELECT ... FROM step_instances WHERE id = :id FOR UPDATE    -- serializes entries on the same step
-    (lock the previous step row too, always in ascending id order to avoid deadlocks)
- 2. engine.validateQuantityEntry(current, previous, entry, tolerance)
- 3. INSERT step_quantity_entries; UPDATE step_instances aggregates
- 4. INSERT audit_logs
+ 1. SELECT ... FROM step_instances WHERE id = ANY(:current, :previous) ORDER BY id FOR UPDATE
+    -- serializes entries on the same steps; ascending id order avoids deadlocks
+ 2. re-read status and aggregates of both rows (values read before the lock may be stale)
+ 3. engine.validateQuantityEntry(entry, { isOutsourced, limit })   -- BR-07 per size, BR-08 per bundle and step, BR-09
+ 4. INSERT step_quantity_entries; UPDATE step_instances aggregates
+ 5. INSERT audit_logs
 COMMIT
 ```
+
+Completing a quantity step locks the same rows first. CUTTING then needs at least one entry and creates the bundles from the good pieces per size (FR-15, R-20); other steps must have taken in exactly the good quantity of the previous step (BR-08, engine `checkStepBalance`). "Previous step" is the nearest earlier quantity step that was not skipped.
 
 | Approach | Pros | Cons |
 |---|---|---|
@@ -212,6 +215,8 @@ Allocation (`material_allocations`) uses the same pattern on the `fabric_lots` r
 
 Lock the inspected step row (and the rework target); check BR-11 (inspector ≠ performer); the engine picks thresholds from the order's `qc_profile_id` and returns the proposed result; insert `qc_inspections`; on REWORK set the target step `REWORK` and increment `rework_count` (over `max_rework` ⇒ flag for the Planner, BR-10); write audit rows; all in one transaction.
 
+PASS slice (T5.1): the inspected step is either waiting for QC (in-line QC, BR-11 applies) or a QC-type step the inspector started (R-25); PASS is accepted only when the engine proposes PASS (BR-19, R-24); the step becomes DONE and `openNextSteps` runs in the same transaction. REWORK and REJECT arrive with T5.2.
+
 ## 8. Security
 
 - `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` on **every** table, with **no policies**. Supabase exposes tables through an auto-generated REST API using the anon key; deny-all RLS makes that API return nothing. Prisma connects with a privileged role and bypasses RLS, so authorization is implemented in the API.
@@ -219,13 +224,16 @@ Lock the inspected step row (and the rework target); check BR-11 (inspector ≠ 
 - Storage: one **private** bucket for evidence and acknowledgements; object path `orders/{orderId}/{kind}/{uuid}.{ext}`; signed URLs with a short expiry; the API validates type and size before issuing an upload URL.
 - Connection strings: pooled `DATABASE_URL` (transaction mode, `pgbouncer=true`-style parameter as required by the Prisma version) for runtime; `DIRECT_URL` (direct or session pooler) for migrations.
 
-## 9. Seed data (`prisma/seed.ts`, idempotent, fake data only)
+## 9. Seed data (`apps/api/src/seed/`, idempotent, fake data only)
 
-- 7 users (one per role) with emails like `admin@denimflow.test`; initial password read from `SEED_DEFAULT_PASSWORD` (never committed).
-- Stations: one per type (DYEING marked `is_outsourced`).
-- Catalog: Style `JN-SLIM-01`; FabricType `DN-12-RIGID`; colors Indigo, Black, Grey; matrix: Indigo and Black allowed, Grey not; wash types (e.g. `STONE_WASH`, `ENZYME_WASH`, `DISTRESSED`); one `fabric_lots` row with ample meters; `bom_norms` for sizes 28–34.
-- `qc_profiles` (demo placeholders, R-14): FULL_PROCESS shrinkage ≤ 3.0 %, fading ≤ 1; SKIP_CLEAN_WASH shrinkage ≤ 5.0 %, fading ≤ 2.
-- Template "Jean Standard": 14 steps and transitions per `BUSINESS_RECONCILIATION.md` §3, version 1 PUBLISHED, assigned to `JN-SLIM-01`.
+Run with `pnpm --filter @denimflow/api db:seed` (builds, then runs `dist/seed/index.js`; also wired to `prisma db seed`). Every row is upserted by its business code, so running it twice leaves the same data.
+
+- 7 users (one per role) with emails `admin@`, `pe@`, `planner@`, `warehouse@`, `operator@`, `qc@`, `manager@` + `denimflow.internal`; password from `SEED_DEFAULT_PASSWORD` (≥ 12 chars, never committed, never logged). With Supabase configured the Auth accounts are created, or reset to that password if they exist; without Supabase only `profiles` are written.
+- Stations: one per type (`CUT-01` … `PCK-01`); `EMB-01`, `DYE-01`, `WSH-01` marked `is_outsourced`.
+- Catalog: styles `JN-SLIM-01`, `JN-REG-02`, `JN-BAGGY-03`; fabric types `DN-12-RIGID`, `DN-10-STRETCH`, `DN-14-HEAVY`; colors `CLR-INDIGO`, `CLR-BLACK`, `CLR-GREY`, `CLR-LIGHTBLUE`; matrix (e.g. `DN-12-RIGID`: Indigo, Black, Light blue allowed, Grey not); wash types `WSH-STONE`, `WSH-ACID`, `WSH-BLEACH`, `WSH-RAW`.
+- `qc_profiles` (demo placeholders, R-14) for every style: FULL_PROCESS shrinkage ≤ 3.0 %, fading ≤ 1; SKIP_CLEAN_WASH shrinkage ≤ 5.0 %, fading ≤ 2.
+- Template "Jean Standard": 14 steps and transitions per `BUSINESS_RECONCILIATION.md` §3 (3 REWORK transitions from FINAL_QC), created as DRAFT, checked with the engine's BR-01 validator, then PUBLISHED in one transaction, and assigned to `JN-SLIM-01`.
+- `bom_norms` for `JN-SLIM-01` (fabric for sizes 28–34 and 36, plus trims) and two `fabric_lots` of `DN-12-RIGID` / `CLR-INDIGO`.
 
 ## 10. Deviations from the Proposal data model
 
@@ -233,9 +241,15 @@ Lock the inspected step row (and the rework target); check BR-11 (inspector ≠ 
 |---|---|---|
 | `User` with `passwordHash` | `profiles` linked to Supabase Auth | R-01 |
 | (none) | `material_requests` | R-02 |
-| Quantities only on `StepInstance` | plus append-only `step_quantity_entries` | R-03 |
+| Quantities only on `StepInstance` | plus append-only `step_quantity_entries` with reversal rows | R-03, R-22 |
+| `Bundle.currentStep` | not stored; derived from the entries | R-20 |
 | `stationType` on step | plus `responsible_role`, `requires_qc`, `seq`, `is_start`, `is_end`; `station_type` nullable | R-07 |
 | `washType` attribute | `wash_types` catalog + `wash_type_id`; new order flags `embroidery_required`, `fabric_inspect_required`, `pp_sample_required` | R-08 |
 | `conditionExpr` as expression | JSON AST in `jsonb` | R-09 |
 | `fileUrl` fields | `file_path` in a private bucket | R-15 |
 | (none) | `handover_records`, `bom_norms` | R-16 |
+
+
+### T5.2 integration (#33, 2026-11-05)
+
+`workflow_instances.requires_planner_review` and `planner_review_reason` persist QC exceptions without changing the order status. REJECT or an exhausted loop flags the instance; it stays visible but cannot resume production automatically. Existing quantities remain the current physical balance; rework does not receive the same pieces again. Corrections use existing reversal entries. RLS remains enabled.
