@@ -142,6 +142,10 @@ export class ExecutionService {
         );
       }
 
+      // FR-26: handover atomically completes packing, instance and order.
+      if (step.stepDefinition.code === 'PACK_HANDOVER')
+        throw new ConflictException('Hãy hoàn tất bước đóng gói bằng biên bản bàn giao');
+
       // FR-13: quantity steps must balance (BR-08); cutting also creates the bundles (FR-15).
       await this.quantityService.closeOnComplete(tx, stepId, user.id);
 

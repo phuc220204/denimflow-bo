@@ -195,3 +195,10 @@ Danh sách lỗi theo đơn, inspection, bó và người QC; dùng lại schema
 ### T5.2 integration update (#33, 2026-11-05)
 
 Rework: kiểm tra tuyến, giới hạn vòng, flag Planner; đưa các bước từ đích đến QC về trạng thái chưa hoàn thành, giữ lịch sử quantity.
+
+### T5.4 integration update (#37, 2026-11-05)
+
+Chỉ Planner bàn giao sau QC và các bước trước; packing lấy quantity đạt ròng công đoạn cuối theo size; hoàn tất và audit trong transaction.
+
+
+FR-26: PACK_HANDOVER chỉ hoàn tất khi lập biên bản bàn giao. API hoàn thành công đoạn thông thường từ chối bước này, tránh đóng bước khi chưa có biên bản và chưa hoàn tất đơn.

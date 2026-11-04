@@ -195,3 +195,35 @@ export interface ConfirmOrderResponseDto {
   firstReadyStepCode?: string;
   skippedStepCodes: string[];
 }
+
+export const createHandoverSchema = z
+  .object({
+    notes: z.string().trim().max(1000).nullable().optional(),
+  })
+  .strict();
+export type CreateHandoverDto = z.infer<typeof createHandoverSchema>;
+
+export const packingListItemSchema = z
+  .object({
+    size: z.string(),
+    plannedQty: z.number().int(),
+    actualQty: z.number().int(),
+  })
+  .strict();
+export type PackingListItemDto = z.infer<typeof packingListItemSchema>;
+
+export const handoverRecordResponseSchema = z.object({
+  id: z.string().uuid(),
+  orderId: z.string().uuid(),
+  orderNumber: z.string(),
+  qcProfileId: z.string().uuid(),
+  qcProfileType: z.string(),
+  packingList: z.array(packingListItemSchema),
+  totalQty: z.number().int(),
+  handedOverBy: z.string().uuid(),
+  handedOverByName: z.string(),
+  handedOverAt: z.string(),
+  notes: z.string().nullable().optional(),
+  orderStatus: z.string(),
+});
+export type HandoverRecordResponseDto = z.infer<typeof handoverRecordResponseSchema>;

@@ -132,6 +132,7 @@ enum ChangeRequestStatus {
 
 // id equals auth.users.id in Supabase. station_id is linked to stations.
 model Profile {
+  handoverRecords HandoverRecord[] @relation("UserHandoverRecords")
   id                       String                    @id @db.Uuid
   fullName                 String                    @map("full_name")
   email                    String                    @unique
@@ -240,6 +241,7 @@ model FabricColorRule {
 
 // Master data: QC Profiles with shrinkage and color fading thresholds (BR-19, FR-28)
 model QcProfile {
+  handoverRecords HandoverRecord[]
   id                       String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   styleId                  String                    @map("style_id") @db.Uuid
   profileType              QcProfileType             @map("profile_type")
@@ -367,6 +369,7 @@ model StepTransition {
 }
 
 model ProductionOrder {
+  handoverRecord HandoverRecord?
   id                    String                    @id @default(uuid()) @db.Uuid
   orderNumber           String                    @unique @map("order_number")
   styleId               String                    @map("style_id") @db.Uuid
@@ -667,4 +670,26 @@ model Defect {
   @@index([inspectionId])
   @@index([bundleId])
   @@map("defects")
+}
+
+model HandoverRecord {
+  id           String          @id @default(uuid()) @db.Uuid
+  orderId      String          @unique @map("order_id") @db.Uuid
+  qcProfileId  String          @map("qc_profile_id") @db.Uuid
+  packingList  Json            @map("packing_list")
+  totalQty     Int             @map("total_qty")
+  handedOverBy String          @map("handed_over_by") @db.Uuid
+  handedOverAt DateTime        @default(now()) @map("handed_over_at") @db.Timestamptz
+  notes        String?
+  createdAt    DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime        @updatedAt @map("updated_at") @db.Timestamptz
+
+  order            ProductionOrder @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  qcProfile        QcProfile       @relation(fields: [qcProfileId], references: [id], onDelete: Restrict)
+  handedOverByUser Profile         @relation("UserHandoverRecords", fields: [handedOverBy], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+  @@index([qcProfileId])
+  @@index([handedOverBy])
+  @@map("handover_records")
 }
