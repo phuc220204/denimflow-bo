@@ -378,7 +378,9 @@ export function evaluateStepReadiness(
 
     // 2. Evaluate Gate Chain
     const context: GateCheckContext = {
-      targetStep: step,
+      // BR-15 gates completion, not readiness: evidence is collected while the step is running.
+      // evaluateStepGates still evaluates the original definition for completion callers.
+      targetStep: { ...step, requiresEvidence: false },
       allSteps: sorted,
       predecessorSteps: effectivePredecessors(i),
       fabricBomLine: snapshot.fabricBomLine,

@@ -1451,3 +1451,42 @@ export async function createHandoverApi(
   if (!res.ok) throw new Error(data.message || 'Không thể tạo biên bản bàn giao');
   return data;
 }
+
+export async function fetchEvidenceApi(
+  stepId: string,
+  token?: string | null,
+): Promise<import('@denimflow/shared').EvidenceDto[]> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/evidence`, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Không thể tải bằng chứng');
+  return data;
+}
+export async function uploadEvidenceApi(
+  stepId: string,
+  file: Blob,
+  token?: string | null,
+): Promise<import('@denimflow/shared').EvidenceDto> {
+  const signed = await fetch(`${API_BASE}/steps/${stepId}/evidence/upload-url`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify({ mimeType: file.type, sizeBytes: file.size }),
+  });
+  const data = await signed.json().catch(() => ({}));
+  if (!signed.ok) throw new Error(data.message || 'Không thể tạo đường dẫn tải lên');
+  const upload = await fetch(data.signedUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': file.type },
+    body: file,
+  });
+  if (!upload.ok) throw new Error('Không thể tải file lên Storage');
+  const attached = await fetch(`${API_BASE}/steps/${stepId}/evidence`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify({ filePath: data.filePath }),
+  });
+  const result = await attached.json().catch(() => ({}));
+  if (!attached.ok) throw new Error(result.message || 'Không thể đính kèm file');
+  return result;
+}

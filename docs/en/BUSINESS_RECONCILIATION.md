@@ -202,3 +202,10 @@ Planner-only handover after all predecessors and FINAL_QC are DONE/SKIPPED; pack
 
 
 FR-26: PACK_HANDOVER is completed only by creating the handover record. The generic step completion endpoint rejects it to avoid a DONE packing step without a handover/order completion.
+
+### T4.4 integration update (#30, 2026-11-05)
+
+Private signed uploads with MIME/size verification, step/operator-bound paths and a completion evidence gate.
+
+
+BR-15 also applies to atomic handover when PACK_HANDOVER requires evidence. OrderModule uses the exported EvidenceService in the same transaction.

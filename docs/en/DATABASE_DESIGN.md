@@ -257,3 +257,7 @@ Run with `pnpm --filter @denimflow/api db:seed` (builds, then runs `dist/seed/in
 ### T5.4 integration (#37, 2026-11-05)
 
 `handover_records` is unique per order, stores the pinned QC Profile, packing list and actor, enables RLS with no policies and uses RESTRICT foreign keys. Locks instance steps in ascending ID order, then the order row before rereading final quantities; this matches cutting-start lock direction.
+
+### T4.4 integration (#30, 2026-11-05)
+
+`evidence` stores step, unique private object path, MIME, verified byte size and uploader. RLS deny-all and RESTRICT foreign keys. Upload and completion serialize on the step row. Bucket must be private; set a 5 MB object limit and allow JPEG/PNG/WebP/PDF in Supabase Storage.

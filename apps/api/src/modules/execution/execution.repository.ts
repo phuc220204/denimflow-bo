@@ -194,6 +194,13 @@ export class ExecutionRepository {
     return tx.bundle.findMany({ where: { orderId }, orderBy: { bundleCode: 'asc' } });
   }
 
+  findEvidence(stepInstanceId: string, tx: Tx | PrismaService = this.prisma) {
+    return tx.evidence.findMany({ where: { stepInstanceId }, orderBy: { uploadedAt: 'asc' } });
+  }
+  createEvidence(tx: Tx, data: Prisma.EvidenceUncheckedCreateInput) {
+    return tx.evidence.create({ data });
+  }
+
   findBundle(tx: Tx, bundleId: string) {
     return tx.bundle.findUnique({ where: { id: bundleId } });
   }

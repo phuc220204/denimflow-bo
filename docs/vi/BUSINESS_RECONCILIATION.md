@@ -202,3 +202,10 @@ Chỉ Planner bàn giao sau QC và các bước trước; packing lấy quantity
 
 
 FR-26: PACK_HANDOVER chỉ hoàn tất khi lập biên bản bàn giao. API hoàn thành công đoạn thông thường từ chối bước này, tránh đóng bước khi chưa có biên bản và chưa hoàn tất đơn.
+
+### T4.4 integration update (#30, 2026-11-05)
+
+Upload có chữ ký vào bucket private, xác minh MIME/kích thước, ràng buộc path theo step/người tải; completion chặn khi thiếu bằng chứng.
+
+
+BR-15 áp dụng cả bàn giao khi PACK_HANDOVER yêu cầu bằng chứng. OrderModule dùng EvidenceService được export trong cùng transaction.

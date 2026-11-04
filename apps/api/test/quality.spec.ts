@@ -4,6 +4,7 @@ import { type INestApplication, UnauthorizedException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { PrismaPg } from '@prisma/adapter-pg';
 import request from 'supertest';
+import { EvidenceStorage } from '../src/modules/execution/evidence-storage.js';
 import { AppModule } from '../src/app.module.js';
 import { setupApp } from '../src/app.setup.js';
 import { PrismaClient } from '../src/generated/prisma/client.js';
@@ -26,6 +27,8 @@ const users: Record<string, { id: string; role: string }> = {
   'Bearer sewer-token': { id: SEWER_ID, role: 'STATION_OPERATOR' },
   'Bearer qc2-token': { id: QC2_ID, role: 'QC_INSPECTOR' },
 };
+
+const evidenceMetadata = { mimeType: 'application/pdf', sizeBytes: 100 };
 
 const fakeAuthService = {
   async getMe(authHeader?: string) {
@@ -80,6 +83,11 @@ describe('QC inspection (T5.1)', () => {
     }
 
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(EvidenceStorage)
+      .useValue({
+        sign: async () => ({ signedUrl: 'https://storage.example.test/upload' }),
+        info: async () => evidenceMetadata,
+      })
       .overrideProvider(AuthService)
       .useValue(fakeAuthService)
       .compile();
@@ -206,6 +214,66 @@ describe('QC inspection (T5.1)', () => {
       result: 'PASS',
       defects: [{ defectType: 'Đường may lỗi', qty: 1, bundleId: randomUUID() }],
     }).expect(400);
+  });
+
+  it('BR-15 requires evidence before completing a configured step', async () => {
+    // An isolated new DRAFT definition avoids modifying a published workflow (BR-02).
+    const template = await prisma.workflowTemplate.create({
+      data: { name: `Evidence-${randomUUID()}` },
+    });
+    const version = await prisma.workflowVersion.create({
+      data: { templateId: template.id, versionNo: 1, status: 'DRAFT' },
+    });
+    const definition = await prisma.stepDefinition.create({
+      data: {
+        versionId: version.id,
+        code: 'EVIDENCE_TEST',
+        name: 'Evidence',
+        stepType: 'APPROVAL',
+        responsibleRole: 'PRODUCTION_PLANNER',
+        requiresEvidence: true,
+        seq: 1,
+      },
+    });
+    const instance = await prisma.workflowInstance.findUniqueOrThrow({ where: { orderId } });
+    const evidenceStep = await prisma.stepInstance.create({
+      data: { instanceId: instance.id, stepDefinitionId: definition.id, status: 'IN_PROGRESS' },
+    });
+    const response = await post(`/steps/${evidenceStep.id}/complete`, 'planner-token').expect(409);
+    expect(response.body.brId).toBe('BR-15');
+    const base = `/steps/${evidenceStep.id}/evidence`;
+    await post(`${base}/upload-url`, 'planner-token', {
+      mimeType: 'text/html',
+      sizeBytes: 100,
+    }).expect(422);
+    await post(`${base}/upload-url`, 'planner-token', {
+      mimeType: 'application/pdf',
+      sizeBytes: 6 * 1024 * 1024,
+    }).expect(422);
+    const upload = await post(`${base}/upload-url`, 'planner-token', {
+      mimeType: 'application/pdf',
+      sizeBytes: 100,
+    }).expect(201);
+    expect(upload.body.filePath).toContain(`orders/${orderId}/evidence/${evidenceStep.id}/`);
+    await post(base, 'planner-token', {
+      filePath: 'orders/another-order/evidence/file.pdf',
+    }).expect(400);
+    await post(base, 'cutter-token', { filePath: upload.body.filePath }).expect(403);
+
+    evidenceMetadata.sizeBytes = 6 * 1024 * 1024;
+    await post(base, 'planner-token', { filePath: upload.body.filePath }).expect(400);
+    evidenceMetadata.sizeBytes = 100;
+    evidenceMetadata.mimeType = 'text/html';
+    await post(base, 'planner-token', { filePath: upload.body.filePath }).expect(400);
+    evidenceMetadata.mimeType = 'application/pdf';
+    await post(base, 'planner-token', { filePath: upload.body.filePath }).expect(201);
+    const files = await request(app.getHttpServer())
+      .get(base)
+      .set('Authorization', 'Bearer planner-token')
+      .expect(200);
+    expect(files.body).toHaveLength(1);
+    expect(files.body[0]).toMatchObject({ sizeBytes: 100, mimeType: 'application/pdf' });
+    await post(`/steps/${evidenceStep.id}/complete`, 'planner-token').expect(200);
   });
 
   it('a PASS completes the step, keeps the profile and opens the next step', async () => {

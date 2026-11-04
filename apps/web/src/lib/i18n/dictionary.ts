@@ -163,6 +163,10 @@ export const i18n = {
     create: 'Lập biên bản bàn giao',
     confirm: 'Xác nhận bàn giao và hoàn tất đơn hàng?',
   },
+  evidence: {
+    upload: 'Đính kèm bằng chứng',
+    limit: 'Ảnh JPG/PNG/WebP hoặc PDF, tối đa 5 MB sau khi nén.',
+  },
   dashboard: {
     title: 'Bảng điều khiển',
     subtitle:

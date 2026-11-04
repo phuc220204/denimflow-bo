@@ -33,6 +33,8 @@ Do: upload through signed URL to the private bucket, client-side image compressi
 Acceptance:
 - [ ] Step with `requiresEvidence` cannot complete without ≥ 1 attachment.
 
+Implementation updated on existing PR #30: Private signed uploads with MIME/size verification, step/operator-bound paths and a completion evidence gate. Pending CI/review; production acceptance is not yet claimed.
+
 ### T4.5 Separation of duties   [agent]
 Branch: `feat/execution-separation-of-duties`
 FR/BR: BR-11

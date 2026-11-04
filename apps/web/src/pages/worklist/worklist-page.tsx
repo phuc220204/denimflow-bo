@@ -23,6 +23,7 @@ import {
 import { completeStepApi, fetchWorklistApi, startStepApi } from '../../lib/api';
 import { useAuth } from '../../lib/auth-context';
 import type { StepStatus, WorklistItemDto } from '@denimflow/shared';
+import { EvidencePanel } from './evidence-panel';
 import { QcPanel } from './qc-panel';
 import { QuantityPanel } from './quantity-panel';
 
@@ -322,6 +323,11 @@ export const WorklistPage: React.FC = () => {
                         </Button>
                       )}
 
+                    {canWork(item) &&
+                      !item.requiresPlannerReview &&
+                      item.status === 'IN_PROGRESS' && (
+                        <EvidencePanel stepId={item.id} token={token} />
+                      )}
                     {tracksQuantities(item) &&
                       !item.requiresPlannerReview &&
                       item.status === 'IN_PROGRESS' && (

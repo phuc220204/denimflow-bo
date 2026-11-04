@@ -17,6 +17,7 @@ export const envSchema = z
           .map((origin) => origin.trim())
           .filter((origin) => origin.length > 0),
       ),
+    SUPABASE_STORAGE_BUCKET: z.string().min(1).optional(),
     SUPABASE_URL: z.string().url().optional(),
     SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
   })
