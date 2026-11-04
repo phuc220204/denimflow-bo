@@ -32,6 +32,25 @@ export class QualityRepository {
     return tx.stepInstance.findUnique({ where: { id: stepId }, include: stepForInspectionInclude });
   }
 
+  findInstanceSteps(tx: Tx, instanceId: string) {
+    return tx.stepInstance.findMany({
+      where: { instanceId },
+      include: { stepDefinition: true },
+      orderBy: { stepDefinition: { seq: 'asc' } },
+    });
+  }
+
+  findReworkTransitions(tx: Tx, versionId: string, fromStepId: string) {
+    return tx.stepTransition.findMany({ where: { versionId, fromStepId, kind: 'REWORK' } });
+  }
+
+  flagPlannerReview(tx: Tx, instanceId: string, reason: string) {
+    return tx.workflowInstance.update({
+      where: { id: instanceId },
+      data: { requiresPlannerReview: true, plannerReviewReason: reason },
+    });
+  }
+
   findBundleOrders(tx: Tx, bundleIds: string[]) {
     return tx.bundle.findMany({
       where: { id: { in: bundleIds } },

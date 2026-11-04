@@ -63,3 +63,23 @@ describe('evaluateQcInspection (FR-16)', () => {
     });
   });
 });
+
+describe('BR-10 rework routing limits', () => {
+  it('requires a reason and a configured limit', async () => {
+    const { evaluateReworkRouting } = await import('./quality.js');
+    expect(evaluateReworkRouting({ reworkCount: 0, maxRework: 2 }).allowed).toBe(false);
+    expect(evaluateReworkRouting({ reason: 'Fix', reworkCount: 0, maxRework: null }).allowed).toBe(
+      false,
+    );
+  });
+  it('flags the Planner instead of permitting a loop above maxRework', async () => {
+    const { evaluateReworkRouting } = await import('./quality.js');
+    expect(evaluateReworkRouting({ reason: 'Fix', reworkCount: 1, maxRework: 2 }).allowed).toBe(
+      true,
+    );
+    expect(evaluateReworkRouting({ reason: 'Fix', reworkCount: 2, maxRework: 2 })).toMatchObject({
+      allowed: false,
+      exceedsMaxRework: true,
+    });
+  });
+});

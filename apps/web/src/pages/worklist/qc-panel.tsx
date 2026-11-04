@@ -1,3 +1,4 @@
+import { i18n } from '../../lib/i18n/dictionary';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, Plus, Trash2 } from 'lucide-react';
 import React, { useState } from 'react';
@@ -6,6 +7,7 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import {
   evaluateQcApi,
+  fetchReworkTargetsApi,
   fetchQcInspectionsApi,
   fetchQuantityPanelApi,
   recordQcInspectionApi,
@@ -34,13 +36,19 @@ const PROFILE_LABEL = {
 } as const;
 
 // FR-16: the inspector enters measurements, previews the proposal from the order's QC Profile
-// (BR-19) and confirms. Only PASS can be recorded until rework routing (T5.2) ships.
+// (BR-19) and confirms. Non-PASS decisions also require a published target and reason.
 export const QcPanel: React.FC<QcPanelProps> = ({ stepId, token, withBundles, onPassed }) => {
   const queryClient = useQueryClient();
   const [sampleSize, setSampleSize] = useState('');
   const [shrinkage, setShrinkage] = useState('');
   const [fading, setFading] = useState('');
   const [notes, setNotes] = useState('');
+  const [reason, setReason] = useState('');
+  const [target, setTarget] = useState('');
+  const { data: targets = [] } = useQuery({
+    queryKey: ['rework-targets', stepId],
+    queryFn: () => fetchReworkTargetsApi(stepId, token),
+  });
   const [defects, setDefects] = useState<DefectRow[]>([]);
   const [newDefect, setNewDefect] = useState<DefectRow>({ defectType: '', qty: 1 });
   const [evaluation, setEvaluation] = useState<QcEvaluationDto | null>(null);
@@ -86,10 +94,15 @@ export const QcPanel: React.FC<QcPanelProps> = ({ stepId, token, withBundles, on
   });
 
   const passMutation = useMutation({
-    mutationFn: () =>
+    mutationFn: (result: 'PASS' | 'REWORK' | 'REJECT') =>
       recordQcInspectionApi(
         stepId,
-        { ...input(), result: 'PASS', ...(notes.trim() ? { notes: notes.trim() } : {}) },
+        {
+          ...input(),
+          result,
+          ...(notes.trim() ? { notes: notes.trim() } : {}),
+          ...(result !== 'PASS' ? { reworkTargetStepId: target, reason } : {}),
+        },
         token,
       ),
     onSuccess: (data) => {
@@ -98,7 +111,9 @@ export const QcPanel: React.FC<QcPanelProps> = ({ stepId, token, withBundles, on
       const next = data.newlyReadyStepCodes.length
         ? ` Công đoạn tiếp theo [${data.newlyReadyStepCodes.join(', ')}] đã sẵn sàng.`
         : '';
-      onPassed(`Đã ghi nhận kết quả QC: Đạt.${next}`);
+      onPassed(
+        `Đã ghi nhận kết quả QC: ${RESULT_LABEL[data.inspection.result]}.${data.requiresPlannerReview ? ' Cần Điều độ sản xuất xử lý.' : next}`,
+      );
     },
     onError: (err: Error) => setError(err.message),
   });
@@ -259,18 +274,48 @@ export const QcPanel: React.FC<QcPanelProps> = ({ stepId, token, withBundles, on
         <Button
           size="sm"
           disabled={evaluation?.proposedResult !== 'PASS' || passMutation.isPending}
-          onClick={() => passMutation.mutate()}
+          onClick={() => passMutation.mutate('PASS')}
         >
           Xác nhận Đạt
         </Button>
-        <Button size="sm" variant="outline" disabled>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={!evaluation || !reason.trim() || !target || passMutation.isPending}
+          onClick={() => passMutation.mutate('REWORK')}
+        >
           Làm lại
         </Button>
-        <Button size="sm" variant="outline" disabled>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={!evaluation || !reason.trim() || !target || passMutation.isPending}
+          onClick={() => passMutation.mutate('REJECT')}
+        >
           Loại
         </Button>
       </div>
-      <p className="text-text-muted">Làm lại / Loại sẽ có khi bổ sung định tuyến làm lại (T5.2).</p>
+      <label className="block">
+        {i18n.rework.target}
+        <select
+          aria-label={i18n.rework.target}
+          className="h-9 w-full rounded border border-border"
+          value={target}
+          onChange={(e) => setTarget(e.target.value)}
+        >
+          <option value="">{i18n.rework.choose}</option>
+          {targets.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name} ({t.reworkCount}/{t.maxRework})
+            </option>
+          ))}
+        </select>
+      </label>
+      <Input
+        label={i18n.rework.reason}
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+      />
 
       {error && (
         <div className="flex items-center gap-1.5 rounded bg-danger-tint p-2 text-danger-text">

@@ -100,3 +100,27 @@ export function evaluateQcInspection(
 ): QcEvaluation {
   return strategy.evaluate(measurements);
 }
+
+// BR-10: limits come from the published target definition, never a new runtime default.
+export function evaluateReworkRouting(input: {
+  reason?: string;
+  reworkCount: number;
+  maxRework: number | null;
+}) {
+  if (!input.reason?.trim())
+    return { allowed: false, exceedsMaxRework: false, error: 'BR-10: Phải ghi lý do' };
+  if (input.maxRework === null || input.maxRework < 1)
+    return {
+      allowed: false,
+      exceedsMaxRework: false,
+      error: 'BR-10: Bước chưa cấu hình giới hạn làm lại',
+    };
+  const exceedsMaxRework = input.reworkCount >= input.maxRework;
+  return {
+    allowed: !exceedsMaxRework,
+    exceedsMaxRework,
+    error: exceedsMaxRework
+      ? 'BR-10: Vượt giới hạn làm lại, cần Điều độ sản xuất xử lý'
+      : undefined,
+  };
+}

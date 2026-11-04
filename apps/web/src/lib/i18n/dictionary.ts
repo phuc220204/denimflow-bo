@@ -133,6 +133,12 @@ export const i18n = {
     connected: 'Đã kết nối',
     disconnected: 'Mất kết nối',
   },
+  rework: {
+    review: 'Cần Điều độ sản xuất xử lý QC',
+    target: 'Bước quay lại',
+    choose: 'Chọn công đoạn',
+    reason: 'Lý do làm lại / loại',
+  },
   dashboard: {
     title: 'Bảng điều khiển',
     subtitle:

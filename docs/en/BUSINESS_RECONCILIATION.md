@@ -186,3 +186,8 @@ Add a row whenever the implementation interprets or departs from the Proposal. N
 | R-27 | 2026-10-19 | Dashboard module boundary | `dashboard` is a read-only read model: its repository reads order and execution tables with aggregate queries (a fixed number of queries, no N+1) and never writes. The quantity-step rules `tracksQuantities` and `previousQuantityStep` moved to `packages/engine` so execution and dashboard share one copy | Rule 01 reads other modules' data through their service; for cross-module aggregates that means many chatty calls. Writes still follow rule 01 | Agreed (owner) |
 
 "Proposed" rows await the owner's confirmation; change to "Agreed" or rewrite.
+
+
+### T5.2 integration update (#33, 2026-11-05)
+
+Rework routing, loop limits and Planner exception flag; QC path invalidation preserves append-only quantity entries.

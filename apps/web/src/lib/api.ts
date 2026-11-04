@@ -1401,3 +1401,15 @@ export async function fetchDashboardWipApi(token?: string | null): Promise<Dashb
   if (!res.ok) throw new Error(data.message || 'Không thể tải số liệu bảng điều khiển');
   return data;
 }
+
+export async function fetchReworkTargetsApi(
+  stepId: string,
+  token?: string | null,
+): Promise<import('@denimflow/shared').ReworkTargetDto[]> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/qc/rework-targets`, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Không thể tải tuyến làm lại');
+  return data;
+}

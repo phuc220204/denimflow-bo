@@ -1,18 +1,17 @@
 # PROJECT_STATE
 
 Short, current-state file. Keep it under ~5 KB: move history to `docs/adr/` or the PR log.
-Last updated: 2026-10-19
+Last updated: 2026-11-05
 
 ## Phase
 
-**Sprint 4 in progress**, with technical debt to pay first.
-- Sprint 1–3 and T4.1 reached `main` in one self-merged PR (#26, +25k lines, **no review**, while the ruleset was disabled). Treat them as merged but unreviewed.
-- `protect-main` is enabled again: 1 approval + required `CI` check. Security hotfix #28 (no local-token / password-less login, login required on workflow and catalog, roles via `AuthGuard` + `@Roles()`, 422 on invalid input).
-- Supabase dev: all migrations applied, RLS on all 24 tables, 7 demo roles log in and pass 42/42 permission checks. `db:seed` fixed in #35 (template "Jean Standard" not yet seeded on dev until #35 merges and the owner runs it).
-- #27, #29–#34, #37–#41 are being rebuilt by the owner as one PR per task from `main` (no stacking). Merged: T4.2 (#43), T4.3 (#44), T4.5 (#45); migrations applied on dev. T5.1 rebuilt (replaces #32): QC inspection by QC Profile, PASS only (R-24, R-25). T5.5 and T5.6 rebuilt in parallel sessions.
+Sprint 0 deployment is pending. Supabase `denimflow-prod` was created (owner confirmed); GitHub Environment `production` exists but secrets and deployment verification are pending. Do not mark S0 done yet.
 
-**Next:** review/merge T5.1, then T5.2 rework (REWORK/REJECT, BR-10), T5.3, T5.4, T5.7 e2e, T4.4 (optional); Sprint 0 still needs #40 approved and the prod setup (T0.1/T0.7/T0.8); technical debt D1–D4 in `docs/TASK_BOARD.md`.
-Team: tasks are picked in `docs/TASK_BOARD.md` (max 2 per person); onboarding guide `docs/<lang>/GETTING_STARTED.md`.
+Merged: S1–S3 and T4.1 (#26, still need module review), T4.2 (#43), T4.3 (#44), T4.5 (#45), QC PASS (#46), audit (#47), dashboard (#48), deploy preparation (#40), auth HTTP tests (#49).
+
+**Current PR #33 (T5.2):** Rework routing, loop limits and Planner exception flag; QC path invalidation preserves append-only quantity entries. Conflict repair keeps current `main`; legacy unpublished migrations and replaced execution/QC implementations are removed. CI and an independent approval are required before merge. No admin bypass.
+
+**Next:** finish #33/#34/#37/#30/#41, configure production secrets, migrate/seed prod, deploy Render + Cloudflare and measure cold start. D1–D4 remain in `docs/TASK_BOARD.md`.
 
 ## Decisions (settled)
 
@@ -42,12 +41,12 @@ Team: tasks are picked in `docs/TASK_BOARD.md` (max 2 per person); onboarding gu
 
 | Sprint | Goal | Status |
 |---|---|---|
-| S0 | Scaffold + deploy pipeline (walking skeleton) | in progress (T0.2–T0.6 done, CI required; pending: `denimflow-prod`, T0.7 deploy, CODEOWNERS) |
+| S0 | Scaffold + deploy pipeline (walking skeleton) | in progress (T0.2–T0.6 done, CI required; prod created; CODEOWNERS merged; pending: prod configuration and T0.7 deploy) |
 | S1 | Auth + RBAC + master data | merged via #26, unreviewed; hotfix #28 |
 | S2 | Workflow engine core + designer MVP | merged via #26, unreviewed; seed fix #35 |
 | S3 | Order create / Confirm / snapshot | merged via #26, unreviewed |
 | S4 | Worklist, quantities, Gates | T4.1 (#26), T4.2 (#43), T4.3 (#44), T4.5 (#45) merged; T4.4 optional, last |
-| S5 | QC, rework, QC Profile, dashboard, handover, polish | T5.1 (#46) merged; T5.5 (#48) and T5.6 (#47, replaces #39) in PRs; T5.2–T5.4, T5.7 to rebuild |
+| S5 | QC, rework, QC Profile, dashboard, handover, polish | T5.1 (#46), T5.5 (#48), T5.6 (#47) merged; T5.2–T5.4 and T5.7 in conflict repair/review |
 
 ## Known risks
 

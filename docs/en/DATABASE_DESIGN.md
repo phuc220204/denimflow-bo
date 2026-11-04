@@ -248,3 +248,8 @@ Run with `pnpm --filter @denimflow/api db:seed` (builds, then runs `dist/seed/in
 | `conditionExpr` as expression | JSON AST in `jsonb` | R-09 |
 | `fileUrl` fields | `file_path` in a private bucket | R-15 |
 | (none) | `handover_records`, `bom_norms` | R-16 |
+
+
+### T5.2 integration (#33, 2026-11-05)
+
+`workflow_instances.requires_planner_review` and `planner_review_reason` persist QC exceptions without changing the order status. REJECT or an exhausted loop flags the instance; it stays visible but cannot resume production automatically. Existing quantities remain the current physical balance; rework does not receive the same pieces again. Corrections use existing reversal entries. RLS remains enabled.

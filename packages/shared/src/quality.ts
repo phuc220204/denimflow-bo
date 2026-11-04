@@ -36,10 +36,16 @@ export const recordQcInspectionSchema = z
   .object({
     ...qcMeasurementsShape,
     result: qcResultSchema,
+    reworkTargetStepId: z.string().uuid().optional(),
+    reason: z.string().trim().min(1).max(1000).optional(),
     notes: z.string().trim().max(1000).optional(),
   })
   .strict()
-  .refine(defectsWithinSample, defectsWithinSampleMessage);
+  .refine(defectsWithinSample, defectsWithinSampleMessage)
+  .refine((input) => input.result === 'PASS' || (!!input.reason && !!input.reworkTargetStepId), {
+    message: 'BR-10: Phải chọn bước quay lại và ghi lý do',
+    path: ['reason'],
+  });
 export type RecordQcInspectionDto = z.infer<typeof recordQcInspectionSchema>;
 
 export const qcEvaluationSchema = z.object({
@@ -71,6 +77,8 @@ export const qcInspectionSchema = z.object({
   proposedResult: qcResultSchema,
   result: qcResultSchema,
   notes: z.string().nullable(),
+  reason: z.string().nullable().optional(),
+  reworkTargetStepId: z.string().uuid().nullable().optional(),
   createdAt: z.string(),
   defects: z.array(
     z.object({
@@ -87,7 +95,18 @@ export type QcInspectionDto = z.infer<typeof qcInspectionSchema>;
 export const recordQcInspectionResponseSchema = z.object({
   inspection: qcInspectionSchema,
   stepStatus: z.string(),
+  requiresPlannerReview: z.boolean().optional(),
   newlyReadyStepCodes: z.array(z.string()),
   newlySkippedStepCodes: z.array(z.string()),
 });
 export type RecordQcInspectionResponseDto = z.infer<typeof recordQcInspectionResponseSchema>;
+
+export const reworkTargetSchema = z.object({
+  id: z.string().uuid(),
+  code: z.string(),
+  name: z.string(),
+  seq: z.number().int(),
+  reworkCount: z.number().int(),
+  maxRework: z.number().int(),
+});
+export type ReworkTargetDto = z.infer<typeof reworkTargetSchema>;

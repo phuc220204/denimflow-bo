@@ -186,3 +186,8 @@ Thêm một dòng mỗi khi triển khai diễn giải hoặc khác Proposal. Kh
 | R-27 | 2026-10-19 | Ranh giới module dashboard | `dashboard` là read model chỉ đọc: repository đọc bảng của order và execution bằng query tổng hợp (số query cố định, không N+1) và không ghi. Hai rule `tracksQuantities`, `previousQuantityStep` chuyển sang `packages/engine` để execution và dashboard dùng chung một bản | Rule 01 đọc dữ liệu module khác qua service của nó; với số liệu tổng hợp nhiều module thì phải gọi rất nhiều lần. Thao tác ghi vẫn theo rule 01 | Agreed (owner) |
 
 Các dòng "Proposed" chờ owner xác nhận; đổi thành "Agreed" hoặc viết lại.
+
+
+### T5.2 integration update (#33, 2026-11-05)
+
+Rework: kiểm tra tuyến, giới hạn vòng, flag Planner; đưa các bước từ đích đến QC về trạng thái chưa hoàn thành, giữ lịch sử quantity.

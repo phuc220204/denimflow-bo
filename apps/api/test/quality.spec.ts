@@ -16,6 +16,7 @@ import { DEMO_STYLE_CODE, seedWorkflow } from '../src/seed/workflow.js';
 const SEWER_ID = '00000000-0000-0000-0000-0000000000b5';
 const QC2_ID = '00000000-0000-0000-0000-0000000000b6';
 const users: Record<string, { id: string; role: string }> = {
+  'Bearer manager-token': { id: '00000000-0000-0000-0000-000000000007', role: 'MANAGER' },
   'Bearer planner-token': {
     id: '00000000-0000-0000-0000-000000000003',
     role: 'PRODUCTION_PLANNER',
@@ -172,11 +173,11 @@ describe('QC inspection (T5.1)', () => {
     expect(response.body.brId).toBe('BR-19');
   });
 
-  it('does not record REWORK or REJECT yet (T5.2)', async () => {
+  it('BR-10 rejects REWORK without a target and reason', async () => {
     await post(`/steps/${stepIds.SEWING}/qc/inspections`, 'qc-token', {
       sampleSize: 20,
       result: 'REWORK',
-    }).expect(409);
+    }).expect(422);
   });
 
   it('BR-11 refuses an inspector who worked the step', async () => {
@@ -260,6 +261,117 @@ describe('QC inspection (T5.1)', () => {
     }).expect(201);
     expect(response.body.stepStatus).toBe('DONE');
     expect((await stepRow('FINAL_QC')).completedBy).toBe(users['Bearer qc-token']!.id);
+  });
+
+  it('BR-10 routes a failed QC once, invalidates its path and preserves quantities', async () => {
+    for (const code of ['CLEAN_WASH', 'FINISHING']) {
+      await prisma.stepInstance.update({
+        where: { id: stepIds[code] },
+        data: { status: 'DONE', qtyIn: 49, qtyGood: 49, qtyDefect: 0 },
+      });
+      await prisma.stepQuantityEntry.create({
+        data: {
+          stepInstanceId: stepIds[code]!,
+          bundleId,
+          qtyGood: 49,
+          qtyDefect: 0,
+          enteredBy: SEWER_ID,
+        },
+      });
+    }
+
+    // The prior test passed FINAL_QC; restore a consistent pre-decision fixture for this cycle.
+    await prisma.stepInstance.update({
+      where: { id: stepIds.PACK_HANDOVER },
+      data: { status: 'PENDING' },
+    });
+    const targetBefore = await stepRow('FINISHING');
+    await prisma.stepInstance.update({ where: { id: targetBefore.id }, data: { status: 'DONE' } });
+    await prisma.stepInstance.update({
+      where: { id: stepIds.FINAL_QC },
+      data: { status: 'IN_PROGRESS' },
+    });
+    const body = {
+      sampleSize: 20,
+      result: 'REWORK',
+      measuredShrinkagePercent: 4,
+      reworkTargetStepId: targetBefore.id,
+      reason: 'Sửa độ co',
+    };
+    const responses = await Promise.all([
+      post(`/steps/${stepIds.FINAL_QC}/qc/inspections`, 'qc-token', body),
+      post(`/steps/${stepIds.FINAL_QC}/qc/inspections`, 'qc-token', body),
+    ]);
+    expect(responses.map((r) => r.status).sort()).toEqual([201, 409]);
+    const target = await stepRow('FINISHING');
+    expect(target).toMatchObject({
+      status: 'REWORK',
+      reworkCount: 1,
+      qtyIn: targetBefore.qtyIn,
+      qtyGood: targetBefore.qtyGood,
+      qtyDefect: targetBefore.qtyDefect,
+    });
+    expect((await stepRow('FINAL_QC')).status).toBe('PENDING');
+    const dashboard = await request(app.getHttpServer())
+      .get('/dashboard/wip')
+      .set('Authorization', 'Bearer manager-token')
+      .expect(200);
+    expect(
+      dashboard.body.waitingQc.filter((item: { orderId: string }) => item.orderId === orderId),
+    ).toHaveLength(0);
+    const open = await prisma.stepInstance.findMany({
+      where: {
+        instance: { orderId },
+        status: { in: ['READY', 'REWORK', 'IN_PROGRESS', 'WAITING_QC'] },
+      },
+    });
+    expect(open.map((step) => step.id)).toEqual([stepIds.FINISHING]);
+
+    const audit = await prisma.auditLog.findFirst({
+      where: { entityId: target.id, action: 'QC_REWORK' },
+    });
+    expect(audit).not.toBeNull();
+  });
+
+  it('BR-10 refuses a target outside the published REWORK transitions', async () => {
+    await prisma.stepInstance.update({
+      where: { id: stepIds.FINAL_QC },
+      data: { status: 'IN_PROGRESS' },
+    });
+    await post(`/steps/${stepIds.FINAL_QC}/qc/inspections`, 'qc-token', {
+      sampleSize: 20,
+      result: 'REWORK',
+      reworkTargetStepId: stepIds.CUTTING,
+      reason: 'Sai tuyến',
+    }).expect(409);
+  });
+
+  it('BR-10 flags the instance for the Planner at the loop limit, without another loop', async () => {
+    await prisma.stepInstance.update({
+      where: { id: stepIds.FINISHING },
+      data: { status: 'DONE', reworkCount: 2 },
+    });
+    const response = await post(`/steps/${stepIds.FINAL_QC}/qc/inspections`, 'qc-token', {
+      sampleSize: 20,
+      result: 'REWORK',
+      reworkTargetStepId: stepIds.FINISHING,
+      reason: 'Vẫn lỗi',
+    }).expect(201);
+    expect(response.body.requiresPlannerReview).toBe(true);
+    expect((await stepRow('FINISHING')).status).toBe('DONE');
+    const instance = await prisma.workflowInstance.findUniqueOrThrow({ where: { orderId } });
+    expect(instance).toMatchObject({ requiresPlannerReview: true, plannerReviewReason: 'Vẫn lỗi' });
+    const worklist = await request(app.getHttpServer())
+      .get('/worklist')
+      .set('Authorization', 'Bearer planner-token')
+      .expect(200);
+    expect(
+      worklist.body.find((s: { id: string }) => s.id === stepIds.FINAL_QC).requiresPlannerReview,
+    ).toBe(true);
+    await post(`/steps/${stepIds.FINAL_QC}/qc/inspections`, 'qc-token', {
+      sampleSize: 20,
+      result: 'PASS',
+    }).expect(409);
   });
 
   it('lists the inspections of a step for any logged-in role', async () => {
