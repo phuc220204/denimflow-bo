@@ -341,6 +341,34 @@ describe('evaluateStepReadiness', () => {
     expect(snapshot.steps.find((s) => s.code === 'FINISHING')?.status).toBe('READY');
   });
 
+  it('BR-14 keeps the step after a skipped one PENDING while the step before the skip is pending', () => {
+    const snapshot: WorkflowInstanceSnapshot = {
+      steps: [
+        { id: 's1', code: 'BOM_ALLOCATE', seq: 3, status: 'DONE' },
+        { id: 's2', code: 'CUTTING', seq: 6, status: 'IN_PROGRESS' },
+        { id: 's3', code: 'EMBROIDERY', seq: 7, status: 'SKIPPED' },
+        { id: 's4', code: 'SEWING', seq: 8, status: 'PENDING' },
+      ],
+    };
+
+    const out = evaluateStepReadiness(snapshot);
+    expect(out.newlyReadyStepCodes).toEqual([]);
+    expect(out.evaluations['SEWING']?.ruleId).toBe('BR-14');
+    expect(out.evaluations['SEWING']?.reason).toContain('CUTTING');
+  });
+
+  it('BR-14 opens the step after a skipped one once the step before the skip is done', () => {
+    const snapshot: WorkflowInstanceSnapshot = {
+      steps: [
+        { id: 's2', code: 'CUTTING', seq: 6, status: 'DONE' },
+        { id: 's3', code: 'EMBROIDERY', seq: 7, status: 'SKIPPED' },
+        { id: 's4', code: 'SEWING', seq: 8, status: 'PENDING' },
+      ],
+    };
+
+    expect(evaluateStepReadiness(snapshot).newlyReadyStepCodes).toEqual(['SEWING']);
+  });
+
   it('keeps CUTTING PENDING if fabric is underallocated', () => {
     const snapshot: WorkflowInstanceSnapshot = {
       steps: [{ id: 's1', code: 'CUTTING', seq: 10, status: 'PENDING' }],

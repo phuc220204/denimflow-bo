@@ -1,183 +1,102 @@
 // Workflow engine: pure TypeScript, no framework, database or I/O imports
 // (see .agents/rules/01-architecture-boundaries.md).
-// QC inspection evaluation Strategy (T5.1, FR-16, BR-11, BR-19).
+// QC inspection evaluation for FR-16 and BR-19: each QC Profile acts as a Strategy with its own
+// thresholds. The proposal follows the profile only (R-24); defects are reported, never judged.
 
-export interface QcProfileSnapshot {
-  id: string;
+export interface QcProfileThresholds {
   profileType: 'FULL_PROCESS' | 'SKIP_CLEAN_WASH';
   maxShrinkagePercent: number;
   maxColorFadingLevel: number;
 }
 
-export interface DefectItem {
-  defectType: string;
-  qty: number;
-}
-
-export interface QcInspectionEvaluationInput {
+export interface QcMeasurements {
   sampleSize: number;
   measuredShrinkagePercent?: number | null;
   measuredColorFadingLevel?: number | null;
-  defects?: DefectItem[];
-  maxAllowedDefectRatePercent?: number; // default: 2.0%
+  defects?: Array<{ defectType: string; qty: number }>;
 }
 
-export interface QcEvaluationResult {
+export interface QcCriterionResult {
+  criterion: 'SHRINKAGE' | 'COLOR_FADING';
+  measured: number;
+  limit: number;
   passed: boolean;
-  proposedResult: 'PASS' | 'REWORK' | 'REJECT';
-  shrinkagePassed: boolean;
-  colorFadingPassed: boolean;
-  defectRatePassed: boolean;
+  reason: string;
+}
+
+export interface QcEvaluation {
+  profileType: QcProfileThresholds['profileType'];
+  // PASS when every measured criterion is within the profile; REWORK otherwise. REJECT is only
+  // ever chosen by the inspector (R-24).
+  proposedResult: 'PASS' | 'REWORK';
+  criteria: QcCriterionResult[];
   totalDefectQty: number;
   defectRatePercent: number;
-  reasons: string[];
 }
 
-export interface QcStrategy {
-  readonly name: string;
-  evaluate(input: QcInspectionEvaluationInput, profile: QcProfileSnapshot): QcEvaluationResult;
+export interface QcEvaluationStrategy {
+  evaluate(measurements: QcMeasurements): QcEvaluation;
 }
 
 /**
- * Standard QC Strategy comparing measured inspection parameters against
- * configured QC Profile thresholds (BR-19) and defect tolerances.
+ * BR-19: compares measured shrinkage and color fading with the thresholds of the order's QC
+ * Profile (FULL_PROCESS or SKIP_CLEAN_WASH). A criterion that was not measured is not judged.
  */
-export class StandardQcStrategy implements QcStrategy {
-  readonly name = 'StandardQcStrategy';
+export class ProfileThresholdStrategy implements QcEvaluationStrategy {
+  constructor(private readonly profile: QcProfileThresholds) {}
 
-  evaluate(input: QcInspectionEvaluationInput, profile: QcProfileSnapshot): QcEvaluationResult {
-    const reasons: string[] = [];
-    const maxDefectRate = input.maxAllowedDefectRatePercent ?? 2.0;
+  evaluate(measurements: QcMeasurements): QcEvaluation {
+    const { profileType, maxShrinkagePercent, maxColorFadingLevel } = this.profile;
+    const criteria: QcCriterionResult[] = [];
 
-    // 1. Shrinkage Check
-    let shrinkagePassed = true;
-    if (input.measuredShrinkagePercent !== undefined && input.measuredShrinkagePercent !== null) {
-      if (input.measuredShrinkagePercent > profile.maxShrinkagePercent) {
-        shrinkagePassed = false;
-        reasons.push(
-          `Độ co giãn (${input.measuredShrinkagePercent}%) vượt mức tối đa của tiêu chuẩn ${profile.profileType} (${profile.maxShrinkagePercent}%)`,
-        );
-      }
+    const shrinkage = measurements.measuredShrinkagePercent;
+    if (shrinkage !== undefined && shrinkage !== null) {
+      const passed = shrinkage <= maxShrinkagePercent;
+      criteria.push({
+        criterion: 'SHRINKAGE',
+        measured: shrinkage,
+        limit: maxShrinkagePercent,
+        passed,
+        reason: passed
+          ? `Độ co ${shrinkage}% trong ngưỡng ${profileType} (tối đa ${maxShrinkagePercent}%)`
+          : `Độ co ${shrinkage}% vượt ngưỡng ${profileType} (tối đa ${maxShrinkagePercent}%)`,
+      });
     }
 
-    // 2. Color Fading Check
-    let colorFadingPassed = true;
-    if (input.measuredColorFadingLevel !== undefined && input.measuredColorFadingLevel !== null) {
-      if (input.measuredColorFadingLevel > profile.maxColorFadingLevel) {
-        colorFadingPassed = false;
-        reasons.push(
-          `Độ phai màu cấp ${input.measuredColorFadingLevel} vượt mức tối đa của tiêu chuẩn ${profile.profileType} (cấp ${profile.maxColorFadingLevel})`,
-        );
-      }
+    const fading = measurements.measuredColorFadingLevel;
+    if (fading !== undefined && fading !== null) {
+      const passed = fading <= maxColorFadingLevel;
+      criteria.push({
+        criterion: 'COLOR_FADING',
+        measured: fading,
+        limit: maxColorFadingLevel,
+        passed,
+        reason: passed
+          ? `Mức phai màu ${fading} trong ngưỡng ${profileType} (tối đa mức ${maxColorFadingLevel})`
+          : `Mức phai màu ${fading} vượt ngưỡng ${profileType} (tối đa mức ${maxColorFadingLevel})`,
+      });
     }
 
-    // 3. Defect Count & Rate Check
-    const totalDefectQty = (input.defects ?? []).reduce((sum, d) => sum + d.qty, 0);
-    const sampleSize = input.sampleSize > 0 ? input.sampleSize : 1;
-    const defectRatePercent = (totalDefectQty / sampleSize) * 100;
-    let defectRatePassed = true;
-
-    if (defectRatePercent > maxDefectRate) {
-      defectRatePassed = false;
-      reasons.push(
-        `Tỷ lệ khuyết tật (${defectRatePercent.toFixed(1)}%) vượt mức cho phép (${maxDefectRate}%)`,
-      );
-    }
-
-    const passed = shrinkagePassed && colorFadingPassed && defectRatePassed;
-
-    let proposedResult: 'PASS' | 'REWORK' | 'REJECT' = 'PASS';
-    if (!passed) {
-      // If defect rate is catastrophic (> 25%), propose REJECT; otherwise propose REWORK
-      if (defectRatePercent > 25) {
-        proposedResult = 'REJECT';
-      } else {
-        proposedResult = 'REWORK';
-      }
-    }
+    const totalDefectQty = (measurements.defects ?? []).reduce((sum, d) => sum + d.qty, 0);
+    const defectRatePercent =
+      measurements.sampleSize > 0
+        ? Math.round((totalDefectQty / measurements.sampleSize) * 1000) / 10
+        : 0;
 
     return {
-      passed,
-      proposedResult,
-      shrinkagePassed,
-      colorFadingPassed,
-      defectRatePassed,
+      profileType,
+      proposedResult: criteria.every((c) => c.passed) ? 'PASS' : 'REWORK',
+      criteria,
       totalDefectQty,
-      defectRatePercent: Math.round(defectRatePercent * 10) / 10,
-      reasons,
+      defectRatePercent,
     };
   }
 }
 
 export function evaluateQcInspection(
-  input: QcInspectionEvaluationInput,
-  profile: QcProfileSnapshot,
-  strategy: QcStrategy = new StandardQcStrategy(),
-): QcEvaluationResult {
-  return strategy.evaluate(input, profile);
-}
-
-export interface ReworkEvaluationInput {
-  currentStepId: string;
-  targetStepId: string;
-  targetStepSeq: number;
-  currentStepSeq: number;
-  targetReworkCount: number;
-  maxRework: number | null | undefined;
-  reason?: string | null;
-}
-
-export interface ReworkEvaluationResult {
-  allowed: boolean;
-  exceedsMaxRework: boolean;
-  reworkCount: number;
-  maxRework: number;
-  errorMessage?: string;
-}
-
-/**
- * BR-10 / FR-17: Rework routing with loop limit verification.
- * Requires a target step and a mandatory reason.
- * Beyond maxRework, flags for Planner exception handling.
- */
-export function evaluateReworkRouting(input: ReworkEvaluationInput): ReworkEvaluationResult {
-  const maxRework = input.maxRework ?? 2;
-
-  if (!input.reason || input.reason.trim().length === 0) {
-    return {
-      allowed: false,
-      exceedsMaxRework: false,
-      reworkCount: input.targetReworkCount,
-      maxRework,
-      errorMessage: 'BR-10: Lý do làm lại/từ chối là bắt buộc (reason mandatory)',
-    };
-  }
-
-  if (input.targetStepSeq > input.currentStepSeq) {
-    return {
-      allowed: false,
-      exceedsMaxRework: false,
-      reworkCount: input.targetReworkCount,
-      maxRework,
-      errorMessage:
-        'BR-10: Công đoạn làm lại phải là công đoạn trước đó hoặc chính công đoạn hiện tại',
-    };
-  }
-
-  if (input.targetReworkCount >= maxRework) {
-    return {
-      allowed: false,
-      exceedsMaxRework: true,
-      reworkCount: input.targetReworkCount + 1,
-      maxRework,
-      errorMessage: `BR-10: Vượt quá giới hạn làm lại tối đa (${maxRework} vòng). Cần Production Planner can thiệp xử lý ngoại lệ.`,
-    };
-  }
-
-  return {
-    allowed: true,
-    exceedsMaxRework: false,
-    reworkCount: input.targetReworkCount + 1,
-    maxRework,
-  };
+  measurements: QcMeasurements,
+  profile: QcProfileThresholds,
+  strategy: QcEvaluationStrategy = new ProfileThresholdStrategy(profile),
+): QcEvaluation {
+  return strategy.evaluate(measurements);
 }

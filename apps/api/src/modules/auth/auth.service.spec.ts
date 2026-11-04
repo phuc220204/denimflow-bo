@@ -1,14 +1,28 @@
-import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
-import { describe, expect, it, vi } from 'vitest';
+import {
+  ForbiddenException,
+  ServiceUnavailableException,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { type AppConfig } from '../../config/env.schema.js';
 import { Role } from '../../generated/prisma/enums.js';
 import { PrismaService } from '../../infrastructure/prisma/prisma.service.js';
 import { AuthService } from './auth.service.js';
 
+// Fake Supabase Auth: the service must rely on it for every login and token check.
+const supabaseAuth = {
+  signInWithPassword: vi.fn(),
+  getUser: vi.fn(),
+};
+
+vi.mock('@supabase/supabase-js', () => ({
+  createClient: () => ({ auth: supabaseAuth }),
+}));
+
 describe('AuthService', () => {
   const mockProfile = {
     id: '00000000-0000-0000-0000-000000000001',
-    email: 'admin@denimflow.internal',
+    email: 'admin@denimflow.test',
     fullName: 'Quản Trị Viên',
     role: Role.ADMIN,
     isActive: true,
@@ -16,135 +30,136 @@ describe('AuthService', () => {
     updatedAt: new Date(),
   };
 
-  const createMockPrisma = (overrides = {}) => ({
+  const createMockPrisma = (profile: typeof mockProfile | null = mockProfile) => ({
     profile: {
-      findUnique: vi.fn().mockResolvedValue(mockProfile),
-      findFirst: vi.fn().mockResolvedValue(mockProfile),
+      findUnique: vi.fn().mockResolvedValue(profile),
     },
-    ...overrides,
   });
 
-  const devConfig: AppConfig = {
-    NODE_ENV: 'development',
+  const baseConfig = {
     PORT: 3000,
     DATABASE_URL: 'http://localhost:5432/mock',
     DIRECT_URL: 'http://localhost:5432/mock',
     CORS_ORIGINS: ['http://localhost:5173'],
   };
 
-  const prodConfig: AppConfig = {
-    NODE_ENV: 'production',
-    PORT: 3000,
-    DATABASE_URL: 'http://localhost:5432/mock',
-    DIRECT_URL: 'http://localhost:5432/mock',
-    CORS_ORIGINS: ['http://localhost:5173'],
+  const supabaseConfig: AppConfig = {
+    ...baseConfig,
+    NODE_ENV: 'development',
     SUPABASE_URL: 'https://example.supabase.co',
     SUPABASE_SERVICE_ROLE_KEY: 'mock-key',
   };
 
-  describe('login', () => {
-    it('returns local token and user in development when profile is active', async () => {
-      const prisma = createMockPrisma();
-      const service = new AuthService(prisma as unknown as PrismaService, devConfig);
+  const noSupabaseConfig: AppConfig = { ...baseConfig, NODE_ENV: 'development' };
 
-      const res = await service.login({
-        email: 'admin@denimflow.internal',
-        password: 'any-password',
+  const createService = (config: AppConfig, profile: typeof mockProfile | null = mockProfile) =>
+    new AuthService(createMockPrisma(profile) as unknown as PrismaService, config);
+
+  beforeEach(() => {
+    supabaseAuth.signInWithPassword.mockReset();
+    supabaseAuth.getUser.mockReset();
+  });
+
+  describe('login', () => {
+    it('returns the Supabase session token and the profile from the database', async () => {
+      supabaseAuth.signInWithPassword.mockResolvedValueOnce({
+        data: { user: { id: mockProfile.id }, session: { access_token: 'supabase-jwt' } },
+        error: null,
       });
 
-      expect(res.accessToken).toBe(`local-token-${mockProfile.id}`);
-      expect(res.user.email).toBe(mockProfile.email);
-      expect(res.user.isActive).toBe(true);
+      const res = await createService(supabaseConfig).login({
+        email: mockProfile.email,
+        password: 'correct-password',
+      });
+
+      expect(res.accessToken).toBe('supabase-jwt');
+      expect(res.user.role).toBe(Role.ADMIN);
     });
 
-    it('rejects login with 403 Forbidden when account is inactive', async () => {
-      const prisma = createMockPrisma({
-        profile: {
-          findUnique: vi.fn().mockResolvedValue({ ...mockProfile, isActive: false }),
-        },
+    it('rejects a wrong password with 401', async () => {
+      supabaseAuth.signInWithPassword.mockResolvedValueOnce({
+        data: { user: null, session: null },
+        error: { message: 'Invalid login credentials' },
       });
-      const service = new AuthService(prisma as unknown as PrismaService, devConfig);
 
       await expect(
-        service.login({
-          email: 'admin@denimflow.internal',
-          password: 'password',
+        createService(supabaseConfig).login({ email: mockProfile.email, password: 'wrong' }),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('rejects an inactive profile with 403', async () => {
+      supabaseAuth.signInWithPassword.mockResolvedValueOnce({
+        data: { user: { id: mockProfile.id }, session: { access_token: 'supabase-jwt' } },
+        error: null,
+      });
+
+      await expect(
+        createService(supabaseConfig, { ...mockProfile, isActive: false }).login({
+          email: mockProfile.email,
+          password: 'correct-password',
         }),
       ).rejects.toThrow(ForbiddenException);
     });
 
-    it('rejects login with 401 Unauthorized when profile not found', async () => {
-      const prisma = createMockPrisma({
-        profile: {
-          findUnique: vi.fn().mockResolvedValue(null),
-        },
-      });
-      const service = new AuthService(prisma as unknown as PrismaService, devConfig);
-
+    it('refuses to log in without Supabase instead of falling back to a password-less login', async () => {
       await expect(
-        service.login({
-          email: 'nonexistent@denimflow.internal',
-          password: 'password',
-        }),
-      ).rejects.toThrow(UnauthorizedException);
+        createService(noSupabaseConfig).login({ email: mockProfile.email, password: 'anything' }),
+      ).rejects.toThrow(ServiceUnavailableException);
     });
 
-    it('rejects local login in production when Supabase client is not ready', async () => {
-      const prisma = createMockPrisma();
-      const prodConfigWithoutSupabase: AppConfig = {
-        NODE_ENV: 'production',
-        PORT: 3000,
-        DATABASE_URL: 'http://localhost:5432/mock',
-        DIRECT_URL: 'http://localhost:5432/mock',
-        CORS_ORIGINS: ['http://localhost:5173'],
-      };
-
-      // Constructor throws in production if Supabase keys are missing
-      expect(
-        () => new AuthService(prisma as unknown as PrismaService, prodConfigWithoutSupabase),
-      ).toThrow();
+    it('fails at startup in production when Supabase is not configured', () => {
+      expect(() => createService({ ...baseConfig, NODE_ENV: 'production' })).toThrow();
     });
   });
 
   describe('getMe', () => {
-    it('validates local token in development and returns profile', async () => {
-      const prisma = createMockPrisma();
-      const service = new AuthService(prisma as unknown as PrismaService, devConfig);
-
-      const user = await service.getMe(`Bearer local-token-${mockProfile.id}`);
-      expect(user.id).toBe(mockProfile.id);
-      expect(user.role).toBe(Role.ADMIN);
-    });
-
-    it('throws 403 Forbidden when profile is inactive in getMe', async () => {
-      const prisma = createMockPrisma({
-        profile: {
-          findUnique: vi.fn().mockResolvedValue({ ...mockProfile, isActive: false }),
-        },
+    it('returns the profile for a token Supabase accepts', async () => {
+      supabaseAuth.getUser.mockResolvedValueOnce({
+        data: { user: { id: mockProfile.id } },
+        error: null,
       });
-      const service = new AuthService(prisma as unknown as PrismaService, devConfig);
 
-      await expect(service.getMe(`Bearer local-token-${mockProfile.id}`)).rejects.toThrow(
-        ForbiddenException,
-      );
+      const user = await createService(supabaseConfig).getMe('Bearer supabase-jwt');
+
+      expect(supabaseAuth.getUser).toHaveBeenCalledWith('supabase-jwt');
+      expect(user.id).toBe(mockProfile.id);
     });
 
-    it('throws 401 Unauthorized for missing or malformed header', async () => {
-      const prisma = createMockPrisma();
-      const service = new AuthService(prisma as unknown as PrismaService, devConfig);
+    it('rejects a forged local-token with 401 (no local bypass)', async () => {
+      supabaseAuth.getUser.mockResolvedValueOnce({
+        data: { user: null },
+        error: { message: 'invalid JWT' },
+      });
+
+      await expect(
+        createService(supabaseConfig).getMe(`Bearer local-token-${mockProfile.id}`),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('rejects every token when Supabase is not configured', async () => {
+      await expect(
+        createService(noSupabaseConfig).getMe(`Bearer local-token-${mockProfile.id}`),
+      ).rejects.toThrow(ServiceUnavailableException);
+    });
+
+    it('rejects an inactive profile with 403', async () => {
+      supabaseAuth.getUser.mockResolvedValueOnce({
+        data: { user: { id: mockProfile.id } },
+        error: null,
+      });
+
+      await expect(
+        createService(supabaseConfig, { ...mockProfile, isActive: false }).getMe(
+          'Bearer supabase-jwt',
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('rejects a missing or malformed header with 401', async () => {
+      const service = createService(supabaseConfig);
 
       await expect(service.getMe(undefined)).rejects.toThrow(UnauthorizedException);
       await expect(service.getMe('InvalidToken')).rejects.toThrow(UnauthorizedException);
-    });
-
-    it('rejects local-token- in production', async () => {
-      const prisma = createMockPrisma();
-      const service = new AuthService(prisma as unknown as PrismaService, prodConfig);
-
-      // In production, local-token- must NOT bypass Supabase
-      await expect(service.getMe(`Bearer local-token-${mockProfile.id}`)).rejects.toThrow(
-        UnauthorizedException,
-      );
     });
   });
 });

@@ -16,15 +16,14 @@ Branch: `feat/quality-rework`
 FR/BR: FR-17, BR-10
 Do: REWORK/REJECT requires a target step and a reason; transition kind REWORK; `reworkCount` increments; above `maxRework`, mark for Planner exception handling (order stays visible, flagged).
 Acceptance:
-- [x] Loop limit enforced; reason mandatory; audit rows written.
+- [ ] Loop limit enforced; reason mandatory; audit rows written.
 
 ### T5.3 Defects   [agent]
 Branch: `feat/quality-defects`
 FR/BR: FR-18 (High, optional)
 Do: defect records per inspection and bundle; simple list.
-Acceptance:
-- [x] Query defect list per inspection and bundle for an order.
-- [x] Order management UI provides inspection defect history modal.
+
+Implementation updated on existing PR #34: Read-only order defects joined to inspection, bundle and inspector; existing QC schema is reused. Pending CI/review; production acceptance is not yet claimed.
 
 ### T5.4 Packing and handover   [agent]
 Branch: `feat/order-handover`
@@ -39,10 +38,17 @@ Branch: `feat/dashboard-wip`
 FR/BR: FR-21
 Do: Manager/Planner dashboard: orders by status, WIP count per step, good/defect/rework totals, orders waiting on QC. Recharts. Read-only endpoints with efficient queries (indexes from `DATABASE_DESIGN.md` §6).
 Acceptance:
-- [ ] Numbers match the database for the demo data (test with a fixture).
+- [x] Numbers match the database for the demo data (test with a fixture): `apps/api/test/dashboard.spec.ts`.
+
+Done (rebuild of #38): `GET /dashboard/wip` for MANAGER, ADMIN, PROCESS_ENGINEER, PRODUCTION_PLANNER; page `/dashboard`. WIP, totals and waiting-for-QC definitions: `BUSINESS_RECONCILIATION.md` R-26; read model: R-27.
 
 ### T5.6 AuditLog viewer (FR-25, optional)   [agent]
+Branch: `feat/audit-log-viewer-rebuild`
 Admin screen with filters by entity, actor, date. Append-only trigger already blocks edits.
+Acceptance:
+- [x] `GET /audit` (paged, max 100 rows per page) filters by entity type, entity id, actor and an inclusive date range; invalid input gives 422.
+- [x] Only ADMIN and MANAGER may read it (401 without login, 403 for other roles); `GET /audit/filter-options` feeds the dropdowns.
+- [x] The screen shows who, when, action and entity, and a dialog with the before/after values field by field.
 
 ### T5.7 E2E demo and polish   [agent + human]
 Branch: `test/e2e-demo`
