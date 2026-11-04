@@ -35,6 +35,8 @@ Acceptance:
 - [ ] Handover cannot be created while FINAL_QC is not DONE.
 - [ ] Handover record shows FULL_PROCESS or SKIP_CLEAN_WASH.
 
+Implementation updated on existing PR #37: Planner-only handover after all predecessors and FINAL_QC are DONE/SKIPPED; packing uses final net good entries by size, with atomic completion and audit. Pending CI/review; production acceptance is not yet claimed.
+
 ### T5.5 Dashboard   [agent]
 Branch: `feat/dashboard-wip`
 FR/BR: FR-21

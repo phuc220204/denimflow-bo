@@ -470,4 +470,75 @@ describe('QC inspection (T5.1)', () => {
       .set('Authorization', 'Bearer planner-token')
       .expect(400);
   });
+  it('FR-26 serializes handover, packs final good quantities and preserves the QC Profile', async () => {
+    const original = await prisma.productionOrder.findUniqueOrThrow({ where: { id: orderId } });
+    const handoverOrder = await prisma.productionOrder.create({
+      data: {
+        orderNumber: `T54-${randomUUID().slice(0, 8)}`,
+        styleId: original.styleId,
+        fabricTypeId: original.fabricTypeId,
+        colorId: original.colorId,
+        dueDate: new Date('2026-12-31'),
+        createdBy: users['Bearer planner-token']!.id,
+        sizeLines: { create: [{ size: '30', plannedQty: 50 }] },
+      },
+    });
+    const id = handoverOrder.id;
+    await post(`/orders/${id}/confirm`, 'planner-token').expect(201);
+    await request(app.getHttpServer()).post(`/orders/${id}/handover`).send({}).expect(401);
+    await post(`/orders/${id}/handover`, 'cutter-token').expect(403);
+    await post(`/orders/${id}/handover`, 'planner-token').expect(409);
+    const instance = await prisma.workflowInstance.findUniqueOrThrow({
+      where: { orderId: id },
+      include: { stepInstances: { include: { stepDefinition: true } } },
+    });
+    const finishing = instance.stepInstances.find((s) => s.stepDefinition.code === 'FINISHING')!;
+    const pack = instance.stepInstances.find((s) => s.stepDefinition.code === 'PACK_HANDOVER')!;
+    await prisma.stepInstance.updateMany({
+      where: { instanceId: instance.id, status: { not: 'SKIPPED' } },
+      data: { status: 'DONE' },
+    });
+    await prisma.stepInstance.update({ where: { id: pack.id }, data: { status: 'READY' } });
+    const bundle = await prisma.bundle.create({
+      data: { orderId: id, bundleCode: `${handoverOrder.orderNumber}-B001`, size: '30', qty: 50 },
+    });
+    await prisma.stepQuantityEntry.create({
+      data: {
+        stepInstanceId: finishing.id,
+        bundleId: bundle.id,
+        qtyGood: 47,
+        qtyDefect: 2,
+        enteredBy: SEWER_ID,
+      },
+    });
+    await prisma.workflowInstance.update({
+      where: { id: instance.id },
+      data: { requiresPlannerReview: true, plannerReviewReason: 'QC exception' },
+    });
+    await post(`/orders/${id}/handover`, 'planner-token').expect(409);
+    await prisma.workflowInstance.update({
+      where: { id: instance.id },
+      data: { requiresPlannerReview: false, plannerReviewReason: null },
+    });
+    await post(`/steps/${pack.id}/start`, 'planner-token').expect(200);
+    await post(`/steps/${pack.id}/complete`, 'planner-token').expect(409);
+    const responses = await Promise.all([
+      post(`/orders/${id}/handover`, 'planner-token'),
+      post(`/orders/${id}/handover`, 'planner-token'),
+    ]);
+    expect(responses.map((r) => r.status).sort()).toEqual([201, 409]);
+    const response = responses.find((r) => r.status === 201)!;
+    expect(response.body).toMatchObject({
+      qcProfileType: 'FULL_PROCESS',
+      totalQty: 47,
+      packingList: [{ size: '30', plannedQty: 50, actualQty: 47 }],
+      orderStatus: 'COMPLETED',
+    });
+    expect(
+      (await prisma.workflowInstance.findUniqueOrThrow({ where: { id: instance.id } })).status,
+    ).toBe('COMPLETED');
+    expect(
+      await prisma.auditLog.count({ where: { entityId: id, action: 'HANDOVER_CREATED' } }),
+    ).toBe(1);
+  });
 });

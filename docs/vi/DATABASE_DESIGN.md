@@ -254,6 +254,10 @@ Chạy bằng `pnpm --filter @denimflow/api db:seed` (build rồi chạy `dist/s
 
 `workflow_instances.requires_planner_review` và `planner_review_reason` lưu ngoại lệ QC, không đổi trạng thái đơn. REJECT hoặc hết số vòng sẽ flag instance; vẫn hiển thị và không tự chạy tiếp. Giữ quantity hiện tại; làm lại không nhận lại cùng sản phẩm. Sửa số dùng reversal entries hiện có. RLS giữ nguyên.
 
+### T5.4 integration (#37, 2026-11-05)
+
+`handover_records` duy nhất theo đơn, lưu QC Profile đã chốt, packing list và người bàn giao; bật RLS không policy và FK RESTRICT. Khoá các step theo ID tăng dần rồi khoá đơn, sau đó đọc lại quantity cuối; cùng hướng khoá với bắt đầu cắt.
+
 ### T4.4 integration (#30, 2026-11-05)
 
 `evidence` lưu step, path private duy nhất, MIME, kích thước đã xác minh và người tải; RLS deny-all, FK RESTRICT. Upload và completion khoá cùng step. Bucket phải private; cấu hình giới hạn 5 MB và JPEG/PNG/WebP/PDF trên Supabase Storage.

@@ -1426,6 +1426,32 @@ export async function fetchReworkTargetsApi(
   return data;
 }
 
+export async function fetchHandoverApi(
+  orderId: string,
+  token?: string | null,
+): Promise<import('@denimflow/shared').HandoverRecordResponseDto | null> {
+  const res = await fetch(`${API_BASE}/orders/${orderId}/handover`, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Không thể tải biên bản bàn giao');
+  return data;
+}
+export async function createHandoverApi(
+  orderId: string,
+  body: import('@denimflow/shared').CreateHandoverDto,
+  token?: string | null,
+): Promise<import('@denimflow/shared').HandoverRecordResponseDto> {
+  const res = await fetch(`${API_BASE}/orders/${orderId}/handover`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Không thể tạo biên bản bàn giao');
+  return data;
+}
+
 export async function fetchEvidenceApi(
   stepId: string,
   token?: string | null,
