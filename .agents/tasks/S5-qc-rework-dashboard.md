@@ -16,7 +16,7 @@ Branch: `feat/quality-rework`
 FR/BR: FR-17, BR-10
 Do: REWORK/REJECT requires a target step and a reason; transition kind REWORK; `reworkCount` increments; above `maxRework`, mark for Planner exception handling (order stays visible, flagged).
 Acceptance:
-- [ ] Loop limit enforced; reason mandatory; audit rows written.
+- [x] Loop limit enforced; reason mandatory; audit rows written.
 
 Implementation updated on existing PR #33: Rework routing, loop limits and Planner exception flag; QC path invalidation preserves append-only quantity entries. Pending CI/review; production acceptance is not yet claimed.
 
@@ -32,8 +32,8 @@ Branch: `feat/order-handover`
 FR/BR: FR-26
 Do: after FINAL_QC pass: packing list by size, handover record that states the QC Profile used; order → COMPLETED when the last step is DONE.
 Acceptance:
-- [ ] Handover cannot be created while FINAL_QC is not DONE.
-- [ ] Handover record shows FULL_PROCESS or SKIP_CLEAN_WASH.
+- [x] Handover cannot be created while FINAL_QC is not DONE.
+- [x] Handover record shows FULL_PROCESS or SKIP_CLEAN_WASH.
 
 Implementation updated on existing PR #37: Planner-only handover after all predecessors and FINAL_QC are DONE/SKIPPED; packing uses final net good entries by size, with atomic completion and audit. Pending CI/review; production acceptance is not yet claimed.
 
@@ -60,3 +60,6 @@ Do: Playwright test for the demo scenario against a seeded database; fix UX roug
 Acceptance:
 - [ ] Demo scenario passes in CI and on the deployed system.
 - [ ] Owner has rehearsed the "wake up the API" step before the demo.
+
+
+T5.7 update (#41, 2026-11-05): feature prerequisites #33/#34/#37/#30 are merged. CI now requires all Playwright cases on this actual branch: browser smoke, FULL_PROCESS with REWORK/PASS/handover, and SKIP_CLEAN_WASH acknowledgement/profile variation. Missing feature modules fail startup instead of silently skipping. The deployed demo and owner cold-start rehearsal remain pending; do not tick the combined CI+deployed acceptance criterion yet.

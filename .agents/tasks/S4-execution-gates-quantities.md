@@ -31,7 +31,7 @@ Branch: `feat/execution-evidence`
 FR/BR: FR-14, BR-15
 Do: upload through signed URL to the private bucket, client-side image compression, attach to `evidence`; Gate blocks completion of steps with `requiresEvidence` and no attachment. Seed `requiresEvidence = true` for FINISHING once this ships.
 Acceptance:
-- [ ] Step with `requiresEvidence` cannot complete without ≥ 1 attachment.
+- [x] Step with `requiresEvidence` cannot complete without ≥ 1 attachment.
 
 Implementation updated on existing PR #30: Private signed uploads with MIME/size verification, step/operator-bound paths and a completion evidence gate. Pending CI/review; production acceptance is not yet claimed.
 

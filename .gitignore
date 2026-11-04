@@ -13,3 +13,6 @@ coverage/
 
 # Dev demo logins shared privately by the owner (template: account-dev.example.md)
 account-dev.md
+# Playwright artifacts
+playwright-report/
+test-results/
