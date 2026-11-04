@@ -1,62 +1,41 @@
-import { ForbiddenException } from '@nestjs/common';
+import 'reflect-metadata';
+import { GUARDS_METADATA } from '@nestjs/common/constants.js';
+import { Role } from '@denimflow/shared';
 import { describe, expect, it, vi } from 'vitest';
-import { AuthService } from '../auth/auth.service.js';
+import { ZodError } from 'zod';
+import { AuthGuard } from '../auth/auth.guard.js';
+import { ROLES_KEY } from '../auth/roles.decorator.js';
 import { AuditController } from './audit.controller.js';
-import { AuditService } from './audit.service.js';
-import { AuditLogListResponseDto, Role } from '@denimflow/shared';
+import type { AuditService } from './audit.service.js';
 
-describe('AuditController (T5.6, FR-25)', () => {
-  const mockResponse: AuditLogListResponseDto = {
-    items: [],
-    total: 0,
-    page: 1,
-    limit: 20,
-    totalPages: 1,
+describe('AuditController (FR-25)', () => {
+  const service = {
+    findAuditLogs: vi.fn().mockResolvedValue({ items: [] }),
+    getFilterOptions: vi.fn().mockResolvedValue({ entityTypes: [], actors: [] }),
   };
+  const controller = new AuditController(service as unknown as AuditService);
 
-  it('allows ADMIN to query audit logs', async () => {
-    const mockAuditService = {
-      findAuditLogs: vi.fn().mockResolvedValue(mockResponse),
-    } as unknown as AuditService;
-
-    const mockAuthService = {
-      getMe: vi.fn().mockResolvedValue({ id: 'admin-1', role: Role.ADMIN }),
-    } as unknown as AuthService;
-
-    const controller = new AuditController(mockAuditService, mockAuthService);
-    const result = await controller.getAuditLogs({ page: '1', limit: '20' }, 'Bearer token');
-
-    expect(mockAuthService.getMe).toHaveBeenCalledWith('Bearer token');
-    expect(mockAuditService.findAuditLogs).toHaveBeenCalled();
-    expect(result).toEqual(mockResponse);
+  it('FR-25: is guarded and limited to Admin and Manager', () => {
+    expect(Reflect.getMetadata(GUARDS_METADATA, AuditController)).toEqual([AuthGuard]);
+    expect(Reflect.getMetadata(ROLES_KEY, AuditController)).toEqual([Role.ADMIN, Role.MANAGER]);
   });
 
-  it('allows MANAGER to query audit logs', async () => {
-    const mockAuditService = {
-      findAuditLogs: vi.fn().mockResolvedValue(mockResponse),
-    } as unknown as AuditService;
+  it('FR-25: parses the query string before calling the service', async () => {
+    await controller.getAuditLogs({ entityType: 'ProductionOrder', page: '2', limit: '50' });
 
-    const mockAuthService = {
-      getMe: vi.fn().mockResolvedValue({ id: 'manager-1', role: Role.MANAGER }),
-    } as unknown as AuthService;
-
-    const controller = new AuditController(mockAuditService, mockAuthService);
-    const result = await controller.getAuditLogs({}, 'Bearer token');
-
-    expect(result).toEqual(mockResponse);
+    expect(service.findAuditLogs).toHaveBeenCalledWith({
+      entityType: 'ProductionOrder',
+      page: 2,
+      limit: 50,
+    });
   });
 
-  it('rejects STATION_OPERATOR with ForbiddenException', async () => {
-    const mockAuditService = {
-      findAuditLogs: vi.fn(),
-    } as unknown as AuditService;
+  it('FR-25: rejects an invalid query with a ZodError (422 through ZodValidationFilter)', () => {
+    expect(() => controller.getAuditLogs({ limit: '1000' })).toThrow(ZodError);
+    expect(() => controller.getAuditLogs({ actorId: 'not-an-id' })).toThrow(ZodError);
+  });
 
-    const mockAuthService = {
-      getMe: vi.fn().mockResolvedValue({ id: 'op-1', role: Role.STATION_OPERATOR }),
-    } as unknown as AuthService;
-
-    const controller = new AuditController(mockAuditService, mockAuthService);
-
-    await expect(controller.getAuditLogs({}, 'Bearer token')).rejects.toThrow(ForbiddenException);
+  it('FR-25: returns the filter options from the service', async () => {
+    await expect(controller.getFilterOptions()).resolves.toEqual({ entityTypes: [], actors: [] });
   });
 });

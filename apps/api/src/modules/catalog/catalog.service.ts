@@ -161,9 +161,10 @@ export class CatalogService {
   // ==========================================
 
   async getStyles() {
-    return this.prisma.style.findMany({
+    const styles = await this.prisma.style.findMany({
       orderBy: { styleCode: 'asc' },
     });
+    return styles.map(toStyleResponse);
   }
 
   async createStyle(dto: CreateStyleDto, actorId?: string | null) {
@@ -181,6 +182,7 @@ export class CatalogService {
           name: dto.name,
           fitType: dto.fitType ?? null,
           hasEmbroidery: dto.hasEmbroidery,
+          cutTolerancePercent: dto.cutTolerancePercent,
           isActive: dto.isActive,
         },
       });
@@ -195,7 +197,7 @@ export class CatalogService {
         },
       });
 
-      return style;
+      return toStyleResponse(style);
     });
   }
 
@@ -225,6 +227,7 @@ export class CatalogService {
           name: dto.name,
           fitType: dto.fitType ?? undefined,
           hasEmbroidery: dto.hasEmbroidery,
+          cutTolerancePercent: dto.cutTolerancePercent,
           isActive: dto.isActive,
         },
       });
@@ -240,7 +243,7 @@ export class CatalogService {
         },
       });
 
-      return updated;
+      return toStyleResponse(updated);
     });
   }
 
@@ -841,4 +844,9 @@ export class CatalogService {
       return updated;
     });
   }
+}
+
+// Prisma returns numeric(5,2) as a Decimal, which JSON would turn into a string; send a number.
+function toStyleResponse<T extends { cutTolerancePercent: { toString(): string } }>(style: T) {
+  return { ...style, cutTolerancePercent: Number(style.cutTolerancePercent.toString()) };
 }

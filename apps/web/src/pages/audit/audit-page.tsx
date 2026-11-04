@@ -1,253 +1,426 @@
-import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Eye, History, RefreshCw, ShieldCheck, X } from 'lucide-react';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { AlertCircle, Eye, History, RefreshCw, X } from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { auditLogQuerySchema } from '@denimflow/shared';
+import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '../../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
-import { AuditLogItemDto, fetchAuditLogsApi } from '../../lib/api';
+import { type AuditLogItemDto, fetchAuditFilterOptionsApi, fetchAuditLogsApi } from '../../lib/api';
 import { useAuth } from '../../lib/auth-context';
+import { i18n } from '../../lib/i18n/dictionary';
 
-const ENTITY_TYPE_OPTIONS = [
-  { value: '', label: 'Tất cả đối tượng' },
-  { value: 'production_order', label: 'Đơn hàng (production_order)' },
-  { value: 'workflow_instance', label: 'Tiến trình quy trình (workflow_instance)' },
-  { value: 'step_instance', label: 'Công đoạn thực thi (step_instance)' },
-  { value: 'step_quantity_entry', label: 'Sản lượng công đoạn (step_quantity_entry)' },
-  { value: 'qc_inspection', label: 'Biên bản kiểm tra QC (qc_inspection)' },
-  { value: 'material_allocation', label: 'Phân bổ vật tư (material_allocation)' },
-  { value: 'handover_record', label: 'Biên bản bàn giao (handover_record)' },
-  { value: 'profile', label: 'Tài khoản nhân sự (profile)' },
-];
+const t = i18n.audit;
+const PAGE_SIZE = 20;
+const numberFormat = new Intl.NumberFormat('vi-VN');
+const entityIdSchema = auditLogQuerySchema.shape.entityId;
+
+const selectClassName =
+  'h-9 w-full rounded border border-border bg-surface px-3 text-sm text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary';
+
+export function entityTypeLabel(entityType: string): string {
+  return t.entityTypes[entityType.toLowerCase().replaceAll('_', '')] ?? entityType;
+}
+
+// dd/MM/yyyy HH:mm:ss in the browser's time zone (DESIGN.md formats, with seconds for audit).
+function formatDateTime(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+// <input type="date"> gives yyyy-MM-dd; the API takes inclusive ISO bounds, so the picked days
+// are widened to the start and end of the local day.
+function startOfLocalDay(date: string): string {
+  return new Date(`${date}T00:00:00`).toISOString();
+}
+function endOfLocalDay(date: string): string {
+  return new Date(`${date}T23:59:59.999`).toISOString();
+}
+
+interface DiffRow {
+  key: string;
+  before: unknown;
+  after: unknown;
+  changed: boolean;
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+// Field-by-field comparison when both sides are objects (or missing); null means "show raw JSON".
+export function diffAuditValues(oldValue: unknown, newValue: unknown): DiffRow[] | null {
+  if (
+    (oldValue != null && !isPlainObject(oldValue)) ||
+    (newValue != null && !isPlainObject(newValue))
+  ) {
+    return null;
+  }
+  const before = isPlainObject(oldValue) ? oldValue : {};
+  const after = isPlainObject(newValue) ? newValue : {};
+  const keys = [...new Set([...Object.keys(before), ...Object.keys(after)])].sort();
+  return keys.map((key) => ({
+    key,
+    before: before[key],
+    after: after[key],
+    changed: JSON.stringify(before[key]) !== JSON.stringify(after[key]),
+  }));
+}
+
+const DiffValue: React.FC<{ value: unknown }> = ({ value }) => {
+  if (value === undefined) return <span className="text-text-muted">—</span>;
+  return (
+    <span className="break-all font-mono text-xs">
+      {typeof value === 'string' ? value : JSON.stringify(value)}
+    </span>
+  );
+};
+
+const AuditDetailDialog: React.FC<{ log: AuditLogItemDto; onClose: () => void }> = ({
+  log,
+  onClose,
+}) => {
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const rows = diffAuditValues(log.oldValue, log.newValue);
+
+  useEffect(() => {
+    closeRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="audit-detail-title"
+        className="flex max-h-[85vh] w-full max-w-3xl flex-col rounded border border-border bg-surface shadow-lg"
+      >
+        <div className="flex items-start justify-between gap-4 border-b border-border px-4 py-3">
+          <div>
+            <h2 id="audit-detail-title" className="text-base font-semibold text-text">
+              {t.detailTitle} #{log.id}
+            </h2>
+            <p className="mt-1 text-xs text-text-muted">
+              <span className="font-mono">{log.action}</span> · {entityTypeLabel(log.entityType)}{' '}
+              <span className="font-mono">{log.entityId}</span>
+            </p>
+            <p className="text-xs text-text-muted">
+              {formatDateTime(log.createdAt)} ·{' '}
+              {log.actorName ? `${log.actorName} (${log.actorEmail})` : t.systemActor}
+            </p>
+          </div>
+          <Button
+            ref={closeRef}
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            aria-label={t.close}
+            className="shrink-0"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <div className="space-y-4 overflow-y-auto p-4 text-sm">
+          {rows === null ? null : rows.length === 0 ? (
+            <p className="text-text-muted">{t.noChanges}</p>
+          ) : (
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-border text-text-muted">
+                <tr>
+                  <th className="py-2 pr-3 font-medium">{t.field}</th>
+                  <th className="py-2 pr-3 font-medium">{t.before}</th>
+                  <th className="py-2 pr-3 font-medium">{t.after}</th>
+                  <th className="py-2 font-medium" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {rows.map((row) => (
+                  <tr key={row.key} className={row.changed ? 'text-text' : 'text-text-muted'}>
+                    <td className="py-2 pr-3 align-top font-mono text-xs">{row.key}</td>
+                    <td className="py-2 pr-3 align-top">
+                      <DiffValue value={row.before} />
+                    </td>
+                    <td className="py-2 pr-3 align-top">
+                      <DiffValue value={row.after} />
+                    </td>
+                    <td className="py-2 align-top">
+                      {row.changed && <Badge tone="warning">{t.changed}</Badge>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          <details open={rows === null}>
+            <summary className="cursor-pointer text-sm font-medium text-primary">
+              {t.rawJson}
+            </summary>
+            <div className="mt-2 grid gap-3 md:grid-cols-2">
+              {[
+                { label: `${t.before} (old_value)`, value: log.oldValue },
+                { label: `${t.after} (new_value)`, value: log.newValue },
+              ].map(({ label, value }) => (
+                <div key={label}>
+                  <p className="mb-1 text-xs font-medium text-text-muted">{label}</p>
+                  <pre className="max-h-64 overflow-auto rounded border border-border bg-background p-3 font-mono text-xs text-text">
+                    {JSON.stringify(value, null, 2)}
+                  </pre>
+                </div>
+              ))}
+            </div>
+          </details>
+        </div>
+
+        <div className="flex justify-end border-t border-border px-4 py-3">
+          <Button variant="outline" size="sm" onClick={onClose}>
+            {t.close}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export const AuditPage: React.FC = () => {
   const { token } = useAuth();
 
-  // Filters state
   const [entityType, setEntityType] = useState('');
   const [entityId, setEntityId] = useState('');
-  const [from, setFrom] = useState('');
-  const [to, setTo] = useState('');
+  const [actorId, setActorId] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   const [page, setPage] = useState(1);
-  const limit = 15;
-
-  // Selected item for modal
   const [selectedLog, setSelectedLog] = useState<AuditLogItemDto | null>(null);
+  // Stable, so the dialog does not re-run its focus/keyboard effect on every refetch.
+  const closeDetail = useCallback(() => setSelectedLog(null), []);
 
-  const queryParams = {
+  // Pre-checks for a better message only; the API validates the query again (422).
+  const trimmedEntityId = entityId.trim();
+  const entityIdInvalid =
+    trimmedEntityId !== '' && !entityIdSchema.safeParse(trimmedEntityId).success;
+  const dateRangeInvalid = fromDate !== '' && toDate !== '' && fromDate > toDate;
+
+  const query = {
     entityType: entityType || undefined,
-    entityId: entityId || undefined,
-    from: from ? new Date(from).toISOString() : undefined,
-    to: to ? new Date(to).toISOString() : undefined,
+    entityId: trimmedEntityId && !entityIdInvalid ? trimmedEntityId : undefined,
+    actorId: actorId || undefined,
+    from: fromDate ? startOfLocalDay(fromDate) : undefined,
+    to: toDate ? endOfLocalDay(toDate) : undefined,
     page,
-    limit,
+    limit: PAGE_SIZE,
   };
 
-  const { data, isLoading, isFetching, refetch } = useQuery({
-    queryKey: ['audit-logs', queryParams],
-    queryFn: () => fetchAuditLogsApi(queryParams, token),
+  const { data: filterOptions } = useQuery({
+    queryKey: ['audit-filter-options'],
+    queryFn: () => fetchAuditFilterOptionsApi(token),
   });
 
-  const handleResetFilters = () => {
+  const { data, isLoading, isFetching, error, refetch } = useQuery({
+    queryKey: ['audit-logs', query],
+    queryFn: () => fetchAuditLogsApi(query, token),
+    enabled: !dateRangeInvalid,
+    placeholderData: keepPreviousData,
+  });
+
+  // Any filter change starts again from the first page.
+  const onFilterChange = (setter: (value: string) => void) => (value: string) => {
+    setter(value);
+    setPage(1);
+  };
+
+  const resetFilters = () => {
     setEntityType('');
     setEntityId('');
-    setFrom('');
-    setTo('');
+    setActorId('');
+    setFromDate('');
+    setToDate('');
     setPage(1);
   };
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <div className="mx-auto max-w-7xl space-y-6 p-6">
+      <div className="flex flex-col justify-between gap-4 border-b border-border pb-5 md:flex-row md:items-center">
         <div>
-          <h2 className="text-xl font-semibold text-text flex items-center gap-2">
+          <h1 className="flex items-center gap-2 text-xl font-semibold text-text">
             <History className="h-5 w-5 text-primary" />
-            Nhật ký kiểm toán hệ thống (FR-25, BR-16)
-          </h2>
-          <p className="text-xs text-text-muted">
-            Truy vết mọi thay đổi dữ liệu đơn hàng, sản lượng, kiểm tra chất lượng và phân quyền
-            (bất biến, chỉ ghi thêm).
-          </p>
+            {t.title}
+          </h1>
+          <p className="mt-1 text-sm text-text-muted">{t.subtitle}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => refetch()}
-            disabled={isFetching}
-            className="text-xs gap-1.5"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? 'animate-spin' : ''}`} />
-            {isFetching ? 'Đang tải...' : 'Làm mới'}
-          </Button>
-        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => refetch()}
+          disabled={isFetching || dateRangeInvalid}
+          className="gap-1.5"
+        >
+          <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+          {t.refresh}
+        </Button>
       </div>
 
-      {/* Filter Toolbar */}
-      <Card className="border-border bg-surface p-4">
-        <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5">
-          {/* Entity Type Filter */}
-          <div>
-            <label className="text-xs font-medium text-text-muted mb-1 block">Loại đối tượng</label>
+      <Card>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
+          <div className="space-y-1">
+            <label htmlFor="audit-entity-type" className="block text-sm font-medium text-text">
+              {t.filterEntityType}
+            </label>
             <select
+              id="audit-entity-type"
               value={entityType}
-              onChange={(e) => {
-                setEntityType(e.target.value);
-                setPage(1);
-              }}
-              className="w-full h-9 rounded border border-border bg-surface px-2.5 text-xs text-text focus:outline-none focus:ring-1 focus:ring-primary"
+              onChange={(e) => onFilterChange(setEntityType)(e.target.value)}
+              className={selectClassName}
             >
-              {ENTITY_TYPE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
+              <option value="">{t.filterAll}</option>
+              {filterOptions?.entityTypes.map((type) => (
+                <option key={type} value={type}>
+                  {entityTypeLabel(type)} ({type})
                 </option>
               ))}
             </select>
           </div>
 
-          {/* Entity UUID Filter */}
-          <div>
-            <label className="text-xs font-medium text-text-muted mb-1 block">
-              Mã UUID đối tượng
-            </label>
+          <div className="lg:col-span-2">
             <Input
-              placeholder="VD: 550e8400-e29b-..."
+              id="audit-entity-id"
+              label={t.filterEntityId}
+              placeholder="550e8400-e29b-41d4-a716-446655440000"
               value={entityId}
-              onChange={(e) => {
-                setEntityId(e.target.value);
-                setPage(1);
-              }}
-              className="h-9 text-xs font-mono"
+              onChange={(e) => onFilterChange(setEntityId)(e.target.value)}
+              error={entityIdInvalid ? t.filterEntityIdInvalid : undefined}
+              className="font-mono"
             />
           </div>
 
-          {/* From Date */}
-          <div>
-            <label className="text-xs font-medium text-text-muted mb-1 block">Từ ngày</label>
-            <Input
-              type="date"
-              value={from}
-              onChange={(e) => {
-                setFrom(e.target.value);
-                setPage(1);
-              }}
-              className="h-9 text-xs"
-            />
-          </div>
-
-          {/* To Date */}
-          <div>
-            <label className="text-xs font-medium text-text-muted mb-1 block">Đến ngày</label>
-            <Input
-              type="date"
-              value={to}
-              onChange={(e) => {
-                setTo(e.target.value);
-                setPage(1);
-              }}
-              className="h-9 text-xs"
-            />
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-end gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleResetFilters}
-              className="h-9 text-xs w-full"
+          <div className="space-y-1">
+            <label htmlFor="audit-actor" className="block text-sm font-medium text-text">
+              {t.filterActor}
+            </label>
+            <select
+              id="audit-actor"
+              value={actorId}
+              onChange={(e) => onFilterChange(setActorId)(e.target.value)}
+              className={selectClassName}
             >
-              Đặt lại bộ lọc
-            </Button>
+              <option value="">{t.filterAll}</option>
+              {filterOptions?.actors.map((actor) => (
+                <option key={actor.id} value={actor.id}>
+                  {actor.fullName} ({actor.email})
+                </option>
+              ))}
+            </select>
           </div>
+
+          <Input
+            id="audit-from"
+            type="date"
+            label={t.filterFrom}
+            value={fromDate}
+            onChange={(e) => onFilterChange(setFromDate)(e.target.value)}
+          />
+          <Input
+            id="audit-to"
+            type="date"
+            label={t.filterTo}
+            value={toDate}
+            onChange={(e) => onFilterChange(setToDate)(e.target.value)}
+            error={dateRangeInvalid ? t.filterDateRangeInvalid : undefined}
+          />
+        </div>
+        <div className="mt-4 flex justify-end">
+          <Button variant="outline" size="sm" onClick={resetFilters}>
+            {t.resetFilters}
+          </Button>
         </div>
       </Card>
 
-      {/* Audit Log Table */}
-      <Card className="border-border bg-surface">
-        <CardHeader className="pb-3 border-b border-border">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-base font-semibold text-text">
-                Danh sách bản ghi kiểm toán ({data?.total ?? 0})
-              </CardTitle>
-              <CardDescription className="text-xs text-text-muted">
-                Bảo đảm tính toàn vẹn và minh bạch theo tiêu chuẩn kiến trúc xưởng
-              </CardDescription>
-            </div>
-          </div>
+      {error && (
+        <div
+          role="alert"
+          className="flex items-center gap-2 rounded border border-danger/20 bg-danger-tint p-3 text-sm text-danger-text"
+        >
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span>
+            {t.loadError}: {(error as Error).message}
+          </span>
+        </div>
+      )}
+
+      <Card className="p-0">
+        <CardHeader className="border-b border-border px-4 pb-3 pt-4">
+          <CardTitle className="text-base font-semibold text-text">
+            {t.listTitle} ({numberFormat.format(data?.total ?? 0)})
+          </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="border-b border-border bg-slate-50 text-text-muted font-medium">
+            <table className="w-full text-left text-[13px]">
+              <thead className="sticky top-0 border-b border-border bg-surface text-text-muted">
                 <tr>
-                  <th className="px-4 py-2.5">Thời gian</th>
-                  <th className="px-4 py-2.5">Tác nhân</th>
-                  <th className="px-4 py-2.5">Thao tác</th>
-                  <th className="px-4 py-2.5">Loại đối tượng</th>
-                  <th className="px-4 py-2.5">Mã đối tượng (UUID)</th>
-                  <th className="px-4 py-2.5 text-right">Chi tiết</th>
+                  <th className="px-4 py-2.5 font-medium">{t.columnTime}</th>
+                  <th className="px-4 py-2.5 font-medium">{t.columnActor}</th>
+                  <th className="px-4 py-2.5 font-medium">{t.columnAction}</th>
+                  <th className="px-4 py-2.5 font-medium">{t.columnEntity}</th>
+                  <th className="px-4 py-2.5 font-medium">{t.columnEntityId}</th>
+                  <th className="px-4 py-2.5 text-right font-medium">{t.columnDetail}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {isLoading ? (
                   <tr>
                     <td colSpan={6} className="px-4 py-8 text-center text-text-muted">
-                      Đang tải danh sách nhật ký...
+                      {t.loading}
                     </td>
                   </tr>
                 ) : !data || data.items.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-4 py-8 text-center text-text-muted">
-                      Không có bản ghi nhật ký kiểm toán nào phù hợp với bộ lọc.
+                      {t.empty}
                     </td>
                   </tr>
                 ) : (
                   data.items.map((log) => (
-                    <tr key={log.id} className="hover:bg-slate-50">
-                      <td className="px-4 py-3 text-text-muted whitespace-nowrap font-mono">
-                        {new Date(log.createdAt).toLocaleString('vi-VN')}
+                    <tr key={log.id} className="hover:bg-primary-tint/40">
+                      <td className="whitespace-nowrap px-4 py-2.5 tabular-nums text-text-muted">
+                        {formatDateTime(log.createdAt)}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-2.5">
                         {log.actorName ? (
-                          <div>
-                            <span className="font-semibold text-text block">{log.actorName}</span>
-                            <span className="text-[11px] text-text-muted block">
-                              {log.actorEmail}
-                            </span>
-                          </div>
+                          <>
+                            <span className="block font-medium text-text">{log.actorName}</span>
+                            <span className="block text-xs text-text-muted">{log.actorEmail}</span>
+                          </>
                         ) : (
-                          <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
-                            <ShieldCheck className="h-3 w-3 text-slate-500" />
-                            Hệ thống tự động
-                          </span>
+                          <Badge tone="neutral">{t.systemActor}</Badge>
                         )}
                       </td>
-                      <td className="px-4 py-3">
-                        <span className="rounded bg-primary-tint px-2 py-0.5 font-mono text-[11px] font-semibold text-primary">
-                          {log.action}
+                      <td className="px-4 py-2.5 font-mono text-xs text-text">{log.action}</td>
+                      <td className="px-4 py-2.5">
+                        <span className="block text-text">{entityTypeLabel(log.entityType)}</span>
+                        <span className="block font-mono text-xs text-text-muted">
+                          {log.entityType}
                         </span>
                       </td>
-                      <td className="px-4 py-3 font-mono text-text-muted">{log.entityType}</td>
-                      <td className="px-4 py-3 font-mono text-text-muted text-[11px]">
+                      <td className="px-4 py-2.5 font-mono text-xs text-text-muted">
                         {log.entityId}
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-4 py-2.5 text-right">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => setSelectedLog(log)}
-                          className="h-7 text-[11px] gap-1 px-2"
+                          className="gap-1"
                         >
-                          <Eye className="h-3.5 w-3.5 text-primary" />
-                          Xem thay đổi
+                          <Eye className="h-3.5 w-3.5" />
+                          {t.viewChanges}
                         </Button>
                       </td>
                     </tr>
@@ -257,32 +430,27 @@ export const AuditPage: React.FC = () => {
             </table>
           </div>
 
-          {/* Pagination controls */}
           {data && data.totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-border px-4 py-3">
-              <span className="text-xs text-text-muted">
-                Trang <span className="font-semibold text-text">{data.page}</span> /{' '}
-                <span className="font-semibold text-text">{data.totalPages}</span> (Tổng{' '}
-                {data.total} bản ghi)
+            <div className="flex items-center justify-between border-t border-border px-4 py-3 text-sm">
+              <span className="text-text-muted">
+                {t.pageInfo} {data.page} / {data.totalPages}
               </span>
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setPage((p) => Math.max(p - 1, 1))}
-                  disabled={data.page <= 1}
-                  className="h-8 text-xs"
+                  disabled={data.page <= 1 || isFetching}
                 >
-                  Trang trước
+                  {t.previousPage}
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setPage((p) => Math.min(p + 1, data.totalPages))}
-                  disabled={data.page >= data.totalPages}
-                  className="h-8 text-xs"
+                  disabled={data.page >= data.totalPages || isFetching}
                 >
-                  Trang sau
+                  {t.nextPage}
                 </Button>
               </div>
             </div>
@@ -290,87 +458,7 @@ export const AuditPage: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Changes Detail Modal */}
-      {selectedLog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-2xl rounded-lg border border-border bg-surface p-6 shadow-xl space-y-4 max-h-[85vh] flex flex-col">
-            <div className="flex items-center justify-between border-b border-border pb-3">
-              <div>
-                <h3 className="text-base font-semibold text-text flex items-center gap-2">
-                  <History className="h-4 w-4 text-primary" />
-                  Chi tiết bản ghi kiểm toán #{selectedLog.id}
-                </h3>
-                <p className="text-xs text-text-muted mt-0.5">
-                  Thao tác:{' '}
-                  <span className="font-mono font-semibold text-primary">{selectedLog.action}</span>{' '}
-                  • Đối tượng: <span className="font-mono">{selectedLog.entityType}</span>
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setSelectedLog(null)}
-                className="h-7 w-7 p-0"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-
-            <div className="space-y-4 overflow-y-auto pr-1 flex-1 text-xs">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <span className="font-medium text-text-muted block">Thời điểm thực hiện:</span>
-                  <span className="font-mono text-text">
-                    {new Date(selectedLog.createdAt).toLocaleString('vi-VN')}
-                  </span>
-                </div>
-                <div>
-                  <span className="font-medium text-text-muted block">Tác nhân thao tác:</span>
-                  <span className="text-text">
-                    {selectedLog.actorName
-                      ? `${selectedLog.actorName} (${selectedLog.actorEmail})`
-                      : 'Hệ thống tự động'}
-                  </span>
-                </div>
-              </div>
-
-              <div>
-                <span className="font-medium text-text-muted block">Mã đối tượng (UUID):</span>
-                <span className="font-mono text-text">{selectedLog.entityId}</span>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
-                <div>
-                  <span className="font-semibold text-text block mb-1">
-                    Dữ liệu trước thay đổi (old_value):
-                  </span>
-                  <pre className="p-3 bg-slate-50 border border-border rounded text-[11px] font-mono overflow-x-auto text-text max-h-56">
-                    {selectedLog.oldValue
-                      ? JSON.stringify(selectedLog.oldValue, null, 2)
-                      : 'null (Khởi tạo mới)'}
-                  </pre>
-                </div>
-                <div>
-                  <span className="font-semibold text-text block mb-1">
-                    Dữ liệu sau thay đổi (new_value):
-                  </span>
-                  <pre className="p-3 bg-slate-50 border border-border rounded text-[11px] font-mono overflow-x-auto text-text max-h-56">
-                    {selectedLog.newValue
-                      ? JSON.stringify(selectedLog.newValue, null, 2)
-                      : 'null (Xóa dữ liệu)'}
-                  </pre>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end pt-2 border-t border-border">
-              <Button variant="outline" size="sm" onClick={() => setSelectedLog(null)}>
-                Đóng
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      {selectedLog && <AuditDetailDialog log={selectedLog} onClose={closeDetail} />}
     </div>
   );
 };

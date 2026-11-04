@@ -9,6 +9,5 @@ import { DashboardService } from './dashboard.service.js';
   imports: [PrismaModule, AuthModule],
   controllers: [DashboardController],
   providers: [DashboardRepository, DashboardService],
-  exports: [DashboardService],
 })
 export class DashboardModule {}

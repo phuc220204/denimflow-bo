@@ -1,0 +1,62 @@
+# Applies committed Prisma migrations to the PRODUCTION database (and optionally seeds it).
+# Manual only (Actions -> Migrate -> Run workflow). Production values live in the GitHub
+# Environment "production" as secrets, never in a local .env (DEVELOPMENT_SETUP.md §8).
+# Actions are pinned to full commit SHAs (same versions as ci.yml).
+name: Migrate
+
+on:
+  workflow_dispatch:
+    inputs:
+      seed:
+        description: 'Also run db:seed (demo data and the 7 demo accounts) after migrating'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# Never run two migrations against production at the same time.
+concurrency:
+  group: migrate-production
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: Migrate production
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    # Add required reviewers to this environment in Settings -> Environments for a manual gate.
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Uses the direct (or session pooler) connection: the transaction pooler breaks DDL.
+      - name: Apply migrations
+        env:
+          DIRECT_URL: ${{ secrets.PROD_DIRECT_URL }}
+        run: pnpm --filter @denimflow/api db:migrate:deploy
+
+      - name: Seed demo data
+        if: ${{ inputs.seed }}
+        env:
+          DIRECT_URL: ${{ secrets.PROD_DIRECT_URL }}
+          SUPABASE_URL: ${{ secrets.PROD_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PROD_SUPABASE_SERVICE_ROLE_KEY }}
+          SEED_DEFAULT_PASSWORD: ${{ secrets.PROD_SEED_DEFAULT_PASSWORD }}
+        run: pnpm --filter @denimflow/api db:seed

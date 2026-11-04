@@ -24,44 +24,43 @@ import {
   type AttachAcknowledgementDto,
   type ConfirmOrderResponseDto,
   type CuttingGateResultDto,
+  type DashboardWipSummaryDto,
   type RequestStatus,
   type CompleteStepResponseDto,
+  type RecordQuantityEntryDto,
   type StartStepResponseDto,
+  type StepQuantityEntryDto,
+  type StepQuantityPanelDto,
+  type QcEvaluationDto,
+  type QcEvaluationInputDto,
+  type QcInspectionDto,
+  type RecordQcInspectionDto,
+  type RecordQcInspectionResponseDto,
   type StepStatus,
   type WorklistItemDto,
-  type BundleDto,
-  type RecordQuantityEntryDto,
-  type StepQuantityEntryDto,
-  type AttachEvidenceDto,
-  type EvidenceDto,
-  type ApproveQcDto,
-  type EvaluateQcInspectionInputDto,
-  type QcEvaluationOutputDto,
-  type RecordQcInspectionDto,
-  type QcInspectionResponseDto,
-  type ReworkTargetDto,
-  type OrderDefectItemDto,
-  type CreateHandoverDto,
-  type HandoverRecordResponseDto,
-  type DashboardWipSummaryDto,
+  type AuditLogFilterOptionsDto,
   type AuditLogItemDto,
   type AuditLogListResponseDto,
   type AuditLogQueryDto,
 } from '@denimflow/shared';
 
 export type {
-  CompleteStepResponseDto,
-  StartStepResponseDto,
-  StepStatus,
-  WorklistItemDto,
-  BundleDto,
-  RecordQuantityEntryDto,
-  StepQuantityEntryDto,
-  AttachEvidenceDto,
-  EvidenceDto,
+  AuditLogFilterOptionsDto,
   AuditLogItemDto,
   AuditLogListResponseDto,
   AuditLogQueryDto,
+  CompleteStepResponseDto,
+  RecordQuantityEntryDto,
+  StartStepResponseDto,
+  StepQuantityEntryDto,
+  StepQuantityPanelDto,
+  QcEvaluationDto,
+  QcEvaluationInputDto,
+  QcInspectionDto,
+  RecordQcInspectionDto,
+  RecordQcInspectionResponseDto,
+  StepStatus,
+  WorklistItemDto,
 };
 
 export interface UserProfile {
@@ -151,6 +150,8 @@ export interface StyleItem {
   name: string;
   fitType?: string | null;
   hasEmbroidery: boolean;
+  // BR-07: the cut may exceed the plan by this percentage (R-19)
+  cutTolerancePercent?: number;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -1259,135 +1260,92 @@ export async function completeStepApi(
   return data;
 }
 
+// ==========================================
+// QUANTITY ENTRY API CLIENT (T4.3, FR-13)
+// ==========================================
+
+export async function fetchQuantityPanelApi(
+  stepId: string,
+  token?: string | null,
+): Promise<StepQuantityPanelDto> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/quantities`, {
+    headers: getAuthHeaders(token),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Không thể tải số lượng của công đoạn');
+  return data;
+}
+
 export async function recordQuantityApi(
   stepId: string,
-  dto: RecordQuantityEntryDto,
+  body: RecordQuantityEntryDto,
   token?: string | null,
 ): Promise<StepQuantityEntryDto> {
   const res = await fetch(`${API_BASE}/steps/${stepId}/quantities`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(dto),
+    body: JSON.stringify(body),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message || 'Không thể ghi nhận sản lượng');
+  if (!res.ok) throw new Error(data.message || 'Không thể ghi nhận số lượng');
   return data;
 }
 
-export async function fetchStepQuantitiesApi(
+export async function reverseQuantityApi(
   stepId: string,
+  entryId: string,
+  reason: string,
   token?: string | null,
-): Promise<StepQuantityEntryDto[]> {
-  const res = await fetch(`${API_BASE}/steps/${stepId}/quantities`, {
-    headers: getAuthHeaders(token),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || 'Không thể tải lịch sử sản lượng');
-  return data;
-}
-
-export async function generateBundlesApi(
-  stepId: string,
-  token?: string | null,
-): Promise<BundleDto[]> {
-  const res = await fetch(`${API_BASE}/steps/${stepId}/bundles/generate`, {
+): Promise<StepQuantityEntryDto> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/quantities/${entryId}/reverse`, {
     method: 'POST',
     headers: getAuthHeaders(token),
+    body: JSON.stringify({ reason }),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message || 'Không thể tạo kiện hàng');
+  if (!res.ok) throw new Error(data.message || 'Không thể huỷ dòng nhập');
   return data;
 }
 
-export async function fetchStepBundlesApi(
-  stepId: string,
-  token?: string | null,
-): Promise<BundleDto[]> {
-  const res = await fetch(`${API_BASE}/steps/${stepId}/bundles`, {
-    headers: getAuthHeaders(token),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || 'Không thể tải danh sách kiện');
-  return data;
-}
+// ==========================================
+// QC INSPECTION API CLIENT (T5.1, FR-16)
+// ==========================================
 
-export async function attachEvidenceApi(
+export async function evaluateQcApi(
   stepId: string,
-  dto: AttachEvidenceDto,
+  body: QcEvaluationInputDto,
   token?: string | null,
-): Promise<EvidenceDto> {
-  const res = await fetch(`${API_BASE}/steps/${stepId}/evidence`, {
+): Promise<QcEvaluationDto> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/qc/evaluate`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(dto),
+    body: JSON.stringify(body),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message || 'Không thể đính kèm minh chứng');
-  return data;
-}
-
-export async function fetchStepEvidenceApi(
-  stepId: string,
-  token?: string | null,
-): Promise<EvidenceDto[]> {
-  const res = await fetch(`${API_BASE}/steps/${stepId}/evidence`, {
-    headers: getAuthHeaders(token),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || 'Không thể tải danh sách minh chứng');
-  return data;
-}
-
-export async function approveQcApi(
-  stepId: string,
-  dto: ApproveQcDto = {},
-  token?: string | null,
-): Promise<CompleteStepResponseDto> {
-  const res = await fetch(`${API_BASE}/steps/${stepId}/qc-approve`, {
-    method: 'POST',
-    headers: getAuthHeaders(token),
-    body: JSON.stringify(dto),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || 'Không thể duyệt QC');
-  return data;
-}
-
-// 7. Quality Inspection (Sprint 5, FR-16, BR-11, BR-19)
-export async function evaluateQcInspectionApi(
-  stepInstanceId: string,
-  dto: EvaluateQcInspectionInputDto,
-  token?: string | null,
-): Promise<QcEvaluationOutputDto> {
-  const res = await fetch(`${API_BASE}/quality/evaluate/${stepInstanceId}`, {
-    method: 'POST',
-    headers: getAuthHeaders(token),
-    body: JSON.stringify(dto),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || 'Không thể đánh giá kiểm tra QC');
+  if (!res.ok) throw new Error(data.message || 'Không thể đánh giá kết quả QC');
   return data;
 }
 
 export async function recordQcInspectionApi(
-  dto: RecordQcInspectionDto,
+  stepId: string,
+  body: RecordQcInspectionDto,
   token?: string | null,
-): Promise<QcInspectionResponseDto> {
-  const res = await fetch(`${API_BASE}/quality/inspections`, {
+): Promise<RecordQcInspectionResponseDto> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/qc/inspections`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(dto),
+    body: JSON.stringify(body),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message || 'Không thể lưu biên bản kiểm tra QC');
+  if (!res.ok) throw new Error(data.message || 'Không thể ghi nhận phiếu kiểm tra QC');
   return data;
 }
 
-export async function fetchStepInspectionsApi(
-  stepInstanceId: string,
+export async function fetchQcInspectionsApi(
+  stepId: string,
   token?: string | null,
-): Promise<QcInspectionResponseDto[]> {
-  const res = await fetch(`${API_BASE}/quality/inspections/${stepInstanceId}`, {
+): Promise<QcInspectionDto[]> {
+  const res = await fetch(`${API_BASE}/steps/${stepId}/qc/inspections`, {
     headers: getAuthHeaders(token),
   });
   const data = await res.json();
@@ -1395,89 +1353,51 @@ export async function fetchStepInspectionsApi(
   return data;
 }
 
-export async function fetchReworkTargetsApi(
-  stepInstanceId: string,
+// ==========================================
+// AUDIT LOG VIEWER API CLIENT (T5.6, FR-25)
+// ==========================================
+
+export async function fetchAuditLogsApi(
+  query: Partial<AuditLogQueryDto>,
   token?: string | null,
-): Promise<ReworkTargetDto[]> {
-  const res = await fetch(`${API_BASE}/quality/rework-targets/${stepInstanceId}`, {
+): Promise<AuditLogListResponseDto> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined && value !== '') params.append(key, String(value));
+  }
+
+  const qs = params.toString() ? `?${params.toString()}` : '';
+  const res = await fetch(`${API_BASE}/audit${qs}`, {
     headers: getAuthHeaders(token),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || 'Không thể tải danh sách công đoạn làm lại');
+  // A proxy or crash page may answer without JSON; keep the Vietnamese message then.
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Không thể tải nhật ký kiểm toán');
   return data;
 }
 
-export async function fetchOrderDefectsApi(
-  orderId: string,
+export async function fetchAuditFilterOptionsApi(
   token?: string | null,
-): Promise<OrderDefectItemDto[]> {
-  const res = await fetch(`${API_BASE}/quality/orders/${orderId}/defects`, {
+): Promise<AuditLogFilterOptionsDto> {
+  const res = await fetch(`${API_BASE}/audit/filter-options`, {
     headers: getAuthHeaders(token),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || 'Không thể tải danh sách lỗi của đơn hàng');
+  // A proxy or crash page may answer without JSON; keep the Vietnamese message then.
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Không thể tải bộ lọc nhật ký');
   return data;
 }
 
-// 8. Handover and Packing (Sprint 5, FR-26)
-export async function createHandoverApi(
-  orderId: string,
-  dto: CreateHandoverDto = {},
-  token?: string | null,
-): Promise<HandoverRecordResponseDto> {
-  const res = await fetch(`${API_BASE}/orders/${orderId}/handover`, {
-    method: 'POST',
-    headers: getAuthHeaders(token),
-    body: JSON.stringify(dto),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || 'Không thể tạo biên bản bàn giao');
-  return data;
-}
+// ==========================================
+// DASHBOARD API CLIENT (T5.5, FR-21)
+// ==========================================
 
-export async function fetchHandoverApi(
-  orderId: string,
-  token?: string | null,
-): Promise<HandoverRecordResponseDto | null> {
-  const res = await fetch(`${API_BASE}/orders/${orderId}/handover`, {
-    headers: getAuthHeaders(token),
-  });
-  if (res.status === 404) return null;
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || 'Không thể tải thông tin biên bản bàn giao');
-  return data;
-}
-
-// 9. Dashboard WIP (Sprint 5, FR-21)
 export async function fetchDashboardWipApi(token?: string | null): Promise<DashboardWipSummaryDto> {
   const res = await fetch(`${API_BASE}/dashboard/wip`, {
     headers: getAuthHeaders(token),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || 'Không thể tải số liệu WIP phân xưởng');
-  return data;
-}
-
-// 10. Audit Log Viewer (Sprint 5, FR-25)
-export async function fetchAuditLogsApi(
-  query: Partial<AuditLogQueryDto> = {},
-  token?: string | null,
-): Promise<AuditLogListResponseDto> {
-  const params = new URLSearchParams();
-  if (query.entityType) params.append('entityType', query.entityType);
-  if (query.entityId) params.append('entityId', query.entityId);
-  if (query.actorId) params.append('actorId', query.actorId);
-  if (query.from) params.append('from', query.from);
-  if (query.to) params.append('to', query.to);
-  if (query.page) params.append('page', String(query.page));
-  if (query.limit) params.append('limit', String(query.limit));
-
-  const qs = params.toString();
-  const url = `${API_BASE}/audit${qs ? `?${qs}` : ''}`;
-  const res = await fetch(url, {
-    headers: getAuthHeaders(token),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || 'Không thể tải nhật ký thao tác');
+  // A proxy or crash page may answer without JSON; keep the Vietnamese message then.
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Không thể tải số liệu bảng điều khiển');
   return data;
 }

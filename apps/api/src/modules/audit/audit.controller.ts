@@ -1,24 +1,23 @@
-import { Controller, ForbiddenException, Get, Headers, Inject, Query } from '@nestjs/common';
-import { Role, auditLogQuerySchema } from '@denimflow/shared';
-import { AuthService } from '../auth/auth.service.js';
+import { Controller, Get, Inject, Query, UseGuards } from '@nestjs/common';
+import { auditLogQuerySchema, Role } from '@denimflow/shared';
+import { AuthGuard } from '../auth/auth.guard.js';
+import { Roles } from '../auth/roles.decorator.js';
 import { AuditService } from './audit.service.js';
 
+// FR-25 (PRD §3): Admin may view the AuditLog, Manager may view it read-only.
 @Controller('audit')
+@UseGuards(AuthGuard)
+@Roles(Role.ADMIN, Role.MANAGER)
 export class AuditController {
-  constructor(
-    @Inject(AuditService) private readonly auditService: AuditService,
-    @Inject(AuthService) private readonly authService: AuthService,
-  ) {}
+  constructor(@Inject(AuditService) private readonly auditService: AuditService) {}
 
   @Get()
-  async getAuditLogs(@Query() rawQuery: unknown, @Headers('authorization') authHeader?: string) {
-    const user = await this.authService.getMe(authHeader);
-    if (user.role !== Role.ADMIN && user.role !== Role.MANAGER) {
-      throw new ForbiddenException(
-        'Chỉ Quản trị viên (ADMIN) và Quản lý xưởng (MANAGER) mới có quyền xem nhật ký hệ thống.',
-      );
-    }
-    const query = auditLogQuerySchema.parse(rawQuery);
-    return this.auditService.findAuditLogs(query);
+  getAuditLogs(@Query() rawQuery: unknown) {
+    return this.auditService.findAuditLogs(auditLogQuerySchema.parse(rawQuery));
+  }
+
+  @Get('filter-options')
+  getFilterOptions() {
+    return this.auditService.getFilterOptions();
   }
 }

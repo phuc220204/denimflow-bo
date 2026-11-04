@@ -1,1 +1,1 @@
-export * from './audit-page.js';
+export * from './audit-page';

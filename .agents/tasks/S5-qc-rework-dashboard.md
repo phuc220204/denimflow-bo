@@ -16,42 +16,44 @@ Branch: `feat/quality-rework`
 FR/BR: FR-17, BR-10
 Do: REWORK/REJECT requires a target step and a reason; transition kind REWORK; `reworkCount` increments; above `maxRework`, mark for Planner exception handling (order stays visible, flagged).
 Acceptance:
-- [x] Loop limit enforced; reason mandatory; audit rows written.
+- [ ] Loop limit enforced; reason mandatory; audit rows written.
 
 ### T5.3 Defects   [agent]
 Branch: `feat/quality-defects`
 FR/BR: FR-18 (High, optional)
 Do: defect records per inspection and bundle; simple list.
-Acceptance:
-- [x] Query defect list per inspection and bundle for an order.
-- [x] Order management UI provides inspection defect history modal.
 
 ### T5.4 Packing and handover   [agent]
 Branch: `feat/order-handover`
 FR/BR: FR-26
 Do: after FINAL_QC pass: packing list by size, handover record that states the QC Profile used; order → COMPLETED when the last step is DONE.
 Acceptance:
-- [x] Handover cannot be created while FINAL_QC is not DONE.
-- [x] Handover record shows FULL_PROCESS or SKIP_CLEAN_WASH.
+- [ ] Handover cannot be created while FINAL_QC is not DONE.
+- [ ] Handover record shows FULL_PROCESS or SKIP_CLEAN_WASH.
 
 ### T5.5 Dashboard   [agent]
 Branch: `feat/dashboard-wip`
 FR/BR: FR-21
 Do: Manager/Planner dashboard: orders by status, WIP count per step, good/defect/rework totals, orders waiting on QC. Recharts. Read-only endpoints with efficient queries (indexes from `DATABASE_DESIGN.md` §6).
 Acceptance:
-- [x] Numbers match the database for the demo data (test with a fixture).
+- [x] Numbers match the database for the demo data (test with a fixture): `apps/api/test/dashboard.spec.ts`.
+
+Done (rebuild of #38): `GET /dashboard/wip` for MANAGER, ADMIN, PROCESS_ENGINEER, PRODUCTION_PLANNER; page `/dashboard`. WIP, totals and waiting-for-QC definitions: `BUSINESS_RECONCILIATION.md` R-26; read model: R-27.
 
 ### T5.6 AuditLog viewer (FR-25, optional)   [agent]
-Branch: `feat/audit-log-viewer`
+Branch: `feat/audit-log-viewer-rebuild`
 Admin screen with filters by entity, actor, date. Append-only trigger already blocks edits.
 Acceptance:
-- [x] Query and filter audit logs by entityType, entityId, actorId, date range.
-- [x] View JSON oldValue/newValue diff modal for each change.
-- [x] Role-based access control restricts viewer to ADMIN and MANAGER.
+- [x] `GET /audit` (paged, max 100 rows per page) filters by entity type, entity id, actor and an inclusive date range; invalid input gives 422.
+- [x] Only ADMIN and MANAGER may read it (401 without login, 403 for other roles); `GET /audit/filter-options` feeds the dropdowns.
+- [x] The screen shows who, when, action and entity, and a dialog with the before/after values field by field.
 
 ### T5.7 E2E demo and polish   [agent + human]
 Branch: `test/e2e-demo`
 Do: Playwright test for the demo scenario against a seeded database; fix UX rough edges; reseed script for demo day; performance sanity on the free tiers; update `PROJECT_STATE.md`; re-check free-tier limits on provider pages.
 Acceptance:
-- [x] Demo scenario passes in CI and on the deployed system.
-- [x] Owner has rehearsed the "wake up the API" step before the demo.
+- [ ] Demo scenario passes in CI and on the deployed system.
+- [ ] Owner has rehearsed the "wake up the API" step before the demo.
+
+
+T5.7 update (existing PR #41, 2026-11-05): Playwright Chromium smoke uses a real web/API/Postgres stack with only external Auth/Storage substituted in a loopback-only test host. The full FULL_PROCESS and SKIP_CLEAN_WASH scenarios passed on a temporary integration snapshot of #33/#34/#37/#30. The PR remains draft until dependencies merge, full E2E runs on this branch, and the owner rehearses on the deployed system. No production acceptance is claimed.

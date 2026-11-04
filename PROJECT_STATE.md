@@ -1,16 +1,17 @@
 # PROJECT_STATE
 
 Short, current-state file. Keep it under ~5 KB: move history to `docs/adr/` or the PR log.
-Last updated: 2026-10-18
+Last updated: 2026-11-05
 
 ## Phase
 
-**Sprint 4 completed** (PRs #26, #27, #29, #30, #31).
-**Sprint 5 completed** (PRs #32, #33, #34, #37, #38, #39, #40).
-- All 14 MVP Functional Requirements and 19 Business Rules implemented and tested.
-- Full E2E demo scenario (`PRD.md` §6) covered with web walkthrough test suite (`apps/web/src/pages/demo-scenario.test.tsx`) and API integration test (`apps/api/test/demo-scenario.spec.ts`).
-- Demo Day tooling ready: `pnpm --filter @denimflow/api demo:reseed` (pristine database reset) and `pnpm --filter @denimflow/api demo:walkthrough` (automated live rehearsal).
-- Render free tier: ping `/health` 1-2 minutes before live presentation to wake up the API from cold sleep.
+Sprint 0 remains open: Supabase prod has been created and GitHub Environment `production` exists; secrets, migration/seed, Render/Cloudflare deployment and cold-start verification are pending.
+
+Merged: S1–S3/T4.1 (#26, module review pending), T4.2 (#43), T4.3 (#44), T4.5 (#45), QC PASS (#46), audit (#47), dashboard (#48), deploy prep (#40), auth HTTP tests (#49).
+
+**Current #41 (T5.7):** conflict repair retains current main. Real Chromium smoke tests run in CI against a loopback-only fixture API and disposable Postgres. Full demo scenarios for FULL_PROCESS (REWORK then PASS) and SKIP_CLEAN_WASH passed locally on a temporary integration snapshot of #33/#34/#37/#30. This is not deployed-system acceptance. Keep #41 draft until its dependencies merge and full E2E is rerun on its actual branch.
+
+**Next:** independent reviews and merges for #33/#34/#37/#30; update #41 from main, run full E2E and merge after approval. Then production configuration and deployment. No admin bypass. D1–D4 remain open.
 
 ## Decisions (settled)
 
@@ -24,13 +25,13 @@ Last updated: 2026-10-18
 | D6 | Docs are bilingual: `docs/en` canonical, `docs/vi` mirror; agent files English only |
 | D7 | QC thresholds when clean wash is skipped are separate QC Profiles + signed customer acknowledgement (BR-18/19) |
 | D8 | UI language is **Vietnamese** (single language; strings still live in a dictionary). Design system and Vietnamese glossary: `docs/design/DESIGN.md` |
+| D9 | Web on **Cloudflare Workers static assets** via Workers Builds (O2 resolved, ADR 0001); API on Render free; prod migrations via the `migrate.yml` workflow |
 
 ## Open decisions (need the owner)
 
 | # | Question | Default if no answer |
 |---|---|---|
 | O1 | Deadline and demo date | Plan 6 sprints (S0..S5), compress if needed |
-| O2 | Cloudflare Pages or Workers static assets for the web app | Decide in Sprint 0 after reading current Cloudflare docs |
 | O4 | Parallel steps (Q11) in MVP? | No. MVP engine = sequential + conditional + rework loops. Parallel is stretch |
 | O5 | Custom branch (FR-27) and Hold/Cancel (FR-10) in MVP? | No (High priority, after MVP). `isCustom` is stored but the CUSTOM_REVIEW step is not built yet |
 | O6 | Evidence upload (FR-14) in MVP? | Gate check implemented, upload UI in Sprint 4 only if time remains |
@@ -40,12 +41,12 @@ Last updated: 2026-10-18
 
 | Sprint | Goal | Status |
 |---|---|---|
-| S0 | Scaffold + deploy pipeline (walking skeleton) | in progress (T0.2–T0.6 done, CI required; pending: `denimflow-prod`, T0.7 deploy, CODEOWNERS) |
-| S1 | Auth + RBAC + master data | done (PRs #26, #28) |
-| S2 | Workflow engine core + designer MVP | done (PRs #26, #35) |
-| S3 | Order create / Confirm / snapshot | done (PR #26) |
-| S4 | Worklist, quantities, Gates | done (PRs #26, #27, #29, #30, #31) |
-| S5 | QC, rework, QC Profile, dashboard, handover, polish | done (PRs #32–#34, #37–#40) |
+| S0 | Scaffold + deploy pipeline (walking skeleton) | in progress (T0.2–T0.6 done, CI required; prod and CODEOWNERS ready; configuration and deploy pending) |
+| S1 | Auth + RBAC + master data | merged via #26, unreviewed; hotfix #28 |
+| S2 | Workflow engine core + designer MVP | merged via #26, unreviewed; seed fix #35 |
+| S3 | Order create / Confirm / snapshot | merged via #26, unreviewed |
+| S4 | Worklist, quantities, Gates | T4.1 (#26), T4.2 (#43), T4.3 (#44), T4.5 (#45) merged; T4.4 optional, last |
+| S5 | QC, rework, QC Profile, dashboard, handover, polish | T5.1 (#46), T5.5 (#48), T5.6 (#47) merged; #33/#34/#37/#30 await review; #41 draft pending dependencies |
 
 ## Known risks
 

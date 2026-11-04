@@ -27,7 +27,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { fetchHealth } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
 import { i18n } from '../lib/i18n/dictionary';
-import { WipDashboard } from './dashboard/wip-dashboard';
 
 export const HomePage: React.FC = () => {
   const { user } = useAuth();
@@ -382,20 +381,24 @@ export const HomePage: React.FC = () => {
             </div>
 
             <div className="grid gap-4 sm:grid-cols-3">
-              <Card className="border-slate-200 hover:border-purple-300 transition-colors cursor-pointer">
-                <CardHeader className="pb-3">
-                  <TrendingUp className="h-6 w-6 text-purple-600 mb-1" />
-                  <CardTitle className="text-base font-semibold">Tiến độ sản xuất xưởng</CardTitle>
-                  <CardDescription className="text-xs">
-                    Tổng hợp số lượng sản phẩm đang cắt, đang may và chờ giao.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <span className="inline-flex items-center gap-1 text-xs font-medium text-purple-600">
-                    Xem báo cáo xưởng <ArrowRight className="h-3.5 w-3.5" />
-                  </span>
-                </CardContent>
-              </Card>
+              <Link to="/dashboard" className="block">
+                <Card className="border-slate-200 hover:border-purple-300 transition-colors cursor-pointer">
+                  <CardHeader className="pb-3">
+                    <TrendingUp className="h-6 w-6 text-purple-600 mb-1" />
+                    <CardTitle className="text-base font-semibold">
+                      Tiến độ sản xuất xưởng
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      Tổng hợp số lượng sản phẩm đang cắt, đang may và chờ giao.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-purple-600">
+                      Xem báo cáo xưởng <ArrowRight className="h-3.5 w-3.5" />
+                    </span>
+                  </CardContent>
+                </Card>
+              </Link>
 
               <Card className="border-slate-200 hover:border-purple-300 transition-colors cursor-pointer">
                 <CardHeader className="pb-3">
@@ -505,9 +508,6 @@ export const HomePage: React.FC = () => {
     <div className="space-y-6">
       {/* Dynamic Role Workspace Section */}
       {renderRoleWorkspace()}
-
-      {/* Production WIP Dashboard (FR-21) */}
-      <WipDashboard />
 
       {/* Account Info and System Health Status */}
       <div className="grid gap-6 md:grid-cols-2 pt-2">

@@ -1,144 +1,129 @@
 import { Inject, Injectable } from '@nestjs/common';
+import type { StepStatus } from '@denimflow/shared';
+import type { Prisma } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../infrastructure/prisma/prisma.service.js';
-import { DashboardWipSummaryDto, OrderStatus, StationType } from '@denimflow/shared';
+
+// Read model for FR-21 (BUSINESS_RECONCILIATION R-27): aggregate queries over order and execution
+// tables, read-only. Every method is one query, so the dashboard costs a fixed number of round trips.
+
+const openStepSelect = {
+  id: true,
+  status: true,
+  startedAt: true,
+  qtyIn: true,
+  stepDefinition: {
+    select: {
+      code: true,
+      name: true,
+      seq: true,
+      stepType: true,
+      responsibleRole: true,
+      stationType: true,
+    },
+  },
+  instance: {
+    select: {
+      orderId: true,
+      order: { select: { orderNumber: true, style: { select: { styleCode: true } } } },
+      // Sibling steps, to find the step that handed the bundles over.
+      stepInstances: {
+        select: {
+          id: true,
+          status: true,
+          stepDefinition: { select: { seq: true, responsibleRole: true, stationType: true } },
+        },
+      },
+    },
+  },
+} satisfies Prisma.StepInstanceSelect;
+
+export type OpenStep = Prisma.StepInstanceGetPayload<{ select: typeof openStepSelect }>;
+
+export interface StepTotals {
+  stepDefinitionId: string;
+  qtyIn: number;
+  qtyGood: number;
+  qtyDefect: number;
+  reworkCount: number;
+}
 
 @Injectable()
 export class DashboardRepository {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
-  async getWipSummary(): Promise<DashboardWipSummaryDto> {
-    const ordersByStatus: Record<OrderStatus, number> = {
-      DRAFT: 0,
-      CONFIRMED: 0,
-      IN_PRODUCTION: 0,
-      ON_HOLD: 0,
-      COMPLETED: 0,
-      CANCELLED: 0,
-    };
-
-    const orderCounts = await this.prisma.productionOrder.groupBy({
+  async countOrdersByStatus(): Promise<Array<{ status: string; count: number }>> {
+    const rows = await this.prisma.productionOrder.groupBy({
       by: ['status'],
-      _count: { id: true },
+      _count: { _all: true },
     });
+    return rows.map((row) => ({ status: row.status, count: row._count._all }));
+  }
 
-    for (const entry of orderCounts) {
-      if (entry.status in ordersByStatus) {
-        ordersByStatus[entry.status as OrderStatus] = entry._count.id;
-      }
-    }
-
-    const totalOrders = Object.values(ordersByStatus).reduce((a, b) => a + b, 0);
-    const activeOrders = ordersByStatus.CONFIRMED + ordersByStatus.IN_PRODUCTION;
-    const completedOrders = ordersByStatus.COMPLETED;
-
-    const stepAggregates = await this.prisma.stepInstance.aggregate({
-      _sum: {
-        qtyGood: true,
-        qtyDefect: true,
-        reworkCount: true,
-      },
+  // step_instances keeps the net entry sums (R-03), so this needs no scan of the entries.
+  async sumQuantitiesByStepDefinition(): Promise<StepTotals[]> {
+    const rows = await this.prisma.stepInstance.groupBy({
+      by: ['stepDefinitionId'],
+      _sum: { qtyIn: true, qtyGood: true, qtyDefect: true, reworkCount: true },
     });
-
-    const waitingQcSteps = await this.prisma.stepInstance.findMany({
-      where: {
-        status: 'WAITING_QC',
-      },
-      include: {
-        stepDefinition: true,
-        instance: {
-          include: {
-            order: {
-              include: {
-                style: true,
-              },
-            },
-          },
-        },
-      },
-      orderBy: {
-        startedAt: 'asc',
-      },
-    });
-
-    const waitingQcOrders = waitingQcSteps.map((step) => ({
-      orderId: step.instance.order.id,
-      orderNumber: step.instance.order.orderNumber,
-      styleCode: step.instance.order.style.styleCode,
-      stepInstanceId: step.id,
-      stepCode: step.stepDefinition.code,
-      stepName: step.stepDefinition.name,
-      stationType: (step.stepDefinition.stationType as StationType | null) ?? null,
-      startedAt: step.startedAt?.toISOString() ?? null,
+    return rows.map((row) => ({
+      stepDefinitionId: row.stepDefinitionId,
+      qtyIn: row._sum.qtyIn ?? 0,
+      qtyGood: row._sum.qtyGood ?? 0,
+      qtyDefect: row._sum.qtyDefect ?? 0,
+      reworkCount: row._sum.reworkCount ?? 0,
     }));
+  }
 
-    const activeStepInstances = await this.prisma.stepInstance.findMany({
-      where: {
-        status: {
-          in: ['READY', 'IN_PROGRESS', 'WAITING_QC', 'REWORK'],
-        },
-        instance: {
-          status: 'RUNNING',
-        },
+  findStepDefinitions(ids: string[]) {
+    return this.prisma.stepDefinition.findMany({
+      where: { id: { in: ids } },
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        seq: true,
+        responsibleRole: true,
+        stationType: true,
       },
-      include: {
-        stepDefinition: true,
-        currentBundles: true,
-      },
-      orderBy: [{ stepDefinition: { seq: 'asc' } }, { stepDefinition: { code: 'asc' } }],
+      // Newest first: a row merged across template versions takes the latest name and seq.
+      orderBy: [{ createdAt: 'desc' }, { code: 'asc' }],
     });
+  }
 
-    const stationMap = new Map<
-      string,
-      {
-        stationType: StationType | null;
-        stepCode: string;
-        stepName: string;
-        activeStepCount: number;
-        totalQtyIn: number;
-        totalQtyGood: number;
-        totalQtyDefect: number;
-        bundleCount: number;
-      }
-    >();
+  findOpenSteps(statuses: StepStatus[]): Promise<OpenStep[]> {
+    return this.prisma.stepInstance.findMany({
+      where: { status: { in: statuses }, instance: { status: 'RUNNING' } },
+      select: openStepSelect,
+      orderBy: [{ stepDefinition: { seq: 'asc' } }, { startedAt: 'asc' }],
+    });
+  }
 
-    for (const step of activeStepInstances) {
-      const code = step.stepDefinition.code;
-      let record = stationMap.get(code);
-      if (!record) {
-        record = {
-          stationType: (step.stepDefinition.stationType as StationType | null) ?? null,
-          stepCode: code,
-          stepName: step.stepDefinition.name,
-          activeStepCount: 0,
-          totalQtyIn: 0,
-          totalQtyGood: 0,
-          totalQtyDefect: 0,
-          bundleCount: 0,
-        };
-        stationMap.set(code, record);
-      }
-      record.activeStepCount += 1;
-      record.totalQtyIn += step.qtyIn ?? 0;
-      record.totalQtyGood += step.qtyGood ?? 0;
-      record.totalQtyDefect += step.qtyDefect ?? 0;
-      record.bundleCount += step.currentBundles.length;
-    }
+  findBundles(orderIds: string[]) {
+    return this.prisma.bundle.findMany({
+      where: { orderId: { in: orderIds } },
+      select: { id: true, orderId: true, qty: true },
+    });
+  }
 
-    const wipByStation = Array.from(stationMap.values());
-
-    return {
-      ordersByStatus,
-      wipByStation,
-      totals: {
-        totalOrders,
-        activeOrders,
-        completedOrders,
-        waitingQcCount: waitingQcOrders.length,
-        totalQtyGood: stepAggregates._sum.qtyGood ?? 0,
-        totalQtyDefect: stepAggregates._sum.qtyDefect ?? 0,
-        totalReworkCount: stepAggregates._sum.reworkCount ?? 0,
-      },
-      waitingQcOrders,
-    };
+  // Net good pieces per (step, bundle): reversal rows carry negated values, so a plain sum is net.
+  async sumGoodByStepAndBundle(
+    stepInstanceIds: string[],
+  ): Promise<Array<{ stepInstanceId: string; bundleId: string; qtyGood: number }>> {
+    const rows = await this.prisma.stepQuantityEntry.groupBy({
+      by: ['stepInstanceId', 'bundleId'],
+      where: { stepInstanceId: { in: stepInstanceIds }, bundleId: { not: null } },
+      _sum: { qtyGood: true },
+    });
+    return rows.flatMap((row) =>
+      row.bundleId
+        ? [
+            {
+              stepInstanceId: row.stepInstanceId,
+              bundleId: row.bundleId,
+              qtyGood: row._sum.qtyGood ?? 0,
+            },
+          ]
+        : [],
+    );
   }
 }

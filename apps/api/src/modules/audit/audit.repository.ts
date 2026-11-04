@@ -1,88 +1,49 @@
 import { Inject, Injectable } from '@nestjs/common';
+import type { AuditLog, Prisma } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../infrastructure/prisma/prisma.service.js';
-import { AuditLogListResponseDto, AuditLogQueryDto } from '@denimflow/shared';
+
+export interface AuditLogFilter {
+  entityType?: string;
+  entityId?: string;
+  actorId?: string;
+  from?: Date;
+  to?: Date;
+}
 
 @Injectable()
 export class AuditRepository {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
-  async findAuditLogs(query: AuditLogQueryDto): Promise<AuditLogListResponseDto> {
-    const page = query.page ?? 1;
-    const limit = query.limit ?? 20;
-    const skip = (page - 1) * limit;
-
-    const where: {
-      entityType?: string;
-      entityId?: string;
-      actorId?: string;
-      createdAt?: { gte?: Date; lte?: Date };
-    } = {};
-
-    if (query.entityType) {
-      where.entityType = query.entityType;
-    }
-    if (query.entityId) {
-      where.entityId = query.entityId;
-    }
-    if (query.actorId) {
-      where.actorId = query.actorId;
-    }
-    if (query.from || query.to) {
-      where.createdAt = {};
-      if (query.from) {
-        where.createdAt.gte = new Date(query.from);
-      }
-      if (query.to) {
-        where.createdAt.lte = new Date(query.to);
-      }
-    }
-
+  async findPage(
+    filter: AuditLogFilter,
+    skip: number,
+    take: number,
+  ): Promise<{ total: number; rows: AuditLog[] }> {
+    const where: Prisma.AuditLogWhereInput = {
+      entityType: filter.entityType,
+      entityId: filter.entityId,
+      actorId: filter.actorId,
+      createdAt: filter.from || filter.to ? { gte: filter.from, lte: filter.to } : undefined,
+    };
     const [total, rows] = await Promise.all([
       this.prisma.auditLog.count({ where }),
       this.prisma.auditLog.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        // Rows written in one transaction share created_at (Postgres now()); id keeps their order.
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip,
-        take: limit,
+        take,
       }),
     ]);
+    return { total, rows };
+  }
 
-    const actorIds = Array.from(
-      new Set(rows.map((r) => r.actorId).filter((id): id is string => Boolean(id))),
-    );
-
-    const profiles =
-      actorIds.length > 0
-        ? await this.prisma.profile.findMany({
-            where: { id: { in: actorIds } },
-            select: { id: true, fullName: true, email: true },
-          })
-        : [];
-
-    const profileMap = new Map(profiles.map((p) => [p.id, p]));
-
-    const items = rows.map((row) => {
-      const profile = row.actorId ? profileMap.get(row.actorId) : undefined;
-      return {
-        id: row.id.toString(),
-        entityType: row.entityType,
-        entityId: row.entityId,
-        action: row.action,
-        oldValue: row.oldValue,
-        newValue: row.newValue,
-        actorId: row.actorId,
-        actorName: profile ? profile.fullName : null,
-        actorEmail: profile ? profile.email : null,
-        createdAt: row.createdAt.toISOString(),
-      };
+  // groupBy runs as SQL GROUP BY; findMany({ distinct }) would load every row first.
+  async findEntityTypes(): Promise<string[]> {
+    const groups = await this.prisma.auditLog.groupBy({
+      by: ['entityType'],
+      orderBy: { entityType: 'asc' },
     });
-
-    return {
-      items,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit) || 1,
-    };
+    return groups.map((group) => group.entityType);
   }
 }

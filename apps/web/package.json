@@ -8,7 +8,9 @@
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:e2e": "playwright test",
+    "test:e2e:smoke": "playwright test smoke.spec.ts"
   },
   "dependencies": {
     "@denimflow/shared": "workspace:*",
@@ -21,12 +23,14 @@
     "lucide-react": "^0.475.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-is": "^19.0.0",
     "react-router-dom": "^7.1.5",
     "recharts": "^3.10.1",
     "tailwind-merge": "^3.0.1",
     "zod": "4.6.7"
   },
   "devDependencies": {
+    "@playwright/test": "1.64.1",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.2.0",
     "@types/node": "24.19.2",

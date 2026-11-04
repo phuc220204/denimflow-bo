@@ -1,146 +1,164 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { http, HttpResponse } from 'msw';
 import React from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import * as api from '../../lib/api';
-import { WipDashboard } from './wip-dashboard';
+import { describe, expect, it, vi } from 'vitest';
+import { mockDashboardWip } from '../../mocks/handlers';
+import { server } from '../../mocks/server';
+import { WipDashboardPage } from './wip-dashboard';
 
-// Mock useAuth
 vi.mock('../../lib/auth-context', () => ({
-  useAuth: () => ({
-    user: { id: 'user-1', role: 'MANAGER' },
-    token: 'test-token',
-  }),
+  useAuth: () => ({ user: { id: 'manager-id', role: 'MANAGER' }, token: 'manager-token' }),
 }));
 
-// Mock recharts ResponsiveContainer
+// jsdom has no layout, so ResponsiveContainer would measure 0 x 0 and draw nothing.
 vi.mock('recharts', async () => {
   const original = await vi.importActual<typeof import('recharts')>('recharts');
   return {
     ...original,
-    ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (
-      <div style={{ width: 600, height: 300 }}>{children}</div>
+    ResponsiveContainer: ({ children }: { children: React.ReactElement }) => (
+      <div style={{ width: 800, height: 400 }}>
+        {React.cloneElement(children as React.ReactElement<{ width: number; height: number }>, {
+          width: 800,
+          height: 400,
+        })}
+      </div>
     ),
   };
 });
 
-describe('WipDashboard Component (T5.5, FR-21)', () => {
-  let queryClient: QueryClient;
+function renderPage() {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <WipDashboardPage />
+    </QueryClientProvider>,
+  );
+}
 
-  beforeEach(() => {
-    queryClient = new QueryClient({
-      defaultOptions: {
-        queries: { retry: false },
-      },
-    });
+describe('WipDashboardPage (T5.5, FR-21)', () => {
+  it('FR-21: shows the KPI tiles from the API totals', async () => {
+    renderPage();
+
+    const wipTile = (await screen.findByText('Bó đang sản xuất (WIP)')).parentElement!;
+    expect(within(wipTile).getByText('4')).toBeInTheDocument();
+    expect(within(wipTile).getByText('187 sản phẩm')).toBeInTheDocument();
+
+    const ordersTile = screen.getByText('Đơn hàng').parentElement!;
+    expect(within(ordersTile).getByText('8')).toBeInTheDocument();
+    expect(within(ordersTile).getByText('3 đang chạy · 3 hoàn tất')).toBeInTheDocument();
+
+    const defectTile = screen.getByText('Sản phẩm lỗi').parentElement!;
+    expect(within(defectTile).getByText('14')).toBeInTheDocument();
+    expect(within(defectTile).getByText('1 lần làm lại')).toBeInTheDocument();
   });
 
-  it('renders loading state initially', () => {
-    vi.spyOn(api, 'fetchDashboardWipApi').mockReturnValue(new Promise(() => {}));
+  it('FR-21: lists every order status with its count', async () => {
+    renderPage();
 
-    render(
-      <QueryClientProvider client={queryClient}>
-        <WipDashboard />
-      </QueryClientProvider>,
-    );
-
-    expect(screen.getByText(/Đang tải dữ liệu điều hành WIP phân xưởng/i)).toBeInTheDocument();
+    const card = (await screen.findByText('Đơn hàng theo trạng thái')).closest('div.rounded')!;
+    const rows = within(card as HTMLElement).getAllByRole('listitem');
+    expect(rows.map((row) => row.textContent)).toEqual([
+      'Nháp2',
+      'Đã xác nhận1',
+      'Đang sản xuất2',
+      'Tạm dừng0',
+      'Hoàn tất3',
+      'Đã huỷ0',
+    ]);
   });
 
-  it('renders error state on fetch failure', async () => {
-    vi.spyOn(api, 'fetchDashboardWipApi').mockRejectedValue(new Error('Lỗi máy chủ'));
+  it('R-26: shows WIP and totals per step, with no quantities for steps that do not record them', async () => {
+    renderPage();
 
-    render(
-      <QueryClientProvider client={queryClient}>
-        <WipDashboard />
-      </QueryClientProvider>,
-    );
+    const sewing = (await screen.findByText('Sewing')).closest('tr')!;
+    expect(
+      within(sewing)
+        .getAllByRole('cell')
+        .map((cell) => cell.textContent),
+    ).toEqual(['SewingSEWING', 'May', '1', '2', '98', '398', '392', '6', '1']);
 
+    const stepTable = sewing.closest('table')!;
+    const finalQc = within(stepTable).getByText('FINAL_QC').closest('tr')!;
+    expect(
+      within(finalQc)
+        .getAllByRole('cell')
+        .slice(2)
+        .map((cell) => cell.textContent),
+    ).toEqual(['1', '2', '89', '—', '—', '—', '0']);
+  });
+
+  it('R-26: draws one bar row per open step only', async () => {
+    const { container } = renderPage();
+
+    await screen.findByText('WIP theo công đoạn');
     await waitFor(() => {
-      expect(screen.getByText(/Không thể tải dữ liệu điều hành WIP/i)).toBeInTheDocument();
-      expect(screen.getByText('Lỗi máy chủ')).toBeInTheDocument();
+      const ticks = [...container.querySelectorAll('.recharts-yAxis-tick-labels text')].map(
+        (tick) => tick.textContent,
+      );
+      expect(ticks).toEqual(['SEWING', 'FINAL_QC']);
     });
   });
 
-  it('renders WIP dashboard with totals, charts, tables and waiting QC alert', async () => {
-    vi.spyOn(api, 'fetchDashboardWipApi').mockResolvedValue({
-      ordersByStatus: {
-        DRAFT: 2,
-        CONFIRMED: 3,
-        IN_PRODUCTION: 5,
-        ON_HOLD: 0,
-        COMPLETED: 8,
-        CANCELLED: 1,
-      },
-      wipByStation: [
-        {
-          stationType: 'CUTTING',
-          stepCode: 'CUTTING',
-          stepName: 'Cắt vải',
-          activeStepCount: 2,
-          totalQtyIn: 200,
-          totalQtyGood: 196,
-          totalQtyDefect: 4,
-          bundleCount: 4,
-        },
-        {
-          stationType: 'SEWING',
-          stepCode: 'SEWING',
-          stepName: 'May ráp',
-          activeStepCount: 3,
-          totalQtyIn: 196,
-          totalQtyGood: 188,
-          totalQtyDefect: 8,
-          bundleCount: 4,
-        },
-      ],
-      totals: {
-        totalOrders: 19,
-        activeOrders: 8,
-        completedOrders: 8,
-        waitingQcCount: 1,
-        totalQtyGood: 384,
-        totalQtyDefect: 12,
-        totalReworkCount: 2,
-      },
-      waitingQcOrders: [
-        {
-          orderId: '00000000-0000-0000-0000-000000000101',
-          orderNumber: 'ORD-DEMO-001',
-          styleCode: 'JN-SLIM-01',
-          stepInstanceId: '00000000-0000-0000-0000-000000000201',
-          stepCode: 'SEWING_QC',
-          stepName: 'QC May ráp',
-          stationType: 'QC',
-          startedAt: '2026-10-18T10:00:00.000Z',
-        },
-      ],
-    });
+  it('R-26: lists the orders waiting for a QC decision', async () => {
+    renderPage();
 
-    render(
-      <QueryClientProvider client={queryClient}>
-        <WipDashboard />
-      </QueryClientProvider>,
+    const row = (await screen.findByText('PO-20261019-002')).closest('tr')!;
+    expect(within(row).getByText('JN-SLIM-01')).toBeInTheDocument();
+    expect(within(row).getByText('Sẵn sàng')).toBeInTheDocument();
+  });
+
+  it('shows the API error and a retry button', async () => {
+    server.use(
+      http.get('*/dashboard/wip', () =>
+        HttpResponse.json(
+          { message: 'Bạn không có quyền thực hiện thao tác này' },
+          { status: 403 },
+        ),
+      ),
     );
+    renderPage();
 
-    // Wait for title
-    await waitFor(() => {
-      expect(screen.getByText(/Bảng điều hành WIP & Sản lượng phân xưởng/i)).toBeInTheDocument();
-    });
+    expect(await screen.findByText('Không thể tải số liệu bảng điều khiển')).toBeInTheDocument();
+    expect(screen.getByText('Bạn không có quyền thực hiện thao tác này')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Thử lại' })).toBeInTheDocument();
+  });
 
-    // Totals assertions
-    expect(screen.getByText('19')).toBeInTheDocument();
-    expect(screen.getByText('384')).toBeInTheDocument();
-    expect(screen.getByText('12')).toBeInTheDocument();
-    expect(screen.getAllByText('2').length).toBeGreaterThanOrEqual(1);
+  it('keeps the last numbers and warns when a refresh fails', async () => {
+    renderPage();
+    const wipTile = (await screen.findByText('Bó đang sản xuất (WIP)')).parentElement!;
 
-    // Waiting QC alert
-    expect(screen.getByText(/Đơn hàng đang chờ kiểm tra chất lượng/i)).toBeInTheDocument();
-    expect(screen.getByText('ORD-DEMO-001')).toBeInTheDocument();
-    expect(screen.getByText('QC May ráp')).toBeInTheDocument();
+    server.use(
+      http.get('*/dashboard/wip', () => new HttpResponse('<html>502</html>', { status: 502 })),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Làm mới' }));
 
-    // Table rows
-    expect(screen.getAllByText('CUTTING').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('SEWING').length).toBeGreaterThanOrEqual(1);
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Không cập nhật được số liệu mới, đang hiển thị số liệu cũ.',
+    );
+    // A non-JSON error page still gives the Vietnamese message, not a JSON parse error.
+    expect(screen.getByRole('alert')).toHaveTextContent('Không thể tải số liệu bảng điều khiển');
+    expect(within(wipTile).getByText('4')).toBeInTheDocument();
+  });
+
+  it('renders an empty state without orders', async () => {
+    server.use(
+      http.get('*/dashboard/wip', () =>
+        HttpResponse.json({
+          ...mockDashboardWip,
+          ordersByStatus: Object.fromEntries(
+            Object.keys(mockDashboardWip.ordersByStatus).map((status) => [status, 0]),
+          ),
+          totals: { ...mockDashboardWip.totals, totalOrders: 0 },
+          steps: [],
+          waitingQc: [],
+        }),
+      ),
+    );
+    renderPage();
+
+    expect(await screen.findByText('Chưa có đơn hàng nào.')).toBeInTheDocument();
+    expect(screen.getByText('Chưa có đơn nào đang ở công đoạn sản xuất.')).toBeInTheDocument();
+    expect(screen.getByText('Không có đơn nào đang chờ QC.')).toBeInTheDocument();
   });
 });

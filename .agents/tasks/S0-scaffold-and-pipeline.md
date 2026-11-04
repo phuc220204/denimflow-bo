@@ -36,20 +36,20 @@ Branch: `feat/api-skeleton`
 Do:
 - NestJS app, config module validated by Zod (see `DEVELOPMENT_SETUP.md` §4), `GET /health` returning `{ status, db }` after `select 1`.
 - Prisma set up for Supabase (pooled `DATABASE_URL` + `DIRECT_URL`); first migration creates `profiles`, `audit_logs` (+ append-only trigger) and enables RLS.
-- `JwtAuthGuard` verifying the Supabase JWT, `RolesGuard` + `@Roles()`, `GET /me` returning the profile and role.
+- `JwtAuthGuard` verifying the Supabase JWT, `RolesGuard` + `@Roles()`, `GET /auth/me` returning the profile and role.
 - Exception filter and `BusinessRuleViolation`.
 - `apps/api/.env.example`: fake values only, every API variable of `DEVELOPMENT_SETUP.md` §4.
 Acceptance:
 - [x] `GET /health` is 200 locally with the dev database.
-- [ ] `GET /me` is 401 without a token and 200 with a valid token for a seeded profile.
+- [x] `GET /auth/me` is 401 without a token and 200 with a valid token for a seeded profile: `apps/api/test/auth-me.spec.ts`.
 - [x] Migration applies on an empty database; RLS enabled on both tables.
-Status: part A merged (#6). On Supabase dev (2026-10-17): migration applied, RLS on `profiles`, `audit_logs` and `_prisma_migrations`, BR-16 trigger blocks DELETE, `GET /health` → `200 {"status":"ok","db":"up"}` through the transaction pooler. Part B (auth, `/me`, seed) pending.
+Status: part A merged (#6). On Supabase dev (2026-10-17): migration applied, RLS on `profiles`, `audit_logs` and `_prisma_migrations`, BR-16 trigger blocks DELETE, `GET /health` → `200 {"status":"ok","db":"up"}` through the transaction pooler. Part B done: Supabase Auth login and `GET /auth/me` (guards `AuthGuard` + `@Roles()` since #28), seed fixed in #35.
 
 ### T0.5 apps/web skeleton   [owner: agent]
 Branch: `feat/web-skeleton`
 Do:
 - Vite + React + TS + Tailwind + shadcn/ui; React Router; TanStack Query; Supabase client for Auth only; i18n dictionary with a single Vietnamese (`vi`) locale (UI language is Vietnamese, D8); Inter font with the Vietnamese subset; theme tokens from `docs/design/DESIGN.md`; MSW set up.
-- Login page, protected layout, a Home page that shows `/me` and `/health`.
+- Login page, protected layout, a Home page that shows `/auth/me` and `/health`.
 - SPA fallback: all routes serve `index.html` (Cloudflare setting, see `DEVELOPMENT_SETUP.md` §7).
 - `apps/web/.env.example`: fake values only, every web (`VITE_*`) variable of `DEVELOPMENT_SETUP.md` §4; no server secrets.
 Acceptance:
