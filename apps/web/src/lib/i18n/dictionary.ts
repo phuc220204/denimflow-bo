@@ -144,6 +144,12 @@ export const i18n = {
     inspector: 'Người kiểm tra',
     action: 'Lỗi QC',
   },
+  rework: {
+    review: 'Cần Điều độ sản xuất xử lý QC',
+    target: 'Bước quay lại',
+    choose: 'Chọn công đoạn',
+    reason: 'Lý do làm lại / loại',
+  },
   dashboard: {
     title: 'Bảng điều khiển',
     subtitle:

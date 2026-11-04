@@ -9,7 +9,7 @@ Sprint 0 deployment is pending. Supabase `denimflow-prod` was created (owner con
 
 Merged: S1–S3 and T4.1 (#26, still need module review), T4.2 (#43), T4.3 (#44), T4.5 (#45), QC PASS (#46), audit (#47), dashboard (#48), deploy preparation (#40), auth HTTP tests (#49).
 
-**Current PR #34 (T5.3):** Read-only order defects joined to inspection, bundle and inspector; existing QC schema is reused. Conflict repair keeps current `main`; legacy unpublished migrations and replaced execution/QC implementations are removed. CI and an independent approval are required before merge. No admin bypass.
+**Current PR #34 (T5.3):** Read-only order defects joined to inspection, bundle and inspector; existing QC schema is reused. Conflict repair keeps current `main`; legacy unpublished migrations and replaced execution/QC implementations are removed. CI must pass. Owner authorized one-off admin merges for these five PRs on 2026-11-05; the ruleset remains enabled. #33 is merged.
 
 **Next:** finish #33/#34/#37/#30/#41, configure production secrets, migrate/seed prod, deploy Render + Cloudflare and measure cold start. D1–D4 remain in `docs/TASK_BOARD.md`.
 
