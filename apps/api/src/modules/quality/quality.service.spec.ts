@@ -1,4 +1,3 @@
-import { ConflictException } from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BusinessRuleViolation } from '../../common/errors/business-rule-violation.js';
 import type { ExecutionRepository } from '../execution/execution.repository.js';
@@ -86,13 +85,6 @@ describe('QualityService', () => {
       execution as unknown as ExecutionRepository,
       executionService as unknown as ExecutionService,
     );
-  });
-
-  it('does not record REWORK or REJECT before T5.2', async () => {
-    await expect(
-      service.recordInspection('step-SEWING', { ...pass, result: 'REWORK' }, inspector),
-    ).rejects.toThrow(ConflictException);
-    expect(execution.runInTransaction).not.toHaveBeenCalled();
   });
 
   it('re-reads the status after locking and refuses a step that is not waiting for QC', async () => {

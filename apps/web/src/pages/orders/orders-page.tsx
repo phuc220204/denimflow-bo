@@ -42,6 +42,7 @@ import {
   updateOrderApi,
 } from '../../lib/api';
 import { useAuth } from '../../lib/auth-context';
+import { OrderDefectsPanel } from './order-defects-panel';
 import { HandoverPanel } from './handover-panel';
 import { i18n } from '../../lib/i18n/dictionary';
 
@@ -53,6 +54,7 @@ interface SizeLineFormState {
 export const OrdersPage: React.FC = () => {
   const { user, token } = useAuth();
   const [handoverOrderId, setHandoverOrderId] = useState<string | null>(null);
+  const [defectOrderId, setDefectOrderId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
@@ -763,6 +765,13 @@ export const OrdersPage: React.FC = () => {
                           <Button
                             size="sm"
                             variant="outline"
+                            onClick={() => setDefectOrderId(order.id)}
+                          >
+                            {i18n.orderDefects.action}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
                             onClick={() => setHandoverOrderId(order.id)}
                           >
                             {i18n.handover.title}
@@ -779,6 +788,7 @@ export const OrdersPage: React.FC = () => {
                               <span>Xác nhận</span>
                             </Button>
                           )}
+
                           {isPlannerOrAdmin && isDraft && (
                             <Button
                               size="sm"
@@ -1744,6 +1754,13 @@ export const OrdersPage: React.FC = () => {
             )}
           </div>
         </div>
+      )}
+      {defectOrderId && (
+        <OrderDefectsPanel
+          orderId={defectOrderId}
+          token={token}
+          onClose={() => setDefectOrderId(null)}
+        />
       )}
       {handoverOrderId && (
         <HandoverPanel

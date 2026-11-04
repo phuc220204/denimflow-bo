@@ -188,6 +188,14 @@ Add a row whenever the implementation interprets or departs from the Proposal. N
 "Proposed" rows await the owner's confirmation; change to "Agreed" or rewrite.
 
 
+### T5.3 integration update (#34, 2026-11-05)
+
+Read-only order defects joined to inspection, bundle and inspector; existing QC schema is reused.
+
+### T5.2 integration update (#33, 2026-11-05)
+
+Rework routing, loop limits and Planner exception flag; QC path invalidation preserves append-only quantity entries.
+
 ### T5.4 integration update (#37, 2026-11-05)
 
 Planner-only handover after all predecessors and FINAL_QC are DONE/SKIPPED; packing uses final net good entries by size, with atomic completion and audit.

@@ -59,6 +59,7 @@ const stepForTransition = (
 });
 
 const createRepo = () => ({
+  lockSteps: vi.fn().mockResolvedValue(undefined),
   runInTransaction: vi.fn((work: (tx: unknown) => unknown) => work({})),
   findProfileWithStation: vi.fn(),
   findWorklistSteps: vi.fn().mockResolvedValue([]),

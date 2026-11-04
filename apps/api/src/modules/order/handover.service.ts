@@ -33,14 +33,19 @@ export class HandoverService {
   }
   async create(orderId: string, input: CreateHandoverDto, actorId: string) {
     return this.repository.transaction(async (tx) => {
-      await this.repository.lock(tx, orderId);
       const initial = await this.repository.findOrder(tx, orderId);
       if (!initial) throw new NotFoundException('Không tìm thấy đơn hàng');
       if (!initial.workflowInstance) throw new ConflictException('Đơn hàng chưa có quy trình');
+      // Same lock direction as cutting start: steps first, then the order (avoid deadlocks).
       await this.repository.lockSteps(tx, initial.workflowInstance.id);
-      const order = (await this.repository.findOrder(tx, orderId))!;
+      await this.repository.lock(tx, orderId);
+      const order = await this.repository.findOrder(tx, orderId);
+      if (!order?.workflowInstance)
+        throw new ConflictException('Đơn hàng vừa thay đổi, vui lòng tải lại');
       if (order.handoverRecord) throw new ConflictException('Đơn hàng đã có biên bản bàn giao');
       const instance = order.workflowInstance!;
+      if (instance.requiresPlannerReview)
+        throw new ConflictException('Đơn hàng đang chờ Điều độ sản xuất xử lý ngoại lệ QC');
       if (instance.status !== 'RUNNING' || !['CONFIRMED', 'IN_PRODUCTION'].includes(order.status))
         throw new ConflictException('Đơn hàng không ở trạng thái bàn giao');
       const finalQc = instance.stepInstances.find((s) => s.stepDefinition.code === 'FINAL_QC');

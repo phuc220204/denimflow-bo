@@ -32,6 +32,38 @@ export class QualityRepository {
     return tx.stepInstance.findUnique({ where: { id: stepId }, include: stepForInspectionInclude });
   }
 
+  findOrderDefects(orderId: string) {
+    return this.prisma.defect.findMany({
+      where: { inspection: { stepInstance: { instance: { orderId } } } },
+      include: {
+        bundle: true,
+        inspection: {
+          include: { inspector: true, stepInstance: { include: { stepDefinition: true } } },
+        },
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+    });
+  }
+
+  findInstanceSteps(tx: Tx, instanceId: string) {
+    return tx.stepInstance.findMany({
+      where: { instanceId },
+      include: { stepDefinition: true },
+      orderBy: { stepDefinition: { seq: 'asc' } },
+    });
+  }
+
+  findReworkTransitions(tx: Tx, versionId: string, fromStepId: string) {
+    return tx.stepTransition.findMany({ where: { versionId, fromStepId, kind: 'REWORK' } });
+  }
+
+  flagPlannerReview(tx: Tx, instanceId: string, reason: string) {
+    return tx.workflowInstance.update({
+      where: { id: instanceId },
+      data: { requiresPlannerReview: true, plannerReviewReason: reason },
+    });
+  }
+
   findBundleOrders(tx: Tx, bundleIds: string[]) {
     return tx.bundle.findMany({
       where: { id: { in: bundleIds } },
