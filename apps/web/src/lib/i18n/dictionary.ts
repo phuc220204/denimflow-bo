@@ -151,6 +151,7 @@ export const i18n = {
     reason: 'Lý do làm lại / loại',
   },
   handover: {
+    completeInOrders: 'Lập biên bản bàn giao tại màn Đơn hàng để hoàn tất bước này.',
     title: 'Biên bản bàn giao',
     close: 'Đóng',
     size: 'Size',

@@ -298,6 +298,9 @@ export const WorklistPage: React.FC = () => {
                     </div>
                   )}
 
+                  {item.stepCode === 'PACK_HANDOVER' && (
+                    <p className="text-text-muted">{i18n.handover.completeInOrders}</p>
+                  )}
                   {/* Actions */}
                   <div className="pt-2">
                     {item.requiresPlannerReview && (
@@ -348,7 +351,8 @@ export const WorklistPage: React.FC = () => {
                     {canWork(item) &&
                       !item.requiresPlannerReview &&
                       item.status === 'IN_PROGRESS' &&
-                      item.stepType !== 'QC' && (
+                      item.stepType !== 'QC' &&
+                      item.stepCode !== 'PACK_HANDOVER' && (
                         <Button
                           variant="primary"
                           className="w-full bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-2"

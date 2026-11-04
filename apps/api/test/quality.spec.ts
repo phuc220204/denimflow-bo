@@ -452,6 +452,8 @@ describe('QC inspection (T5.1)', () => {
       where: { id: instance.id },
       data: { requiresPlannerReview: false, plannerReviewReason: null },
     });
+    await post(`/steps/${pack.id}/start`, 'planner-token').expect(200);
+    await post(`/steps/${pack.id}/complete`, 'planner-token').expect(409);
     const responses = await Promise.all([
       post(`/orders/${id}/handover`, 'planner-token'),
       post(`/orders/${id}/handover`, 'planner-token'),

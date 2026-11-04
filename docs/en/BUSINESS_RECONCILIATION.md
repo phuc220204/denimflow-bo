@@ -199,3 +199,6 @@ Rework routing, loop limits and Planner exception flag; QC path invalidation pre
 ### T5.4 integration update (#37, 2026-11-05)
 
 Planner-only handover after all predecessors and FINAL_QC are DONE/SKIPPED; packing uses final net good entries by size, with atomic completion and audit.
+
+
+FR-26: PACK_HANDOVER is completed only by creating the handover record. The generic step completion endpoint rejects it to avoid a DONE packing step without a handover/order completion.
