@@ -46,7 +46,8 @@ for (const skipCleanWash of [false, true]) {
         filePath: `orders/${order.id}/acknowledgement/demo.pdf`,
       });
     }
-    await call('post', `/orders/${order.id}/confirm`, planner);
+    const confirmed = await call('post', `/orders/${order.id}/confirm`, planner);
+    expect(confirmed.skippedStepCodes.includes('CLEAN_WASH')).toBe(skipCleanWash);
     let reworked = false;
     for (let iteration = 0; iteration < 40; iteration++) {
       const detail = await call('get', `/orders/${order.id}`, planner);
@@ -102,6 +103,7 @@ for (const skipCleanWash of [false, true]) {
             sampleSize: 20,
             result: 'REWORK',
             measuredShrinkagePercent: 4,
+            measuredColorFadingLevel: 2,
             reworkTargetStepId: target.id,
             reason: 'Demo: sửa độ co',
           });
@@ -110,8 +112,8 @@ for (const skipCleanWash of [false, true]) {
           await call('post', `/steps/${current.id}/qc/inspections`, qc, {
             sampleSize: 20,
             result: 'PASS',
-            measuredShrinkagePercent: 2,
-            measuredColorFadingLevel: 1,
+            measuredShrinkagePercent: skipCleanWash ? 4 : 2,
+            measuredColorFadingLevel: skipCleanWash ? 2 : 1,
           });
       } else await call('post', `/steps/${current.id}/complete`, worker, {});
     }
