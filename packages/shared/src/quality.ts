@@ -101,6 +101,21 @@ export const recordQcInspectionResponseSchema = z.object({
 });
 export type RecordQcInspectionResponseDto = z.infer<typeof recordQcInspectionResponseSchema>;
 
+export const orderDefectItemSchema = z.object({
+  id: z.string().uuid(),
+  inspectionId: z.string().uuid(),
+  stepCode: z.string(),
+  stepName: z.string(),
+  bundleId: z.string().uuid().nullable().optional(),
+  bundleCode: z.string().nullable().optional(),
+  size: z.string().nullable().optional(),
+  defectType: z.string(),
+  qty: z.number().int(),
+  inspectorName: z.string().nullable().optional(),
+  createdAt: z.string(),
+});
+export type OrderDefectItemDto = z.infer<typeof orderDefectItemSchema>;
+
 export const reworkTargetSchema = z.object({
   id: z.string().uuid(),
   code: z.string(),

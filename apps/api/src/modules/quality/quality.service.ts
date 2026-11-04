@@ -228,6 +228,23 @@ export class QualityService {
     });
   }
 
+  async getOrderDefects(orderId: string) {
+    const defects = await this.qualityRepository.findOrderDefects(orderId);
+    return defects.map((d) => ({
+      id: d.id,
+      inspectionId: d.inspectionId,
+      stepCode: d.inspection.stepInstance.stepDefinition.code,
+      stepName: d.inspection.stepInstance.stepDefinition.name,
+      bundleId: d.bundleId,
+      bundleCode: d.bundle?.bundleCode ?? null,
+      size: d.bundle?.size ?? null,
+      defectType: d.defectType,
+      qty: d.qty,
+      inspectorName: d.inspection.inspector.fullName,
+      createdAt: d.createdAt.toISOString(),
+    }));
+  }
+
   async listInspections(stepId: string): Promise<QcInspectionDto[]> {
     const inspections = await this.qualityRepository.findInspections(stepId);
     return inspections.map(toInspectionDto);

@@ -32,6 +32,19 @@ export class QualityRepository {
     return tx.stepInstance.findUnique({ where: { id: stepId }, include: stepForInspectionInclude });
   }
 
+  findOrderDefects(orderId: string) {
+    return this.prisma.defect.findMany({
+      where: { inspection: { stepInstance: { instance: { orderId } } } },
+      include: {
+        bundle: true,
+        inspection: {
+          include: { inspector: true, stepInstance: { include: { stepDefinition: true } } },
+        },
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+    });
+  }
+
   findInstanceSteps(tx: Tx, instanceId: string) {
     return tx.stepInstance.findMany({
       where: { instanceId },

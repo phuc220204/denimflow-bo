@@ -25,6 +25,8 @@ Branch: `feat/quality-defects`
 FR/BR: FR-18 (High, optional)
 Do: defect records per inspection and bundle; simple list.
 
+Implementation updated on existing PR #34: Read-only order defects joined to inspection, bundle and inspector; existing QC schema is reused. Pending CI/review; production acceptance is not yet claimed.
+
 ### T5.4 Packing and handover   [agent]
 Branch: `feat/order-handover`
 FR/BR: FR-26

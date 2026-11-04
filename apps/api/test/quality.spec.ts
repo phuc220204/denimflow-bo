@@ -381,4 +381,25 @@ describe('QC inspection (T5.1)', () => {
       .expect(200);
     expect(response.body).toHaveLength(1);
   });
+  it('FR-18 lists persisted inspection defects with their bundle and inspector', async () => {
+    await request(app.getHttpServer()).get(`/quality/orders/${orderId}/defects`).expect(401);
+    const response = await request(app.getHttpServer())
+      .get(`/quality/orders/${orderId}/defects`)
+      .set('Authorization', 'Bearer planner-token')
+      .expect(200);
+    expect(response.body).toHaveLength(1);
+    expect(response.body[0]).toMatchObject({
+      stepCode: 'SEWING',
+      bundleId,
+      bundleCode: `${orderNumber}-B001`,
+      defectType: 'Đường may lỗi',
+      qty: 1,
+    });
+    expect(response.body[0].inspectionId).toBeDefined();
+    expect(response.body[0].inspectorName).toBeTruthy();
+    await request(app.getHttpServer())
+      .get('/quality/orders/not-a-uuid/defects')
+      .set('Authorization', 'Bearer planner-token')
+      .expect(400);
+  });
 });

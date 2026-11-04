@@ -188,6 +188,10 @@ Thêm một dòng mỗi khi triển khai diễn giải hoặc khác Proposal. Kh
 Các dòng "Proposed" chờ owner xác nhận; đổi thành "Agreed" hoặc viết lại.
 
 
+### T5.3 integration update (#34, 2026-11-05)
+
+Danh sách lỗi theo đơn, inspection, bó và người QC; dùng lại schema QC hiện tại.
+
 ### T5.2 integration update (#33, 2026-11-05)
 
 Rework: kiểm tra tuyến, giới hạn vòng, flag Planner; đưa các bước từ đích đến QC về trạng thái chưa hoàn thành, giữ lịch sử quantity.
