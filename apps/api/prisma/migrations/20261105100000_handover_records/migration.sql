@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS "handover_records" (
 
     CONSTRAINT "handover_records_pkey" PRIMARY KEY ("id"),
     CONSTRAINT "handover_records_order_id_key" UNIQUE ("order_id"),
-    CONSTRAINT "handover_records_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "production_orders"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "handover_records_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "production_orders"("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT "handover_records_qc_profile_id_fkey" FOREIGN KEY ("qc_profile_id") REFERENCES "qc_profiles"("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT "handover_records_handed_over_by_fkey" FOREIGN KEY ("handed_over_by") REFERENCES "profiles"("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );

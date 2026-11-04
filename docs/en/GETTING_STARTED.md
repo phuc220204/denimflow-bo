@@ -96,7 +96,7 @@ pnpm --filter @denimflow/api smoke:roles         # in another terminal: logs in 
 ```
 
 - `db:seed` is idempotent (safe to run again). It needs `SEED_DEFAULT_PASSWORD` (at least 12 characters) and resets the demo accounts to that password.
-- Demo accounts: `admin@`, `pe@`, `planner@`, `warehouse@`, `operator@`, `qc@`, `manager@` + `denimflow.internal`. The password is the dev `SEED_DEFAULT_PASSWORD`; ask the owner privately.
+- Demo accounts: `admin@`, `pe@`, `planner@`, `warehouse@`, `operator@`, `qc@`, `manager@` + `denimflow.internal`. Copy [`account-dev.example.md`](../../account-dev.example.md) to `account-dev.md` (git-ignored) and fill in the password the owner sends you privately; AI agents read it from there.
 - `smoke:roles` prints only HTTP status codes and writes no data. Expect `ALL CHECKS PASSED`.
 
 ## 7. Daily workflow
