@@ -19,6 +19,6 @@ import { QuantityService } from './quantity.service.js';
     EvidenceService,
     EvidenceStorage,
   ],
-  exports: [ExecutionService, ExecutionRepository],
+  exports: [ExecutionService, ExecutionRepository, EvidenceService],
 })
 export class ExecutionModule {}

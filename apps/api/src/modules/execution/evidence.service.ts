@@ -8,7 +8,8 @@ import {
 import { randomUUID } from 'node:crypto';
 import type { AttachEvidenceDto, EvidenceUploadDto } from '@denimflow/shared';
 import type { AuthResponse } from '../auth/auth.service.js';
-import { ExecutionRepository } from './execution.repository.js';
+import { BusinessRuleViolation } from '../../common/errors/business-rule-violation.js';
+import { ExecutionRepository, type Tx } from './execution.repository.js';
 import { assertMayWork } from './step-access.js';
 import { EvidenceStorage } from './evidence-storage.js';
 const extensions: Record<string, string> = {
@@ -23,6 +24,15 @@ export class EvidenceService {
     @Inject(ExecutionRepository) private readonly repository: ExecutionRepository,
     @Inject(EvidenceStorage) private readonly storage: EvidenceStorage,
   ) {}
+  // BR-15: also used by atomic handover, which bypasses generic completeStep.
+  async assertCompletionAllowed(tx: Tx, stepId: string, required: boolean): Promise<void> {
+    if (required && (await this.repository.findEvidence(stepId, tx)).length === 0)
+      throw new BusinessRuleViolation(
+        'BR-15',
+        'BR-15: Phải đính kèm bằng chứng trước khi hoàn thành',
+      );
+  }
+
   private async step(
     tx: Parameters<ExecutionRepository['findStepForTransition']>[0],
     id: string,
