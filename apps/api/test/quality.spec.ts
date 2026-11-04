@@ -27,6 +27,8 @@ const users: Record<string, { id: string; role: string }> = {
   'Bearer qc2-token': { id: QC2_ID, role: 'QC_INSPECTOR' },
 };
 
+const evidenceMetadata = { mimeType: 'application/pdf', sizeBytes: 100 };
+
 const fakeAuthService = {
   async getMe(authHeader?: string) {
     const user = authHeader ? users[authHeader] : undefined;
@@ -83,7 +85,7 @@ describe('QC inspection (T5.1)', () => {
       .overrideProvider(EvidenceStorage)
       .useValue({
         sign: async () => ({ signedUrl: 'https://storage.example.test/upload' }),
-        info: async () => ({ mimeType: 'application/pdf', sizeBytes: 100 }),
+        info: async () => evidenceMetadata,
       })
       .overrideProvider(AuthService)
       .useValue(fakeAuthService)
@@ -256,6 +258,13 @@ describe('QC inspection (T5.1)', () => {
       filePath: 'orders/another-order/evidence/file.pdf',
     }).expect(400);
     await post(base, 'cutter-token', { filePath: upload.body.filePath }).expect(403);
+
+    evidenceMetadata.sizeBytes = 6 * 1024 * 1024;
+    await post(base, 'planner-token', { filePath: upload.body.filePath }).expect(400);
+    evidenceMetadata.sizeBytes = 100;
+    evidenceMetadata.mimeType = 'text/html';
+    await post(base, 'planner-token', { filePath: upload.body.filePath }).expect(400);
+    evidenceMetadata.mimeType = 'application/pdf';
     await post(base, 'planner-token', { filePath: upload.body.filePath }).expect(201);
     const files = await request(app.getHttpServer())
       .get(base)
