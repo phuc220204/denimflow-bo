@@ -16,6 +16,7 @@ import { DEMO_STYLE_CODE, seedWorkflow } from '../src/seed/workflow.js';
 const SEWER_ID = '00000000-0000-0000-0000-0000000000b5';
 const QC2_ID = '00000000-0000-0000-0000-0000000000b6';
 const users: Record<string, { id: string; role: string }> = {
+  'Bearer manager-token': { id: '00000000-0000-0000-0000-000000000007', role: 'MANAGER' },
   'Bearer planner-token': {
     id: '00000000-0000-0000-0000-000000000003',
     role: 'PRODUCTION_PLANNER',
@@ -263,6 +264,27 @@ describe('QC inspection (T5.1)', () => {
   });
 
   it('BR-10 routes a failed QC once, invalidates its path and preserves quantities', async () => {
+    for (const code of ['CLEAN_WASH', 'FINISHING']) {
+      await prisma.stepInstance.update({
+        where: { id: stepIds[code] },
+        data: { status: 'DONE', qtyIn: 49, qtyGood: 49, qtyDefect: 0 },
+      });
+      await prisma.stepQuantityEntry.create({
+        data: {
+          stepInstanceId: stepIds[code]!,
+          bundleId,
+          qtyGood: 49,
+          qtyDefect: 0,
+          enteredBy: SEWER_ID,
+        },
+      });
+    }
+
+    // The prior test passed FINAL_QC; restore a consistent pre-decision fixture for this cycle.
+    await prisma.stepInstance.update({
+      where: { id: stepIds.PACK_HANDOVER },
+      data: { status: 'PENDING' },
+    });
     const targetBefore = await stepRow('FINISHING');
     await prisma.stepInstance.update({ where: { id: targetBefore.id }, data: { status: 'DONE' } });
     await prisma.stepInstance.update({
@@ -290,6 +312,21 @@ describe('QC inspection (T5.1)', () => {
       qtyDefect: targetBefore.qtyDefect,
     });
     expect((await stepRow('FINAL_QC')).status).toBe('PENDING');
+    const dashboard = await request(app.getHttpServer())
+      .get('/dashboard/wip')
+      .set('Authorization', 'Bearer manager-token')
+      .expect(200);
+    expect(
+      dashboard.body.waitingQc.filter((item: { orderId: string }) => item.orderId === orderId),
+    ).toHaveLength(0);
+    const open = await prisma.stepInstance.findMany({
+      where: {
+        instance: { orderId },
+        status: { in: ['READY', 'REWORK', 'IN_PROGRESS', 'WAITING_QC'] },
+      },
+    });
+    expect(open.map((step) => step.id)).toEqual([stepIds.FINISHING]);
+
     const audit = await prisma.auditLog.findFirst({
       where: { entityId: target.id, action: 'QC_REWORK' },
     });
