@@ -1,3 +1,4 @@
+import { i18n } from '../../lib/i18n/dictionary';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertCircle,
@@ -118,6 +119,7 @@ export const WorklistPage: React.FC = () => {
     item.responsibleRole === 'STATION_OPERATOR' && Boolean(item.stationType);
   // FR-16 / R-25: the inspector checks steps waiting for QC and QC-type steps they started.
   const canInspect = (item: WorklistItemDto) =>
+    !item.requiresPlannerReview &&
     user?.role === 'QC_INSPECTOR' &&
     (item.status === 'WAITING_QC' || (item.stepType === 'QC' && item.status === 'IN_PROGRESS'));
 
@@ -300,7 +302,7 @@ export const WorklistPage: React.FC = () => {
                   <div className="pt-2">
                     {item.requiresPlannerReview && (
                       <p role="alert" className="text-danger-text">
-                        Cần Điều độ sản xuất xử lý QC: {item.plannerReviewReason}
+                        {i18n.rework.review}: {item.plannerReviewReason}
                       </p>
                     )}
                     {canWork(item) &&
@@ -317,17 +319,19 @@ export const WorklistPage: React.FC = () => {
                         </Button>
                       )}
 
-                    {tracksQuantities(item) && item.status === 'IN_PROGRESS' && (
-                      <Button
-                        variant="outline"
-                        className="w-full mb-2 flex items-center justify-center gap-2"
-                        size="sm"
-                        onClick={() => setQuantityStepId(showQuantities ? null : item.id)}
-                      >
-                        <ClipboardList className="h-4 w-4" />
-                        {showQuantities ? 'Đóng nhập số lượng' : 'Nhập số lượng'}
-                      </Button>
-                    )}
+                    {tracksQuantities(item) &&
+                      !item.requiresPlannerReview &&
+                      item.status === 'IN_PROGRESS' && (
+                        <Button
+                          variant="outline"
+                          className="w-full mb-2 flex items-center justify-center gap-2"
+                          size="sm"
+                          onClick={() => setQuantityStepId(showQuantities ? null : item.id)}
+                        >
+                          <ClipboardList className="h-4 w-4" />
+                          {showQuantities ? 'Đóng nhập số lượng' : 'Nhập số lượng'}
+                        </Button>
+                      )}
 
                     {canInspect(item) && (
                       <Button
@@ -341,11 +345,6 @@ export const WorklistPage: React.FC = () => {
                       </Button>
                     )}
 
-                    {item.requiresPlannerReview && (
-                      <p role="alert" className="text-danger-text">
-                        Cần Điều độ sản xuất xử lý QC: {item.plannerReviewReason}
-                      </p>
-                    )}
                     {canWork(item) &&
                       !item.requiresPlannerReview &&
                       item.status === 'IN_PROGRESS' &&

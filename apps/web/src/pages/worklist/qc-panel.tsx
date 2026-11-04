@@ -1,3 +1,4 @@
+import { i18n } from '../../lib/i18n/dictionary';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, Plus, Trash2 } from 'lucide-react';
 import React, { useState } from 'react';
@@ -295,14 +296,14 @@ export const QcPanel: React.FC<QcPanelProps> = ({ stepId, token, withBundles, on
         </Button>
       </div>
       <label className="block">
-        Bước quay lại
+        {i18n.rework.target}
         <select
-          aria-label="Bước quay lại"
+          aria-label={i18n.rework.target}
           className="h-9 w-full rounded border border-border"
           value={target}
           onChange={(e) => setTarget(e.target.value)}
         >
-          <option value="">Chọn công đoạn</option>
+          <option value="">{i18n.rework.choose}</option>
           {targets.map((t) => (
             <option key={t.id} value={t.id}>
               {t.name} ({t.reworkCount}/{t.maxRework})
@@ -311,7 +312,7 @@ export const QcPanel: React.FC<QcPanelProps> = ({ stepId, token, withBundles, on
         </select>
       </label>
       <Input
-        label="Lý do làm lại / loại"
+        label={i18n.rework.reason}
         value={reason}
         onChange={(e) => setReason(e.target.value)}
       />
