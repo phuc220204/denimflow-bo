@@ -1,18 +1,9 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  ForbiddenException,
-  Get,
-  Headers,
-  Inject,
-  Param,
-  Post,
-  Put,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, Inject, Param, Post, Put, UseGuards } from '@nestjs/common';
+import { Role } from '@denimflow/shared';
 import { AuthGuard } from '../auth/auth.guard.js';
-import { AuthService } from '../auth/auth.service.js';
+import type { AuthResponse } from '../auth/auth.service.js';
+import { CurrentUser } from '../auth/current-user.decorator.js';
+import { Roles } from '../auth/roles.decorator.js';
 import { QcProfileType } from '../../generated/prisma/enums.js';
 import {
   createColorOptionSchema,
@@ -30,65 +21,44 @@ import {
 } from './catalog.dto.js';
 import { CatalogService } from './catalog.service.js';
 
+// FR-02: any active user may read master data; only the Admin writes it.
+// FR-28: QC Profile thresholds may also be edited by the Process Engineer.
 @Controller('catalog')
+@UseGuards(AuthGuard)
 export class CatalogController {
-  constructor(
-    @Inject(CatalogService) private readonly catalogService: CatalogService,
-    @Inject(AuthService) private readonly authService: AuthService,
-  ) {}
-
-  private async assertAdmin(authHeader?: string): Promise<string> {
-    const user = await this.authService.getMe(authHeader);
-    if (user.role !== 'ADMIN') {
-      throw new ForbiddenException(
-        'Chỉ Quản trị viên (Admin) mới có quyền chỉnh sửa dữ liệu danh mục',
-      );
-    }
-    return user.id;
-  }
-
-  private async assertAdminOrProcessEngineer(authHeader?: string): Promise<string> {
-    const user = await this.authService.getMe(authHeader);
-    if (user.role !== 'ADMIN' && user.role !== 'PROCESS_ENGINEER') {
-      throw new ForbiddenException(
-        'Chỉ Quản trị viên (Admin) hoặc Kỹ sư quy trình (Process Engineer) mới có quyền chỉnh sửa thông số QC Profile',
-      );
-    }
-    return user.id;
-  }
+  constructor(@Inject(CatalogService) private readonly catalogService: CatalogService) {}
 
   // ==========================================
   // STATIONS
   // ==========================================
 
   @Get('stations')
-  @UseGuards(AuthGuard)
   async getStations() {
     return this.catalogService.getStations();
   }
 
   @Post('stations')
-  async createStation(@Body() body: unknown, @Headers('authorization') authHeader?: string) {
-    const actorId = await this.assertAdmin(authHeader);
+  @Roles(Role.ADMIN)
+  async createStation(@Body() body: unknown, @CurrentUser() user: AuthResponse['user']) {
     const dto = createStationSchema.parse(body);
-    return this.catalogService.createStation(dto, actorId);
+    return this.catalogService.createStation(dto, user.id);
   }
 
   @Put('stations/:id')
+  @Roles(Role.ADMIN)
   async updateStation(
     @Param('id') id: string,
     @Body() body: unknown,
-    @Headers('authorization') authHeader?: string,
+    @CurrentUser() user: AuthResponse['user'],
   ) {
-    const actorId = await this.assertAdmin(authHeader);
     const dto = updateStationSchema.parse(body);
-    return this.catalogService.updateStation(id, dto, actorId);
+    return this.catalogService.updateStation(id, dto, user.id);
   }
 
   @Delete('stations/:id')
-  async deleteStation(@Param('id') id: string, @Headers('authorization') authHeader?: string) {
-    const actorId = await this.assertAdmin(authHeader);
-    return this.catalogService.deleteStation(id, actorId);
+  @Roles(Role.ADMIN)
+  async deleteStation(@Param('id') id: string, @CurrentUser() user: AuthResponse['user']) {
+    return this.catalogService.deleteStation(id, user.id);
   }
 
   // ==========================================
@@ -96,33 +66,32 @@ export class CatalogController {
   // ==========================================
 
   @Get('styles')
-  @UseGuards(AuthGuard)
   async getStyles() {
     return this.catalogService.getStyles();
   }
 
   @Post('styles')
-  async createStyle(@Body() body: unknown, @Headers('authorization') authHeader?: string) {
-    const actorId = await this.assertAdmin(authHeader);
+  @Roles(Role.ADMIN)
+  async createStyle(@Body() body: unknown, @CurrentUser() user: AuthResponse['user']) {
     const dto = createStyleSchema.parse(body);
-    return this.catalogService.createStyle(dto, actorId);
+    return this.catalogService.createStyle(dto, user.id);
   }
 
   @Put('styles/:id')
+  @Roles(Role.ADMIN)
   async updateStyle(
     @Param('id') id: string,
     @Body() body: unknown,
-    @Headers('authorization') authHeader?: string,
+    @CurrentUser() user: AuthResponse['user'],
   ) {
-    const actorId = await this.assertAdmin(authHeader);
     const dto = updateStyleSchema.parse(body);
-    return this.catalogService.updateStyle(id, dto, actorId);
+    return this.catalogService.updateStyle(id, dto, user.id);
   }
 
   @Delete('styles/:id')
-  async deleteStyle(@Param('id') id: string, @Headers('authorization') authHeader?: string) {
-    const actorId = await this.assertAdmin(authHeader);
-    return this.catalogService.deleteStyle(id, actorId);
+  @Roles(Role.ADMIN)
+  async deleteStyle(@Param('id') id: string, @CurrentUser() user: AuthResponse['user']) {
+    return this.catalogService.deleteStyle(id, user.id);
   }
 
   // ==========================================
@@ -130,33 +99,32 @@ export class CatalogController {
   // ==========================================
 
   @Get('fabric-types')
-  @UseGuards(AuthGuard)
   async getFabricTypes() {
     return this.catalogService.getFabricTypes();
   }
 
   @Post('fabric-types')
-  async createFabricType(@Body() body: unknown, @Headers('authorization') authHeader?: string) {
-    const actorId = await this.assertAdmin(authHeader);
+  @Roles(Role.ADMIN)
+  async createFabricType(@Body() body: unknown, @CurrentUser() user: AuthResponse['user']) {
     const dto = createFabricTypeSchema.parse(body);
-    return this.catalogService.createFabricType(dto, actorId);
+    return this.catalogService.createFabricType(dto, user.id);
   }
 
   @Put('fabric-types/:id')
+  @Roles(Role.ADMIN)
   async updateFabricType(
     @Param('id') id: string,
     @Body() body: unknown,
-    @Headers('authorization') authHeader?: string,
+    @CurrentUser() user: AuthResponse['user'],
   ) {
-    const actorId = await this.assertAdmin(authHeader);
     const dto = updateFabricTypeSchema.parse(body);
-    return this.catalogService.updateFabricType(id, dto, actorId);
+    return this.catalogService.updateFabricType(id, dto, user.id);
   }
 
   @Delete('fabric-types/:id')
-  async deleteFabricType(@Param('id') id: string, @Headers('authorization') authHeader?: string) {
-    const actorId = await this.assertAdmin(authHeader);
-    return this.catalogService.deleteFabricType(id, actorId);
+  @Roles(Role.ADMIN)
+  async deleteFabricType(@Param('id') id: string, @CurrentUser() user: AuthResponse['user']) {
+    return this.catalogService.deleteFabricType(id, user.id);
   }
 
   // ==========================================
@@ -164,33 +132,32 @@ export class CatalogController {
   // ==========================================
 
   @Get('color-options')
-  @UseGuards(AuthGuard)
   async getColorOptions() {
     return this.catalogService.getColorOptions();
   }
 
   @Post('color-options')
-  async createColorOption(@Body() body: unknown, @Headers('authorization') authHeader?: string) {
-    const actorId = await this.assertAdmin(authHeader);
+  @Roles(Role.ADMIN)
+  async createColorOption(@Body() body: unknown, @CurrentUser() user: AuthResponse['user']) {
     const dto = createColorOptionSchema.parse(body);
-    return this.catalogService.createColorOption(dto, actorId);
+    return this.catalogService.createColorOption(dto, user.id);
   }
 
   @Put('color-options/:id')
+  @Roles(Role.ADMIN)
   async updateColorOption(
     @Param('id') id: string,
     @Body() body: unknown,
-    @Headers('authorization') authHeader?: string,
+    @CurrentUser() user: AuthResponse['user'],
   ) {
-    const actorId = await this.assertAdmin(authHeader);
     const dto = updateColorOptionSchema.parse(body);
-    return this.catalogService.updateColorOption(id, dto, actorId);
+    return this.catalogService.updateColorOption(id, dto, user.id);
   }
 
   @Delete('color-options/:id')
-  async deleteColorOption(@Param('id') id: string, @Headers('authorization') authHeader?: string) {
-    const actorId = await this.assertAdmin(authHeader);
-    return this.catalogService.deleteColorOption(id, actorId);
+  @Roles(Role.ADMIN)
+  async deleteColorOption(@Param('id') id: string, @CurrentUser() user: AuthResponse['user']) {
+    return this.catalogService.deleteColorOption(id, user.id);
   }
 
   // ==========================================
@@ -198,33 +165,32 @@ export class CatalogController {
   // ==========================================
 
   @Get('wash-types')
-  @UseGuards(AuthGuard)
   async getWashTypes() {
     return this.catalogService.getWashTypes();
   }
 
   @Post('wash-types')
-  async createWashType(@Body() body: unknown, @Headers('authorization') authHeader?: string) {
-    const actorId = await this.assertAdmin(authHeader);
+  @Roles(Role.ADMIN)
+  async createWashType(@Body() body: unknown, @CurrentUser() user: AuthResponse['user']) {
     const dto = createWashTypeSchema.parse(body);
-    return this.catalogService.createWashType(dto, actorId);
+    return this.catalogService.createWashType(dto, user.id);
   }
 
   @Put('wash-types/:id')
+  @Roles(Role.ADMIN)
   async updateWashType(
     @Param('id') id: string,
     @Body() body: unknown,
-    @Headers('authorization') authHeader?: string,
+    @CurrentUser() user: AuthResponse['user'],
   ) {
-    const actorId = await this.assertAdmin(authHeader);
     const dto = updateWashTypeSchema.parse(body);
-    return this.catalogService.updateWashType(id, dto, actorId);
+    return this.catalogService.updateWashType(id, dto, user.id);
   }
 
   @Delete('wash-types/:id')
-  async deleteWashType(@Param('id') id: string, @Headers('authorization') authHeader?: string) {
-    const actorId = await this.assertAdmin(authHeader);
-    return this.catalogService.deleteWashType(id, actorId);
+  @Roles(Role.ADMIN)
+  async deleteWashType(@Param('id') id: string, @CurrentUser() user: AuthResponse['user']) {
+    return this.catalogService.deleteWashType(id, user.id);
   }
 
   // ==========================================
@@ -232,26 +198,23 @@ export class CatalogController {
   // ==========================================
 
   @Get('matrix')
-  @UseGuards(AuthGuard)
   async getMatrix() {
     return this.catalogService.getMatrix();
   }
 
   @Post('matrix/toggle')
-  async toggleMatrixRule(@Body() body: unknown, @Headers('authorization') authHeader?: string) {
-    const actorId = await this.assertAdmin(authHeader);
+  @Roles(Role.ADMIN)
+  async toggleMatrixRule(@Body() body: unknown, @CurrentUser() user: AuthResponse['user']) {
     const dto = toggleFabricColorRuleSchema.parse(body);
-    return this.catalogService.toggleMatrixRule(dto, actorId);
+    return this.catalogService.toggleMatrixRule(dto, user.id);
   }
 
   @Get('fabrics/:id/allowed-colors')
-  @UseGuards(AuthGuard)
   async getAllowedColors(@Param('id') id: string) {
     return this.catalogService.getAllowedColors(id);
   }
 
   @Get('fabric-types/:id/allowed-colors')
-  @UseGuards(AuthGuard)
   async getAllowedColorsAlias(@Param('id') id: string) {
     return this.catalogService.getAllowedColors(id);
   }
@@ -261,20 +224,19 @@ export class CatalogController {
   // ==========================================
 
   @Get('styles/:id/qc-profiles')
-  @UseGuards(AuthGuard)
   async getQcProfiles(@Param('id') id: string) {
     return this.catalogService.getQcProfiles(id);
   }
 
   @Put('styles/:id/qc-profiles/:profileType')
+  @Roles(Role.ADMIN, Role.PROCESS_ENGINEER)
   async updateQcProfile(
     @Param('id') id: string,
     @Param('profileType') profileType: string,
     @Body() body: unknown,
-    @Headers('authorization') authHeader?: string,
+    @CurrentUser() user: AuthResponse['user'],
   ) {
-    const actorId = await this.assertAdminOrProcessEngineer(authHeader);
     const dto = updateQcProfileSchema.parse(body);
-    return this.catalogService.updateQcProfile(id, profileType as QcProfileType, dto, actorId);
+    return this.catalogService.updateQcProfile(id, profileType as QcProfileType, dto, user.id);
   }
 }

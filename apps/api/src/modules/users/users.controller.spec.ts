@@ -1,50 +1,42 @@
-import { ForbiddenException } from '@nestjs/common';
+import 'reflect-metadata';
+import { GUARDS_METADATA } from '@nestjs/common/constants.js';
+import { Role } from '@denimflow/shared';
 import { describe, expect, it, vi } from 'vitest';
-import { AuthService } from '../auth/auth.service.js';
+import { AuthGuard } from '../auth/auth.guard.js';
+import type { AuthResponse } from '../auth/auth.service.js';
+import { ROLES_KEY } from '../auth/roles.decorator.js';
 import { UsersController } from './users.controller.js';
-import { UsersService } from './users.service.js';
+import type { UsersService } from './users.service.js';
 
-describe('UsersController', () => {
-  const mockAuthService = {
-    getMe: vi.fn(),
-  };
+const admin: AuthResponse['user'] = {
+  id: 'admin-uuid',
+  email: 'admin@denimflow.internal',
+  fullName: 'Admin',
+  role: 'ADMIN',
+  isActive: true,
+};
 
-  const mockUsersService = {
+describe('UsersController (FR-01)', () => {
+  const service = {
     getUsers: vi.fn().mockResolvedValue([]),
     createUser: vi.fn().mockResolvedValue({ id: '1' }),
     updateStatus: vi.fn().mockResolvedValue({ id: '1', isActive: false }),
+    updateAssignment: vi.fn().mockResolvedValue({ id: '1' }),
   };
+  const controller = new UsersController(service as unknown as UsersService);
 
-  it('rejects non-admin from listing users with 403 (ForbiddenException)', async () => {
-    mockAuthService.getMe.mockResolvedValueOnce({
-      id: '2',
-      email: 'pe@denimflow.internal',
-      role: 'PROCESS_ENGINEER',
-      isActive: true,
-    });
-
-    const controller = new UsersController(
-      mockUsersService as unknown as UsersService,
-      mockAuthService as unknown as AuthService,
-    );
-
-    await expect(controller.getUsers('Bearer token')).rejects.toThrow(ForbiddenException);
+  it('FR-01: is guarded and limited to Admin', () => {
+    expect(Reflect.getMetadata(GUARDS_METADATA, UsersController)).toEqual([AuthGuard]);
+    expect(Reflect.getMetadata(ROLES_KEY, UsersController)).toEqual([Role.ADMIN]);
   });
 
-  it('allows admin to list users', async () => {
-    mockAuthService.getMe.mockResolvedValueOnce({
-      id: '1',
-      email: 'admin@denimflow.internal',
-      role: 'ADMIN',
-      isActive: true,
-    });
+  it('FR-01: lists users through the service', async () => {
+    await expect(controller.getUsers()).resolves.toEqual([]);
+  });
 
-    const controller = new UsersController(
-      mockUsersService as unknown as UsersService,
-      mockAuthService as unknown as AuthService,
-    );
+  it('FR-01: passes the verified Admin id as the actor when deactivating a user', async () => {
+    await controller.updateStatus('user-2', { isActive: false }, admin);
 
-    const result = await controller.getUsers('Bearer token');
-    expect(result).toEqual([]);
+    expect(service.updateStatus).toHaveBeenCalledWith('user-2', { isActive: false }, 'admin-uuid');
   });
 });
