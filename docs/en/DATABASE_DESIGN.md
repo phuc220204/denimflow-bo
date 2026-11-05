@@ -23,6 +23,7 @@ Source: Proposal V2.0 §10 (core data model) plus the additions listed in §10 h
 | Booleans | `is_*` or `*_required`, `NOT NULL` with default |
 | Quantities | pieces = `integer` ≥ 0; fabric = `numeric(12,2)` meters |
 | Soft delete | Not used. Catalog rows use `is_active`; referenced rows cannot be deleted |
+| Delete rule | Order and production history uses `ON DELETE RESTRICT` (size lines, BOM lines, allocations, material requests, acknowledgements, workflow/step instances, quantities, bundles, QC, handover, evidence; D1, R-03). `CASCADE` is kept only for design data whose parent owns it: fabric–color rules, QC Profiles and BOM norms of a style, versions of a template, steps and transitions of a DRAFT version |
 | Money | out of scope |
 | Files | store Storage **paths**, never public URLs (R-15) |
 

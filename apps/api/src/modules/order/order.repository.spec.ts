@@ -252,6 +252,8 @@ describe('OrderRepository', () => {
           createMany: vi.fn().mockResolvedValue({ count: 2 }),
           findMany: vi.fn().mockResolvedValue(persistedLines),
         },
+        materialAllocation: { count: vi.fn().mockResolvedValue(0) },
+        materialRequest: { count: vi.fn().mockResolvedValue(0) },
         auditLog: {
           create: vi.fn().mockResolvedValue({ id: 'audit-1' }),
         },
