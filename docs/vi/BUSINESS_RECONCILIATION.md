@@ -188,6 +188,10 @@ Thêm một dòng mỗi khi triển khai diễn giải hoặc khác Proposal. Kh
 Các dòng "Proposed" chờ owner xác nhận; đổi thành "Agreed" hoặc viết lại.
 
 
+### Sửa BR-04: tạo đơn và Confirm (review D4, 2026-11-05)
+
+BR-04 giờ được kiểm ở mọi chỗ cặp vải–màu đi vào đơn: tạo nháp, sửa nháp, chọn vải/màu và Confirm (§7.1 bước 3, kiểm tra đầy đủ). Trước đây có thể tạo nháp với cặp bị cấm và Confirm vẫn chấp nhận. Confirm cũng từ chối cặp mà ô ma trận bị tắt sau khi đã chọn; Planner chọn lại.
+
 ### T5.3 integration update (#34, 2026-11-05)
 
 Danh sách lỗi theo đơn, inspection, bó và người QC; dùng lại schema QC hiện tại.

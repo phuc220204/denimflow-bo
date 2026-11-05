@@ -527,6 +527,7 @@ describe('OrderRepository', () => {
     it('rejects confirmation if order has no size lines', async () => {
       const txMock = {
         $queryRaw: vi.fn().mockResolvedValue([baseOrderRow]),
+        fabricColorRule: { findUnique: vi.fn().mockResolvedValue({ isAllowed: true }) },
         orderSizeLine: {
           findMany: vi.fn().mockResolvedValue([]),
         },
@@ -542,6 +543,7 @@ describe('OrderRepository', () => {
     it('BR-03: rejects confirmation if style has no default template or no PUBLISHED version', async () => {
       const txMock = {
         $queryRaw: vi.fn().mockResolvedValue([baseOrderRow]),
+        fabricColorRule: { findUnique: vi.fn().mockResolvedValue({ isAllowed: true }) },
         orderSizeLine: {
           findMany: vi.fn().mockResolvedValue([{ size: '30', plannedQty: 100 }]),
         },
@@ -565,6 +567,7 @@ describe('OrderRepository', () => {
     it('BR-19: rejects confirmation if skipCleanWash is true but CustomerAcknowledgement is missing', async () => {
       const txMock = {
         $queryRaw: vi.fn().mockResolvedValue([{ ...baseOrderRow, skip_clean_wash: true }]),
+        fabricColorRule: { findUnique: vi.fn().mockResolvedValue({ isAllowed: true }) },
         orderSizeLine: {
           findMany: vi.fn().mockResolvedValue([{ size: '30', plannedQty: 100 }]),
         },
@@ -595,6 +598,7 @@ describe('OrderRepository', () => {
     it('successfully confirms order, creates workflow instance snapshot and audit logs', async () => {
       const txMock = {
         $queryRaw: vi.fn().mockResolvedValue([{ ...baseOrderRow, skip_clean_wash: true }]),
+        fabricColorRule: { findUnique: vi.fn().mockResolvedValue({ isAllowed: true }) },
         orderSizeLine: {
           findMany: vi.fn().mockResolvedValue([{ size: '30', plannedQty: 100 }]),
         },

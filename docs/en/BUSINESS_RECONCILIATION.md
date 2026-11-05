@@ -188,6 +188,10 @@ Add a row whenever the implementation interprets or departs from the Proposal. N
 "Proposed" rows await the owner's confirmation; change to "Agreed" or rewrite.
 
 
+### BR-04 fix: create and Confirm (D4 review, 2026-11-05)
+
+BR-04 is now checked wherever a fabric–color pair enters an order: creating a draft, editing it, selecting fabric/color and Confirm (§7.1 step 3, completeness). Before, a draft could be created with a forbidden pair and Confirm accepted it. Confirm also refuses a pair whose matrix cell was switched off after it was picked; the Planner selects again.
+
 ### T5.3 integration update (#34, 2026-11-05)
 
 Read-only order defects joined to inspection, bundle and inspector; existing QC schema is reused.
