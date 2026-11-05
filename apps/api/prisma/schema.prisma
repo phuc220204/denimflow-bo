@@ -397,10 +397,10 @@ model ProductionOrder {
   updatedAt             DateTime                  @updatedAt @map("updated_at") @db.Timestamptz
 
   style                 Style                     @relation(fields: [styleId], references: [id])
-  fabricType            FabricType?               @relation(fields: [fabricTypeId], references: [id])
-  color                 ColorOption?              @relation(fields: [colorId], references: [id])
-  washType              WashType?                 @relation(fields: [washTypeId], references: [id])
-  qcProfile             QcProfile?                @relation(fields: [qcProfileId], references: [id])
+  fabricType            FabricType?               @relation(fields: [fabricTypeId], references: [id], onDelete: Restrict)
+  color                 ColorOption?              @relation(fields: [colorId], references: [id], onDelete: Restrict)
+  washType              WashType?                 @relation(fields: [washTypeId], references: [id], onDelete: Restrict)
+  qcProfile             QcProfile?                @relation(fields: [qcProfileId], references: [id], onDelete: Restrict)
   creator               Profile                   @relation(fields: [createdBy], references: [id])
   sizeLines             OrderSizeLine[]
   bomLines              BomLine[]
