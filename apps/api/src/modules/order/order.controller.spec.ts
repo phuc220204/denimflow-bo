@@ -1,8 +1,15 @@
-import { ForbiddenException } from '@nestjs/common';
+import 'reflect-metadata';
+import { GUARDS_METADATA } from '@nestjs/common/constants.js';
+import { Role } from '@denimflow/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { AuthService } from '../auth/auth.service.js';
+import { AuthGuard } from '../auth/auth.guard.js';
+import type { AuthResponse } from '../auth/auth.service.js';
+import { ROLES_KEY } from '../auth/roles.decorator.js';
 import { OrderController } from './order.controller.js';
-import { OrderService } from './order.service.js';
+import type { OrderService } from './order.service.js';
+
+const rolesOf = (method: keyof OrderController): unknown =>
+  Reflect.getMetadata(ROLES_KEY, OrderController.prototype[method]);
 
 describe('OrderController', () => {
   let controller: OrderController;
@@ -17,23 +24,12 @@ describe('OrderController', () => {
     attachCustomerAcknowledgement: ReturnType<typeof vi.fn>;
     confirmOrder: ReturnType<typeof vi.fn>;
   };
-  let authService: {
-    getMe: ReturnType<typeof vi.fn>;
-  };
 
-  const plannerUser = {
+  const plannerUser: AuthResponse['user'] = {
     id: 'user-planner',
     email: 'planner@denimflow.test',
     fullName: 'Planner User',
     role: 'PRODUCTION_PLANNER',
-    isActive: true,
-  };
-
-  const operatorUser = {
-    id: 'user-operator',
-    email: 'operator@denimflow.test',
-    fullName: 'Station Operator',
-    role: 'STATION_OPERATOR',
     isActive: true,
   };
 
@@ -49,19 +45,36 @@ describe('OrderController', () => {
       attachCustomerAcknowledgement: vi.fn(),
       confirmOrder: vi.fn(),
     };
-    authService = {
-      getMe: vi.fn(),
-    };
+    controller = new OrderController(orderService as unknown as OrderService);
+  });
 
-    controller = new OrderController(
-      orderService as unknown as OrderService,
-      authService as unknown as AuthService,
-    );
+  describe('access rules', () => {
+    it('every route requires a login', () => {
+      expect(Reflect.getMetadata(GUARDS_METADATA, OrderController)).toEqual([AuthGuard]);
+    });
+
+    it('read routes are open to any active user', () => {
+      for (const method of ['listOrders', 'getOrderById', 'getBomLines'] as const) {
+        expect(rolesOf(method)).toBeUndefined();
+      }
+    });
+
+    it('write routes are limited to Planner, Admin and Manager', () => {
+      for (const method of [
+        'createDraftOrder',
+        'updateDraftOrder',
+        'selectFabricColor',
+        'calculateBom',
+        'attachAcknowledgement',
+        'confirmOrder',
+      ] as const) {
+        expect(rolesOf(method)).toEqual([Role.PRODUCTION_PLANNER, Role.ADMIN, Role.MANAGER]);
+      }
+    });
   });
 
   describe('createDraftOrder', () => {
-    it('allows PRODUCTION_PLANNER to create a draft order', async () => {
-      authService.getMe.mockResolvedValue(plannerUser);
+    it('passes the verified planner id as the actor', async () => {
       orderService.createDraftOrder.mockResolvedValue({
         id: 'po-1',
         orderNumber: 'PO-2026-0001',
@@ -73,118 +86,70 @@ describe('OrderController', () => {
         sizeLines: [{ size: '30', plannedQty: 50 }],
       };
 
-      const res = await controller.createDraftOrder(body, 'Bearer token');
+      const res = await controller.createDraftOrder(body, plannerUser);
       expect(res).toEqual({ id: 'po-1', orderNumber: 'PO-2026-0001' });
       expect(orderService.createDraftOrder).toHaveBeenCalledWith(
         expect.objectContaining({ styleId: body.styleId }),
         plannerUser.id,
       );
     });
-
-    it('rejects STATION_OPERATOR from creating orders', async () => {
-      authService.getMe.mockResolvedValue(operatorUser);
-
-      const body = {
-        styleId: '11111111-1111-4111-8111-111111111111',
-        dueDate: '2026-11-15',
-        sizeLines: [{ size: '30', plannedQty: 50 }],
-      };
-
-      await expect(controller.createDraftOrder(body, 'Bearer token')).rejects.toThrow(
-        ForbiddenException,
-      );
-      expect(orderService.createDraftOrder).not.toHaveBeenCalled();
-    });
   });
 
   describe('listOrders and getOrderById', () => {
-    it('allows authenticated users to view orders', async () => {
-      authService.getMe.mockResolvedValue(operatorUser);
+    it('returns the order list', async () => {
       orderService.listOrders.mockResolvedValue([{ id: 'po-1' }]);
 
-      const res = await controller.listOrders({}, 'Bearer token');
+      const res = await controller.listOrders({});
       expect(res).toEqual([{ id: 'po-1' }]);
     });
 
-    it('allows authenticated users to view order detail', async () => {
-      authService.getMe.mockResolvedValue(operatorUser);
+    it('returns the order detail', async () => {
       orderService.getOrderById.mockResolvedValue({ id: 'po-1' });
 
-      const res = await controller.getOrderById('po-1', 'Bearer token');
+      const res = await controller.getOrderById('po-1');
       expect(res).toEqual({ id: 'po-1' });
     });
   });
 
   describe('selectFabricColor', () => {
-    it('allows planner to select fabric and color', async () => {
-      authService.getMe.mockResolvedValue(plannerUser);
-      orderService.selectFabricColor.mockResolvedValue({
-        id: 'po-1',
-        fabricTypeId: '11111111-1111-4111-8111-111111111111',
-        colorId: '22222222-2222-4222-8222-222222222222',
-      });
+    it('passes the verified planner id as the actor', async () => {
+      orderService.selectFabricColor.mockResolvedValue({ id: 'po-1' });
 
       const body = {
         fabricTypeId: '11111111-1111-4111-8111-111111111111',
         colorId: '22222222-2222-4222-8222-222222222222',
       };
 
-      const res = await controller.selectFabricColor('po-1', body, 'Bearer token');
+      const res = await controller.selectFabricColor('po-1', body, plannerUser);
       expect(res).toEqual(expect.objectContaining({ id: 'po-1' }));
       expect(orderService.selectFabricColor).toHaveBeenCalledWith('po-1', body, plannerUser.id);
-    });
-
-    it('rejects operator from selecting fabric and color', async () => {
-      authService.getMe.mockResolvedValue(operatorUser);
-
-      const body = {
-        fabricTypeId: '11111111-1111-4111-8111-111111111111',
-        colorId: '22222222-2222-4222-8222-222222222222',
-      };
-
-      await expect(controller.selectFabricColor('po-1', body, 'Bearer token')).rejects.toThrow(
-        ForbiddenException,
-      );
-      expect(orderService.selectFabricColor).not.toHaveBeenCalled();
     });
   });
 
   describe('BOM endpoints', () => {
-    it('allows planner to calculate BOM', async () => {
-      authService.getMe.mockResolvedValue(plannerUser);
+    it('passes the verified planner id when calculating the BOM', async () => {
       orderService.calculateAndPersistBom.mockResolvedValue([
         { id: 'bom-1', materialType: 'FABRIC', requiredQty: 100 },
       ]);
 
-      const res = await controller.calculateBom('po-1', 'Bearer token');
+      const res = await controller.calculateBom('po-1', plannerUser);
       expect(res).toHaveLength(1);
       expect(orderService.calculateAndPersistBom).toHaveBeenCalledWith('po-1', plannerUser.id);
     });
 
-    it('rejects operator from calculating BOM', async () => {
-      authService.getMe.mockResolvedValue(operatorUser);
-
-      await expect(controller.calculateBom('po-1', 'Bearer token')).rejects.toThrow(
-        ForbiddenException,
-      );
-      expect(orderService.calculateAndPersistBom).not.toHaveBeenCalled();
-    });
-
-    it('allows authenticated user to get BOM lines', async () => {
-      authService.getMe.mockResolvedValue(operatorUser);
+    it('returns the BOM lines', async () => {
       orderService.getBomLines.mockResolvedValue([
         { id: 'bom-1', materialType: 'THREAD', requiredQty: 500 },
       ]);
 
-      const res = await controller.getBomLines('po-1', 'Bearer token');
+      const res = await controller.getBomLines('po-1');
       expect(res).toHaveLength(1);
       expect(orderService.getBomLines).toHaveBeenCalledWith('po-1');
     });
   });
 
   describe('attachAcknowledgement', () => {
-    it('allows planner to attach customer acknowledgement', async () => {
-      authService.getMe.mockResolvedValue(plannerUser);
+    it('passes the verified planner id as the actor', async () => {
       orderService.attachCustomerAcknowledgement.mockResolvedValue({
         id: 'ack-1',
         acknowledgedByName: 'Nguyen Van A',
@@ -195,7 +160,7 @@ describe('OrderController', () => {
         filePath: 'uploads/ack-signed.pdf',
       };
 
-      const res = await controller.attachAcknowledgement('po-1', body, 'Bearer token');
+      const res = await controller.attachAcknowledgement('po-1', body, plannerUser);
       expect(res).toEqual(expect.objectContaining({ id: 'ack-1' }));
       expect(orderService.attachCustomerAcknowledgement).toHaveBeenCalledWith(
         'po-1',
@@ -203,43 +168,19 @@ describe('OrderController', () => {
         plannerUser.id,
       );
     });
-
-    it('rejects operator from attaching acknowledgement', async () => {
-      authService.getMe.mockResolvedValue(operatorUser);
-
-      const body = {
-        acknowledgedByName: 'Nguyen Van A',
-        filePath: 'uploads/ack-signed.pdf',
-      };
-
-      await expect(controller.attachAcknowledgement('po-1', body, 'Bearer token')).rejects.toThrow(
-        ForbiddenException,
-      );
-      expect(orderService.attachCustomerAcknowledgement).not.toHaveBeenCalled();
-    });
   });
 
   describe('confirmOrder', () => {
-    it('allows planner to confirm order', async () => {
-      authService.getMe.mockResolvedValue(plannerUser);
+    it('passes the verified planner id as the actor', async () => {
       orderService.confirmOrder.mockResolvedValue({
         success: true,
         orderId: 'po-1',
         status: 'CONFIRMED',
       });
 
-      const res = await controller.confirmOrder('po-1', 'Bearer token');
+      const res = await controller.confirmOrder('po-1', plannerUser);
       expect(res).toEqual(expect.objectContaining({ success: true, status: 'CONFIRMED' }));
       expect(orderService.confirmOrder).toHaveBeenCalledWith('po-1', plannerUser.id);
-    });
-
-    it('rejects operator from confirming order', async () => {
-      authService.getMe.mockResolvedValue(operatorUser);
-
-      await expect(controller.confirmOrder('po-1', 'Bearer token')).rejects.toThrow(
-        ForbiddenException,
-      );
-      expect(orderService.confirmOrder).not.toHaveBeenCalled();
     });
   });
 });
