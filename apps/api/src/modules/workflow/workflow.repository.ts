@@ -36,7 +36,7 @@ export class WorkflowRepository {
   async createTemplateWithInitialVersion(
     templateData: Prisma.WorkflowTemplateCreateInput,
     versionNo: number,
-    createdBy?: string,
+    createdBy: string,
   ) {
     return this.prisma.$transaction(async (tx) => {
       const template = await tx.workflowTemplate.create({
@@ -88,7 +88,7 @@ export class WorkflowRepository {
     templateId: string,
     newVersionNo: number,
     previousVersionId: string,
-    createdBy?: string,
+    createdBy: string,
   ) {
     return this.prisma.$transaction(async (tx) => {
       const prevVersion = await tx.workflowVersion.findUniqueOrThrow({
@@ -204,7 +204,7 @@ export class WorkflowRepository {
     });
   }
 
-  async publishVersionTransaction(versionId: string, templateId: string, actorId?: string) {
+  async publishVersionTransaction(versionId: string, templateId: string, actorId: string) {
     return this.prisma.$transaction(async (tx) => {
       // 1. Retire previous published version for this template (if any)
       await tx.workflowVersion.updateMany({
@@ -257,7 +257,7 @@ export class WorkflowRepository {
     });
   }
 
-  async assignTemplateToStyle(styleId: string, templateId: string, actorId?: string) {
+  async assignTemplateToStyle(styleId: string, templateId: string, actorId: string) {
     return this.prisma.$transaction(async (tx) => {
       const style = await tx.style.update({
         where: { id: styleId },

@@ -11,6 +11,8 @@ import {
 } from '@nestjs/common';
 import { Role } from '@denimflow/shared';
 import { AuthGuard } from '../auth/auth.guard.js';
+import type { AuthResponse } from '../auth/auth.service.js';
+import { CurrentUser } from '../auth/current-user.decorator.js';
 import { Roles } from '../auth/roles.decorator.js';
 import {
   assignTemplateToStyleSchema,
@@ -35,9 +37,9 @@ export class WorkflowController {
 
   @Post('templates')
   @Roles(Role.PROCESS_ENGINEER)
-  createTemplate(@Body() rawBody: unknown) {
+  createTemplate(@Body() rawBody: unknown, @CurrentUser() user: AuthResponse['user']) {
     const dto = createWorkflowTemplateSchema.parse(rawBody);
-    return this.workflowService.createTemplate(dto);
+    return this.workflowService.createTemplate(dto, user.id);
   }
 
   @Get('templates/:id')
@@ -47,8 +49,8 @@ export class WorkflowController {
 
   @Post('templates/:id/versions')
   @Roles(Role.PROCESS_ENGINEER)
-  createNewVersion(@Param('id') id: string) {
-    return this.workflowService.createNewVersion(id);
+  createNewVersion(@Param('id') id: string, @CurrentUser() user: AuthResponse['user']) {
+    return this.workflowService.createNewVersion(id, user.id);
   }
 
   @Get('versions/:id')
@@ -97,14 +99,14 @@ export class WorkflowController {
 
   @Post('versions/:id/publish')
   @Roles(Role.PROCESS_ENGINEER)
-  publishVersion(@Param('id') id: string) {
-    return this.workflowService.publishVersion(id);
+  publishVersion(@Param('id') id: string, @CurrentUser() user: AuthResponse['user']) {
+    return this.workflowService.publishVersion(id, user.id);
   }
 
   @Post('styles/assign-template')
   @Roles(Role.PROCESS_ENGINEER)
-  assignTemplateToStyle(@Body() rawBody: unknown) {
+  assignTemplateToStyle(@Body() rawBody: unknown, @CurrentUser() user: AuthResponse['user']) {
     const dto = assignTemplateToStyleSchema.parse(rawBody);
-    return this.workflowService.assignTemplateToStyle(dto);
+    return this.workflowService.assignTemplateToStyle(dto, user.id);
   }
 }

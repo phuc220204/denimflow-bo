@@ -188,6 +188,12 @@ Thêm một dòng mỗi khi triển khai diễn giải hoặc khác Proposal. Kh
 Các dòng "Proposed" chờ owner xác nhận; đổi thành "Agreed" hoặc viết lại.
 
 
+### Sửa D3: người thao tác trong audit của workflow (2026-11-05)
+
+BR-16: tạo template, tạo version, publish version và gán template cho style giờ ghi lại Kỹ sư quy trình đang đăng nhập (`workflow_versions.created_by`, `audit_logs.actor_id`). Trước đây controller không truyền người dùng nên cả hai đều NULL (hiện là "hệ thống"). Actor giờ là tham số bắt buộc nên không thể bị bỏ sót nữa.
+
+Còn mở: tạo template hoặc version, sửa step hoặc transition của version DRAFT hoàn toàn không ghi dòng AuditLog nào. BR-16 yêu cầu mọi thay đổi workflow đều có audit; theo dõi như một việc tiếp theo.
+
 ### T5.3 integration update (#34, 2026-11-05)
 
 Danh sách lỗi theo đơn, inspection, bó và người QC; dùng lại schema QC hiện tại.

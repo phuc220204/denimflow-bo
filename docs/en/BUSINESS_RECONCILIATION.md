@@ -188,6 +188,12 @@ Add a row whenever the implementation interprets or departs from the Proposal. N
 "Proposed" rows await the owner's confirmation; change to "Agreed" or rewrite.
 
 
+### D3 fix: workflow audit actor (2026-11-05)
+
+BR-16: creating a template, creating a version, publishing a version and assigning a template to a style now record the logged-in Process Engineer (`workflow_versions.created_by`, `audit_logs.actor_id`). Before, the controller never passed the user and both were NULL (shown as "system"). The actor is now a required parameter so it cannot be left out again.
+
+Still open: creating a template or a version and editing steps or transitions of a DRAFT version write no AuditLog row at all. BR-16 asks for one on every workflow change; tracked as a follow-up.
+
 ### T5.3 integration update (#34, 2026-11-05)
 
 Read-only order defects joined to inspection, bundle and inspector; existing QC schema is reused.
