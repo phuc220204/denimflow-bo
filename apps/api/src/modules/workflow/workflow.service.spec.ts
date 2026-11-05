@@ -113,7 +113,7 @@ describe('WorkflowService (T2.4, FR-04, FR-05, BR-01, BR-02)', () => {
         transitions: [],
       } as unknown as VersionWithRelations);
 
-      await expect(service.publishVersion('v1')).rejects.toThrow(
+      await expect(service.publishVersion('v1', 'actor-uuid')).rejects.toThrow(
         'Only DRAFT versions can be published',
       );
     });
@@ -140,7 +140,7 @@ describe('WorkflowService (T2.4, FR-04, FR-05, BR-01, BR-02)', () => {
       } as unknown as VersionWithRelations);
 
       try {
-        await service.publishVersion('v1');
+        await service.publishVersion('v1', 'actor-uuid');
         expect.unreachable('Should have thrown BusinessRuleViolation');
       } catch (error: unknown) {
         expect(error).toBeInstanceOf(BusinessRuleViolation);
@@ -217,16 +217,16 @@ describe('WorkflowService (T2.4, FR-04, FR-05, BR-01, BR-02)', () => {
         Awaited<ReturnType<WorkflowRepository['assignTemplateToStyle']>>
       >);
 
-      const result = await service.assignTemplateToStyle({
-        styleId: '123e4567-e89b-12d3-a456-426614174000',
-        templateId: 't1',
-      });
+      const result = await service.assignTemplateToStyle(
+        { styleId: '123e4567-e89b-12d3-a456-426614174000', templateId: 't1' },
+        'actor-uuid',
+      );
 
       expect(result.defaultTemplateId).toBe('t1');
       expect(mockRepository.assignTemplateToStyle).toHaveBeenCalledWith(
         '123e4567-e89b-12d3-a456-426614174000',
         't1',
-        undefined,
+        'actor-uuid',
       );
     });
   });

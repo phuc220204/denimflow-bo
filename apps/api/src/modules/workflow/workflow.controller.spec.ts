@@ -1,6 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { AuthResponse } from '../auth/auth.service.js';
 import { WorkflowController } from './workflow.controller.js';
 import type { WorkflowService } from './workflow.service.js';
+
+const engineer: AuthResponse['user'] = {
+  id: 'pe-uuid',
+  email: 'pe@denimflow.test',
+  fullName: 'PE',
+  role: 'PROCESS_ENGINEER',
+  isActive: true,
+};
 
 describe('WorkflowController', () => {
   const mockService = {
@@ -28,22 +37,22 @@ describe('WorkflowController', () => {
     expect(mockService.listTemplates).toHaveBeenCalled();
   });
 
-  it('createTemplate validates schema and calls service.createTemplate', async () => {
+  it('BR-16: createTemplate validates schema and passes the creator to the service', async () => {
     vi.mocked(mockService.createTemplate).mockResolvedValueOnce({
       template: { id: 't1', name: 'New Template' },
       version: { id: 'v1', versionNo: 1 },
     } as unknown as Awaited<ReturnType<WorkflowService['createTemplate']>>);
 
-    const res = await controller.createTemplate({ name: 'New Template' });
+    const res = await controller.createTemplate({ name: 'New Template' }, engineer);
     expect(res).toBeDefined();
-    expect(mockService.createTemplate).toHaveBeenCalledWith({
-      name: 'New Template',
-      isDedicated: false,
-    });
+    expect(mockService.createTemplate).toHaveBeenCalledWith(
+      { name: 'New Template', isDedicated: false },
+      'pe-uuid',
+    );
   });
 
   it('createTemplate rejects invalid body', () => {
-    expect(() => controller.createTemplate({ name: '' })).toThrow();
+    expect(() => controller.createTemplate({ name: '' }, engineer)).toThrow();
   });
 
   it('addStep validates step DTO schema', async () => {
@@ -65,18 +74,18 @@ describe('WorkflowController', () => {
     );
   });
 
-  it('publishVersion delegates to service.publishVersion', async () => {
+  it('BR-16: publishVersion passes the actor to the service', async () => {
     vi.mocked(mockService.publishVersion).mockResolvedValueOnce({
       id: 'v1',
       status: 'PUBLISHED',
     } as unknown as Awaited<ReturnType<WorkflowService['publishVersion']>>);
 
-    const res = await controller.publishVersion('v1');
+    const res = await controller.publishVersion('v1', engineer);
     expect(res.status).toBe('PUBLISHED');
-    expect(mockService.publishVersion).toHaveBeenCalledWith('v1');
+    expect(mockService.publishVersion).toHaveBeenCalledWith('v1', 'pe-uuid');
   });
 
-  it('assignTemplateToStyle validates and calls service', async () => {
+  it('BR-16: assignTemplateToStyle validates and passes the actor to the service', async () => {
     const styleId = '123e4567-e89b-12d3-a456-426614174000';
     const templateId = '123e4567-e89b-12d3-a456-426614174001';
 
@@ -85,15 +94,12 @@ describe('WorkflowController', () => {
       defaultTemplateId: templateId,
     } as unknown as Awaited<ReturnType<WorkflowService['assignTemplateToStyle']>>);
 
-    const res = await controller.assignTemplateToStyle({
-      styleId,
-      templateId,
-    });
+    const res = await controller.assignTemplateToStyle({ styleId, templateId }, engineer);
 
     expect(res).toBeDefined();
-    expect(mockService.assignTemplateToStyle).toHaveBeenCalledWith({
-      styleId,
-      templateId,
-    });
+    expect(mockService.assignTemplateToStyle).toHaveBeenCalledWith(
+      { styleId, templateId },
+      'pe-uuid',
+    );
   });
 });

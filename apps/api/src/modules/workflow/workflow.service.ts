@@ -26,7 +26,7 @@ export class WorkflowService {
     return template;
   }
 
-  async createTemplate(dto: CreateWorkflowTemplateDto, creatorId?: string) {
+  async createTemplate(dto: CreateWorkflowTemplateDto, creatorId: string) {
     return this.repository.createTemplateWithInitialVersion(
       {
         name: dto.name,
@@ -45,7 +45,7 @@ export class WorkflowService {
     return version;
   }
 
-  async createNewVersion(templateId: string, creatorId?: string) {
+  async createNewVersion(templateId: string, creatorId: string) {
     const latestVersion = await this.repository.findLatestVersionForTemplate(templateId);
     if (!latestVersion) {
       throw new NotFoundException(`No version found for template "${templateId}"`);
@@ -196,7 +196,7 @@ export class WorkflowService {
     return validateTemplate(engineTemplate);
   }
 
-  async publishVersion(versionId: string, actorId?: string) {
+  async publishVersion(versionId: string, actorId: string) {
     const version = await this.getVersion(versionId);
 
     // Rule BR-02: Only DRAFT versions can be published
@@ -220,7 +220,7 @@ export class WorkflowService {
     return this.repository.publishVersionTransaction(versionId, version.templateId, actorId);
   }
 
-  async assignTemplateToStyle(dto: AssignTemplateToStyleDto, actorId?: string) {
+  async assignTemplateToStyle(dto: AssignTemplateToStyleDto, actorId: string) {
     const template = await this.getTemplate(dto.templateId);
     return this.repository.assignTemplateToStyle(dto.styleId, template.id, actorId);
   }
