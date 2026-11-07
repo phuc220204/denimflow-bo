@@ -421,7 +421,7 @@ model OrderSizeLine {
   createdAt  DateTime        @default(now()) @map("created_at") @db.Timestamptz
   updatedAt  DateTime        @updatedAt @map("updated_at") @db.Timestamptz
 
-  order      ProductionOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order      ProductionOrder @relation(fields: [orderId], references: [id], onDelete: Restrict)
 
   @@unique([orderId, size])
   @@index([orderId])
@@ -454,7 +454,7 @@ model BomLine {
   createdAt           DateTime             @default(now()) @map("created_at") @db.Timestamptz
   updatedAt           DateTime             @updatedAt @map("updated_at") @db.Timestamptz
 
-  order               ProductionOrder      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order               ProductionOrder      @relation(fields: [orderId], references: [id], onDelete: Restrict)
   materialAllocations MaterialAllocation[]
   materialRequests    MaterialRequest[]
 
@@ -487,7 +487,7 @@ model MaterialAllocation {
   createdAt    DateTime    @default(now()) @map("created_at") @db.Timestamptz
   updatedAt    DateTime    @updatedAt @map("updated_at") @db.Timestamptz
 
-  bomLine      BomLine     @relation(fields: [bomLineId], references: [id], onDelete: Cascade)
+  bomLine      BomLine     @relation(fields: [bomLineId], references: [id], onDelete: Restrict)
   fabricLot    FabricLot   @relation(fields: [fabricLotId], references: [id])
 
   @@index([bomLineId])
@@ -504,8 +504,8 @@ model MaterialRequest {
   createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz
   updatedAt   DateTime        @updatedAt @map("updated_at") @db.Timestamptz
 
-  order       ProductionOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  bomLine     BomLine         @relation(fields: [bomLineId], references: [id], onDelete: Cascade)
+  order       ProductionOrder @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  bomLine     BomLine         @relation(fields: [bomLineId], references: [id], onDelete: Restrict)
   requester   Profile         @relation(fields: [requestedBy], references: [id])
 
   @@index([orderId])
@@ -524,7 +524,7 @@ model CustomerAcknowledgement {
   createdAt          DateTime        @default(now()) @map("created_at") @db.Timestamptz
   updatedAt          DateTime        @updatedAt @map("updated_at") @db.Timestamptz
 
-  order              ProductionOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order              ProductionOrder @relation(fields: [orderId], references: [id], onDelete: Restrict)
   qcProfile          QcProfile       @relation(fields: [qcProfileId], references: [id])
   recorder           Profile         @relation(fields: [recordedBy], references: [id])
 
@@ -542,7 +542,7 @@ model WorkflowInstance {
   createdAt     DateTime        @default(now()) @map("created_at") @db.Timestamptz
   updatedAt     DateTime        @updatedAt @map("updated_at") @db.Timestamptz
 
-  order         ProductionOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order         ProductionOrder @relation(fields: [orderId], references: [id], onDelete: Restrict)
   version       WorkflowVersion @relation(fields: [versionId], references: [id])
   stepInstances StepInstance[]
 
@@ -568,7 +568,7 @@ model StepInstance {
   createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz
   updatedAt        DateTime         @updatedAt @map("updated_at") @db.Timestamptz
 
-  instance         WorkflowInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  instance         WorkflowInstance @relation(fields: [instanceId], references: [id], onDelete: Restrict)
   stepDefinition   StepDefinition   @relation(fields: [stepDefinitionId], references: [id])
   assignee         Profile?         @relation("AssignedStepInstances", fields: [assignedTo], references: [id])
   performer        Profile?         @relation("PerformedStepInstances", fields: [performedBy], references: [id])

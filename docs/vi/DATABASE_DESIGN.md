@@ -23,6 +23,7 @@ Nguồn: Proposal V2.0 mục 10 (core data model) cộng các bổ sung ở §10
 | Boolean | `is_*` hoặc `*_required`, `NOT NULL` kèm default |
 | Số lượng | sản phẩm = `integer` ≥ 0; vải = `numeric(12,2)` mét |
 | Xoá mềm | Không dùng. Dòng catalog dùng `is_active`; dòng đang được tham chiếu không xoá được |
+| Quy tắc xoá | Lịch sử đơn hàng và sản xuất dùng `ON DELETE RESTRICT` (dải cỡ, dòng BOM, phân bổ, yêu cầu vật tư, xác nhận khách hàng, workflow/step instance, số lượng, bó hàng, QC, bàn giao, bằng chứng; D1, R-03). `CASCADE` chỉ giữ cho dữ liệu thiết kế thuộc hẳn về dòng cha: quy tắc vải–màu, QC Profile và định mức BOM của một style, các version của template, step và transition của version DRAFT |
 | Tiền | ngoài phạm vi |
 | File | lưu **path** trong Storage, không lưu URL công khai (R-15) |
 

@@ -441,6 +441,19 @@ export class OrderRepository {
       const calculator = new BomCalculator();
       const calculatedLines = calculator.calculate({ sizeLines, norms });
 
+      // R-28: replacing the BOM would orphan its fabric allocations and material requests
+      // (RESTRICT, R-03), so recalculation is only allowed before any are recorded.
+      const [allocations, requests] = await Promise.all([
+        tx.materialAllocation.count({ where: { bomLine: { orderId } } }),
+        tx.materialRequest.count({ where: { orderId } }),
+      ]);
+      if (allocations > 0 || requests > 0) {
+        throw new BusinessRuleViolation(
+          'R-28',
+          'BOM đã có phân bổ vải hoặc yêu cầu vật tư, không thể tính lại',
+        );
+      }
+
       // Delete existing bom_lines for this order
       await tx.bomLine.deleteMany({
         where: { orderId },

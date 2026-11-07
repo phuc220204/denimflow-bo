@@ -52,7 +52,7 @@ Merged: S1–S3/T4.1 (#26, module review pending), T4.2 (#43), T4.3 (#44), T4.5 
 - Render free API sleeps after 15 min idle (about 1 min cold start). Ping `/health` before demos.
 - Supabase free projects pause after a week of inactivity. Keep migrations + seed in the repo to rebuild.
 - Free-tier limits change. Re-check provider pricing pages before the final demo.
-- Code merged via #26 was never reviewed; known debt: ON DELETE CASCADE on order history (BR-12/R-03), hand-written role checks, null audit actor (TASK_BOARD D1–D4).
+- Code merged via #26 was never reviewed; known debt: hand-written role checks, null audit actor (TASK_BOARD D2–D4). Order history is RESTRICT since migration `20261105120000_restrict_order_history` (D1); run the Migrate workflow on prod after it merges.
 - One contributor holds most tasks while three have none; rebalance via TASK_BOARD (course grading looks at contributions).
 - `tsup` (package build) is no longer actively maintained. Switch to `tsdown` once it reaches 1.0 (config is ~5 lines per package).
 - TypeScript is pinned to 6.0.x because `typescript-eslint` 8.x supports `typescript <6.1`. Upgrade to 7 when typescript-eslint supports it.

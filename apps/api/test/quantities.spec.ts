@@ -162,6 +162,16 @@ describe('Quantity entry and conservation (T4.3)', () => {
     ).rejects.toThrow(/R-03/);
   });
 
+  it('R-03: quantity entries cannot be deleted or truncated', async () => {
+    const anyEntry = await prisma.stepQuantityEntry.findFirstOrThrow({
+      where: { stepInstanceId: stepIds.CUTTING },
+    });
+    await expect(prisma.stepQuantityEntry.delete({ where: { id: anyEntry.id } })).rejects.toThrow(
+      /R-03/,
+    );
+    await expect(prisma.$executeRaw`TRUNCATE "step_quantity_entries"`).rejects.toThrow(/R-03/);
+  });
+
   it('completing cutting creates bundles of 50 from the good pieces and opens sewing', async () => {
     const completed = await post(`/steps/${stepIds.CUTTING}/complete`, 'cutter-token').expect(200);
     expect(completed.body.newlyReadyStepCodes).toEqual(['SEWING']);
