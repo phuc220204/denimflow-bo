@@ -75,7 +75,7 @@ export const CatalogPage: React.FC = () => {
     refetch: refetchStyles,
   } = useQuery({
     queryKey: ['catalog', 'styles'],
-    queryFn: fetchStyles,
+    queryFn: () => fetchStyles(token),
   });
 
   const {
@@ -84,7 +84,7 @@ export const CatalogPage: React.FC = () => {
     refetch: refetchFabrics,
   } = useQuery({
     queryKey: ['catalog', 'fabrics'],
-    queryFn: fetchFabricTypes,
+    queryFn: () => fetchFabricTypes(token),
   });
 
   const {
@@ -93,7 +93,7 @@ export const CatalogPage: React.FC = () => {
     refetch: refetchColors,
   } = useQuery({
     queryKey: ['catalog', 'colors'],
-    queryFn: fetchColorOptions,
+    queryFn: () => fetchColorOptions(token),
   });
 
   const {
@@ -102,7 +102,7 @@ export const CatalogPage: React.FC = () => {
     refetch: refetchWashes,
   } = useQuery({
     queryKey: ['catalog', 'washes'],
-    queryFn: fetchWashTypes,
+    queryFn: () => fetchWashTypes(token),
   });
 
   const {
@@ -111,7 +111,7 @@ export const CatalogPage: React.FC = () => {
     refetch: refetchStations,
   } = useQuery({
     queryKey: ['catalog', 'stations'],
-    queryFn: fetchStations,
+    queryFn: () => fetchStations(token),
   });
 
   const showNotification = (msg: string, isError = false) => {

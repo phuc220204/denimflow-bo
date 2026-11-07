@@ -203,7 +203,7 @@ describe('OrdersPage', () => {
     const fabricSelect = screen.getByLabelText(/Loại vải \(Fabric Type\)/i) as HTMLSelectElement;
     fireEvent.change(fabricSelect, { target: { value: 'fab-1' } });
 
-    expect(api.fetchAllowedColors).toHaveBeenCalledWith('fab-1');
+    expect(api.fetchAllowedColors).toHaveBeenCalledWith('fab-1', 'planner-token');
     expect(await screen.findByText('INDIGO-DARK - Xanh Chàm Đậm')).toBeInTheDocument();
   });
 

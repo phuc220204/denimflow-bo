@@ -117,30 +117,30 @@ export const OrdersPage: React.FC = () => {
 
   const { data: styles = [] } = useQuery({
     queryKey: ['styles'],
-    queryFn: () => fetchStyles(),
+    queryFn: () => fetchStyles(token),
   });
 
   const { data: fabricTypes = [] } = useQuery({
     queryKey: ['fabricTypes'],
-    queryFn: () => fetchFabricTypes(),
+    queryFn: () => fetchFabricTypes(token),
   });
 
   const { data: washTypes = [] } = useQuery({
     queryKey: ['washTypes'],
-    queryFn: () => fetchWashTypes(),
+    queryFn: () => fetchWashTypes(token),
   });
 
   // Allowed colors for create/edit modal (BR-04)
   const { data: allowedColors = [] } = useQuery({
     queryKey: ['allowedColors', fabricTypeId],
-    queryFn: () => fetchAllowedColors(fabricTypeId),
+    queryFn: () => fetchAllowedColors(fabricTypeId, token),
     enabled: Boolean(fabricTypeId),
   });
 
   // Allowed colors for dedicated fabric-color modal (BR-04)
   const { data: fcModalAllowedColors = [] } = useQuery({
     queryKey: ['allowedColors', fcModalFabricId],
-    queryFn: () => fetchAllowedColors(fcModalFabricId),
+    queryFn: () => fetchAllowedColors(fcModalFabricId, token),
     enabled: Boolean(fcModalFabricId),
   });
 

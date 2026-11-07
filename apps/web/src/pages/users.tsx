@@ -87,7 +87,7 @@ export const UsersPage: React.FC = () => {
   // 2. Fetch Stations for dropdown
   const { data: stations = [] } = useQuery({
     queryKey: ['catalog-stations'],
-    queryFn: fetchStations,
+    queryFn: () => fetchStations(token),
   });
 
   // 3. Mutation: Create User

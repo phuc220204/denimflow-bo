@@ -48,7 +48,7 @@ export const QcProfilesTab: React.FC = () => {
     refetch: refetchStyles,
   } = useQuery({
     queryKey: ['styles'],
-    queryFn: fetchStyles,
+    queryFn: () => fetchStyles(token),
   });
 
   // Effective selected style
@@ -61,7 +61,8 @@ export const QcProfilesTab: React.FC = () => {
     refetch: refetchProfiles,
   } = useQuery({
     queryKey: ['catalog', 'styles', activeStyle?.id, 'qc-profiles'],
-    queryFn: () => (activeStyle ? fetchStyleQcProfiles(activeStyle.id) : Promise.resolve([])),
+    queryFn: () =>
+      activeStyle ? fetchStyleQcProfiles(activeStyle.id, token) : Promise.resolve([]),
     enabled: !!activeStyle,
   });
 

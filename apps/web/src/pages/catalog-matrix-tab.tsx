@@ -18,7 +18,7 @@ export const FabricColorMatrixTab: React.FC = () => {
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['catalog', 'matrix'],
-    queryFn: fetchMatrix,
+    queryFn: () => fetchMatrix(token),
   });
 
   const toggleMutation = useMutation({

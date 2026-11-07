@@ -74,7 +74,7 @@ export const WorkflowDesignerPage: React.FC = () => {
 
   const { data: styles = [] } = useQuery({
     queryKey: ['catalog-styles'],
-    queryFn: () => fetchStyles(),
+    queryFn: () => fetchStyles(token),
   });
 
   // Automatically select the first template if none selected

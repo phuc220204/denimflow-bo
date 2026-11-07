@@ -198,9 +198,9 @@ function getAuthHeaders(token?: string | null): HeadersInit {
 }
 
 // 1. Stations
-export async function fetchStations(): Promise<StationItem[]> {
+export async function fetchStations(token: string | null): Promise<StationItem[]> {
   const res = await fetch(`${API_BASE}/catalog/stations`, {
-    headers: { Accept: 'application/json' },
+    headers: getAuthHeaders(token),
   });
   if (!res.ok) throw new Error('Không thể tải danh sách trạm sản xuất');
   return res.json();
@@ -247,9 +247,9 @@ export async function deleteStation(id: string, token?: string | null): Promise<
 }
 
 // 2. Styles
-export async function fetchStyles(): Promise<StyleItem[]> {
+export async function fetchStyles(token: string | null): Promise<StyleItem[]> {
   const res = await fetch(`${API_BASE}/catalog/styles`, {
-    headers: { Accept: 'application/json' },
+    headers: getAuthHeaders(token),
   });
   if (!res.ok) throw new Error('Không thể tải danh sách kiểu dáng');
   return res.json();
@@ -296,9 +296,9 @@ export async function deleteStyle(id: string, token?: string | null): Promise<vo
 }
 
 // 3. Fabric Types
-export async function fetchFabricTypes(): Promise<FabricTypeItem[]> {
+export async function fetchFabricTypes(token: string | null): Promise<FabricTypeItem[]> {
   const res = await fetch(`${API_BASE}/catalog/fabric-types`, {
-    headers: { Accept: 'application/json' },
+    headers: getAuthHeaders(token),
   });
   if (!res.ok) throw new Error('Không thể tải danh sách loại vải');
   return res.json();
@@ -345,9 +345,9 @@ export async function deleteFabricType(id: string, token?: string | null): Promi
 }
 
 // 4. Color Options
-export async function fetchColorOptions(): Promise<ColorOptionItem[]> {
+export async function fetchColorOptions(token: string | null): Promise<ColorOptionItem[]> {
   const res = await fetch(`${API_BASE}/catalog/color-options`, {
-    headers: { Accept: 'application/json' },
+    headers: getAuthHeaders(token),
   });
   if (!res.ok) throw new Error('Không thể tải danh sách màu nhuộm');
   return res.json();
@@ -394,9 +394,9 @@ export async function deleteColorOption(id: string, token?: string | null): Prom
 }
 
 // 5. Wash Types
-export async function fetchWashTypes(): Promise<WashTypeItem[]> {
+export async function fetchWashTypes(token: string | null): Promise<WashTypeItem[]> {
   const res = await fetch(`${API_BASE}/catalog/wash-types`, {
-    headers: { Accept: 'application/json' },
+    headers: getAuthHeaders(token),
   });
   if (!res.ok) throw new Error('Không thể tải danh sách kiểu giặt');
   return res.json();
@@ -459,9 +459,9 @@ export interface MatrixData {
   rules: FabricColorRuleItem[];
 }
 
-export async function fetchMatrix(): Promise<MatrixData> {
+export async function fetchMatrix(token: string | null): Promise<MatrixData> {
   const res = await fetch(`${API_BASE}/catalog/matrix`, {
-    headers: { Accept: 'application/json' },
+    headers: getAuthHeaders(token),
   });
   if (!res.ok) throw new Error('Không thể tải ma trận vải - màu');
   return res.json();
@@ -481,9 +481,12 @@ export async function toggleMatrixRuleApi(
   return data;
 }
 
-export async function fetchAllowedColors(fabricTypeId: string): Promise<ColorOptionItem[]> {
+export async function fetchAllowedColors(
+  fabricTypeId: string,
+  token: string | null,
+): Promise<ColorOptionItem[]> {
   const res = await fetch(`${API_BASE}/catalog/fabrics/${fabricTypeId}/allowed-colors`, {
-    headers: { Accept: 'application/json' },
+    headers: getAuthHeaders(token),
   });
   if (!res.ok) throw new Error('Không thể tải danh sách màu hợp lệ');
   return res.json();
@@ -502,9 +505,12 @@ export interface QcProfileItem {
   isActive: boolean;
 }
 
-export async function fetchStyleQcProfiles(styleId: string): Promise<QcProfileItem[]> {
+export async function fetchStyleQcProfiles(
+  styleId: string,
+  token: string | null,
+): Promise<QcProfileItem[]> {
   const res = await fetch(`${API_BASE}/catalog/styles/${styleId}/qc-profiles`, {
-    headers: { Accept: 'application/json' },
+    headers: getAuthHeaders(token),
   });
   if (!res.ok) throw new Error('Không thể tải cấu hình QC Profile của kiểu dáng');
   return res.json();
