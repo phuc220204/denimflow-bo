@@ -30,6 +30,23 @@ import { PrismaService } from '../../infrastructure/prisma/prisma.service.js';
 export class OrderRepository {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
+  // BR-04: only a pair switched on in the Fabric–Color Matrix may be used on an order.
+  private async assertFabricColorAllowed(
+    tx: Prisma.TransactionClient,
+    fabricTypeId: string,
+    colorId: string,
+  ) {
+    const rule = await tx.fabricColorRule.findUnique({
+      where: { fabricTypeId_colorId: { fabricTypeId, colorId } },
+    });
+    if (!rule || !rule.isAllowed) {
+      throw new BusinessRuleViolation(
+        'BR-04',
+        'BR-04: Selected fabric and color pair is not allowed per compatibility matrix',
+      );
+    }
+  }
+
   async listOrders(query?: ProductionOrderQueryDto) {
     const where: Prisma.ProductionOrderWhereInput = {};
     if (query?.status) {
@@ -117,6 +134,10 @@ export class OrderRepository {
 
   async createDraftOrder(dto: CreateProductionOrderDto, actorId: string) {
     return this.prisma.$transaction(async (tx) => {
+      if (dto.fabricTypeId && dto.colorId) {
+        await this.assertFabricColorAllowed(tx, dto.fabricTypeId, dto.colorId);
+      }
+
       const orderNumber = await this.generateOrderNumber(tx);
 
       const order = await tx.productionOrder.create({
@@ -225,20 +246,7 @@ export class OrderRepository {
       const finalFabric = dto.fabricTypeId !== undefined ? dto.fabricTypeId : existing.fabricTypeId;
       const finalColor = dto.colorId !== undefined ? dto.colorId : existing.colorId;
       if (finalFabric && finalColor) {
-        const rule = await tx.fabricColorRule.findUnique({
-          where: {
-            fabricTypeId_colorId: {
-              fabricTypeId: finalFabric,
-              colorId: finalColor,
-            },
-          },
-        });
-        if (!rule || !rule.isAllowed) {
-          throw new BusinessRuleViolation(
-            'BR-04',
-            'BR-04: Selected fabric and color pair is not allowed per compatibility matrix',
-          );
-        }
+        await this.assertFabricColorAllowed(tx, finalFabric, finalColor);
       }
 
       if (dto.sizeLines) {
@@ -346,21 +354,7 @@ export class OrderRepository {
       }
 
       // BR-04: Only colors listed in the Fabric–Color Matrix for the selected fabric type may be chosen
-      const rule = await tx.fabricColorRule.findUnique({
-        where: {
-          fabricTypeId_colorId: {
-            fabricTypeId: dto.fabricTypeId,
-            colorId: dto.colorId,
-          },
-        },
-      });
-
-      if (!rule || !rule.isAllowed) {
-        throw new BusinessRuleViolation(
-          'BR-04',
-          'BR-04: Selected fabric and color pair is not allowed per compatibility matrix',
-        );
-      }
+      await this.assertFabricColorAllowed(tx, dto.fabricTypeId, dto.colorId);
 
       const updated = await tx.productionOrder.update({
         where: { id },
@@ -623,6 +617,8 @@ export class OrderRepository {
           'Đơn hàng chưa chọn loại vải và màu sắc hợp lệ theo ma trận (BR-04)',
         );
       }
+      // The matrix may have changed since the pair was picked; Confirm checks it again.
+      await this.assertFabricColorAllowed(tx, orderRow.fabric_type_id, orderRow.color_id);
 
       // 4. Style -> default template -> PUBLISHED version (BR-03)
       const style = await tx.style.findUnique({
