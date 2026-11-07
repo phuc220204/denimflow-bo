@@ -1,15 +1,9 @@
-import {
-  Body,
-  Controller,
-  ForbiddenException,
-  Get,
-  Headers,
-  Inject,
-  Param,
-  Patch,
-  Post,
-} from '@nestjs/common';
-import { AuthService } from '../auth/auth.service.js';
+import { Body, Controller, Get, Inject, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Role } from '@denimflow/shared';
+import { AuthGuard } from '../auth/auth.guard.js';
+import type { AuthResponse } from '../auth/auth.service.js';
+import { CurrentUser } from '../auth/current-user.decorator.js';
+import { Roles } from '../auth/roles.decorator.js';
 import {
   createUserSchema,
   updateUserAssignmentSchema,
@@ -17,55 +11,41 @@ import {
 } from './users.dto.js';
 import { UsersService } from './users.service.js';
 
+// FR-01: only the Admin manages user accounts, roles and station assignments.
 @Controller('users')
+@UseGuards(AuthGuard)
+@Roles(Role.ADMIN)
 export class UsersController {
-  constructor(
-    @Inject(UsersService) private readonly usersService: UsersService,
-    @Inject(AuthService) private readonly authService: AuthService,
-  ) {}
-
-  private async assertAdmin(authHeader?: string): Promise<string> {
-    const user = await this.authService.getMe(authHeader);
-    if (user.role !== 'ADMIN') {
-      throw new ForbiddenException(
-        'Chỉ Quản trị viên (Admin) mới có quyền quản lý người dùng và tài khoản',
-      );
-    }
-    return user.id;
-  }
+  constructor(@Inject(UsersService) private readonly usersService: UsersService) {}
 
   @Get()
-  async getUsers(@Headers('authorization') authHeader?: string) {
-    await this.assertAdmin(authHeader);
+  getUsers() {
     return this.usersService.getUsers();
   }
 
   @Post()
-  async createUser(@Body() body: unknown, @Headers('authorization') authHeader?: string) {
-    const actorId = await this.assertAdmin(authHeader);
+  createUser(@Body() body: unknown, @CurrentUser() user: AuthResponse['user']) {
     const dto = createUserSchema.parse(body);
-    return this.usersService.createUser(dto, actorId);
+    return this.usersService.createUser(dto, user.id);
   }
 
   @Patch(':id/status')
-  async updateStatus(
+  updateStatus(
     @Param('id') id: string,
     @Body() body: unknown,
-    @Headers('authorization') authHeader?: string,
+    @CurrentUser() user: AuthResponse['user'],
   ) {
-    const actorId = await this.assertAdmin(authHeader);
     const dto = updateUserStatusSchema.parse(body);
-    return this.usersService.updateStatus(id, dto, actorId);
+    return this.usersService.updateStatus(id, dto, user.id);
   }
 
   @Patch(':id/assignment')
-  async updateAssignment(
+  updateAssignment(
     @Param('id') id: string,
     @Body() body: unknown,
-    @Headers('authorization') authHeader?: string,
+    @CurrentUser() user: AuthResponse['user'],
   ) {
-    const actorId = await this.assertAdmin(authHeader);
     const dto = updateUserAssignmentSchema.parse(body);
-    return this.usersService.updateAssignment(id, dto, actorId);
+    return this.usersService.updateAssignment(id, dto, user.id);
   }
 }
